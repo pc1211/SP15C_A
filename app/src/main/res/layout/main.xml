@@ -1,145 +1,407 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/BACK_LAYOUT"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black"
+    android:background="#303030"
     android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginTop="16dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        android:layout_weight="15"
+        android:background="#808080"
         android:orientation="horizontal">
 
-        <com.example.pgyl.pekislib_a.ImageButtonView
-            android:id="@+id/BTN_SHOW_EXPIRATION_TIME"
+        <com.example.pgyl.pekislib_a.DotMatrixDisplayView
+            android:id="@+id/DOT_MATRIX_DISPLAY"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_marginLeft="4dp"
-            android:layout_weight="3" />
+            android:layout_weight="2" />
 
-        <com.example.pgyl.pekislib_a.ImageButtonView
-            android:id="@+id/BTN_ADD_NEW_CHRONOTIMER_TO_LIST"
+        <com.example.pgyl.pekislib_a.DotMatrixDisplayView
+            android:id="@+id/DOT_MATRIX_DISPLAY_SIDE"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            android:layout_marginLeft="4dp"
-            android:layout_weight="3" />
-
-        <com.example.pgyl.pekislib_a.ImageButtonView
-            android:id="@+id/BTN_NEW_CHRONO"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginLeft="4dp"
-            android:layout_weight="4" />
-
-        <com.example.pgyl.pekislib_a.ImageButtonView
-            android:id="@+id/BTN_NEW_TIMER"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginLeft="4dp"
-            android:layout_weight="4" />
-
-        <com.example.pgyl.pekislib_a.ImageButtonView
-            android:id="@+id/BTN_INVERT_SELECTION_ALL_CT"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginLeft="4dp"
-            android:layout_weight="4" />
-
-        <com.example.pgyl.pekislib_a.ImageButtonView
-            android:id="@+id/BTN_SELECT_ALL_CT"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_marginLeft="4dp"
-            android:layout_weight="4" />
+            android:layout_weight="1" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginTop="8dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="4dp"
+        android:layout_weight="20"
         android:orientation="horizontal">
 
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent">
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_11"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
-            <LinearLayout
-                android:id="@+id/LAY_BUTTONS_ON_SELECTION"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="horizontal">
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_12"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
-                <com.example.pgyl.pekislib_a.ImageButtonView
-                    android:id="@+id/BTN_START_SELECTED_CT"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginLeft="4dp"
-                    android:layout_weight="1" />
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_13"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
-                <com.example.pgyl.pekislib_a.ImageButtonView
-                    android:id="@+id/BTN_STOP_SELECTED_CT"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginLeft="4dp"
-                    android:layout_weight="1" />
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_14"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
-                <com.example.pgyl.pekislib_a.ImageButtonView
-                    android:id="@+id/BTN_START_STOP_SELECTED_CT"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginLeft="4dp"
-                    android:layout_weight="1" />
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_15"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
-                <com.example.pgyl.pekislib_a.ImageButtonView
-                    android:id="@+id/BTN_SPLIT_SELECTED_CT"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginLeft="4dp"
-                    android:layout_weight="1" />
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_16"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
-                <com.example.pgyl.pekislib_a.ImageButtonView
-                    android:id="@+id/BTN_RESET_SELECTED_CT"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginLeft="4dp"
-                    android:layout_weight="1" />
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_17"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
-                <com.example.pgyl.pekislib_a.ImageButtonView
-                    android:id="@+id/BTN_REMOVE_SELECTED_CT"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginLeft="4dp"
-                    android:layout_weight="1" />
-            </LinearLayout>
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_18"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
-            <LinearLayout
-                android:id="@+id/LAY_DOT_MATRIX_DISPLAY"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="horizontal">
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_19"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
 
-                <com.example.pgyl.pekislib_a.DotMatrixDisplayView
-                    android:id="@+id/DOT_MATRIX_DISPLAY"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-            </LinearLayout>
-        </FrameLayout>
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_10"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
         android:layout_marginTop="8dp"
+        android:layout_weight="20"
         android:orientation="horizontal">
 
-        <ListView
-            android:id="@+id/CT_LIST"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:cacheColorHint="@android:color/black"
-            android:divider="@null"
-            android:listSelector="@android:color/transparent"
-            android:scrollbars="vertical" />
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_21"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_22"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_23"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_24"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_25"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_26"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_27"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_28"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_29"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <com.example.pgyl.sp15c_a.ImageButtonViewStack
+            android:id="@+id/KEY_20"
+            layout="@layout/key"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_weight="40"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_31"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_41"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_32"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_42"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_33"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_43"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_34"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_44"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_35"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_45"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_36"
+                layout="@layout/key36"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_37"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_47"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_38"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_48"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_39"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_49"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_30"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <com.example.pgyl.sp15c_a.ImageButtonViewStack
+                android:id="@+id/KEY_40"
+                layout="@layout/key"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1" />
+        </LinearLayout>
     </LinearLayout>
 </LinearLayout>

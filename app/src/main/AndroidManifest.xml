@@ -1,16 +1,17 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.pgyl.swtimer_a">
+    package="com.example.pgyl.sp15c_a">
 
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <application
         android:icon="@drawable/app_icon"
-        android:label="Swtimer"
+        android:label="SP15C"
         android:theme="@style/AppTheme">
         <activity
-            android:name="com.example.pgyl.swtimer_a.MainActivity"
+            android:name="com.example.pgyl.sp15c_a.MainActivity"
             android:exported="true"
-            android:label="Swtimer"
+            android:label="SP15C"
             android:launchMode="singleTask"
+            android:screenOrientation="landscape"
             android:windowSoftInputMode="stateHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -18,25 +19,14 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.example.pgyl.swtimer_a.CtDisplayActivity"
-            android:label="CtDisplayActivity" />
-        <activity
             android:name="com.example.pgyl.pekislib_a.PresetsActivity"
             android:label="PresetsActivity" />
         <activity
             android:name="com.example.pgyl.pekislib_a.InputButtonsActivity"
             android:label="InputButtonsActivity" />
         <activity
-            android:name="com.example.pgyl.swtimer_a.CtDisplayColorsActivity"
-            android:label="CtDisplayColorsActivity"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name="com.example.pgyl.swtimer_a.CtDisplayDotMatrixDisplayActivity"
-            android:label="CtDisplayDotMatrixDisplayActivity" />
-        <activity
             android:name="com.example.pgyl.pekislib_a.HelpActivity"
             android:label="HelpActivity" />
-
         <service
             android:name="com.example.pgyl.pekislib_a.BeepIntentService"
             android:exported="false" />

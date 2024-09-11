@@ -17,7 +17,7 @@ def vcStamp() {
 android {
     compileSdkVersion 31
     defaultConfig {
-        applicationId "com.example.bonux.swtimer_a"
+        applicationId "com.example.pgyl.sp15c_a"
         minSdkVersion 23
         targetSdkVersion 31
         versionCode vcStamp()

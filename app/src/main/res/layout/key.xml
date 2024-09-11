@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="0dp"
+	android:layout_height="match_parent"
+	android:layout_weight="1"
+	android:orientation="vertical"
+	android:background="@drawable/border">
+
+	<com.example.pgyl.pekislib_a.ImageButtonView
+            android:id="@+id/BTN_TOP"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginLeft="2dp"
+			android:layout_marginRight="2dp"
+            android:layout_weight="1" />
+
+	<com.example.pgyl.pekislib_a.ImageButtonView
+            android:id="@+id/BTN_MID"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+			android:layout_marginTop="4dp"
+			android:layout_marginLeft="2dp"
+			android:layout_marginRight="2dp"
+            android:layout_weight="2" />
+			
+	<com.example.pgyl.pekislib_a.ImageButtonView
+            android:id="@+id/BTN_LOW"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+			android:layout_marginLeft="2dp"
+			android:layout_marginRight="2dp"
+            android:layout_weight="1" />
+</LinearLayout>
