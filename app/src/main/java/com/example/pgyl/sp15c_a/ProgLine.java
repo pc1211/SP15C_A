@@ -5,7 +5,7 @@ import static com.example.pgyl.sp15c_a.Alu.OPERATIONS;
 public class ProgLine {
 
     private final int MAX_OPS = 5;
-    private int number;
+
     private OPERATIONS[] ops;
 
     public ProgLine() {
@@ -17,14 +17,6 @@ public class ProgLine {
 
     public OPERATIONS[] getOps() {
         return ops;
-    }
-
-    public void setNumber(int number) {
-        this.number = number;
-    }
-
-    public int getNumber() {
-        return number;
     }
 
     public int getOpsSize() {

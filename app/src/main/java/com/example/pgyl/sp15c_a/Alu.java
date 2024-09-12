@@ -16,7 +16,7 @@ public class Alu {
         KEY_18(18, OPERATIONS.DIGIT_8, OPERATIONS.SCI, OPERATIONS.RAD),
         KEY_19(19, OPERATIONS.DIGIT_9, OPERATIONS.ENG, OPERATIONS.GRAD),
         KEY_10(10, OPERATIONS.DIV, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_21(21, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
+        KEY_21(21, OPERATIONS.SST, OPERATIONS.UNKNOWN, OPERATIONS.BST),
         KEY_22(22, OPERATIONS.UNKNOWN, OPERATIONS.HYP, OPERATIONS.AHYP),
         KEY_23(23, OPERATIONS.SIN, OPERATIONS.DIM, OPERATIONS.ASIN),
         KEY_24(24, OPERATIONS.COS, OPERATIONS.UNKNOWN, OPERATIONS.ACOS),
@@ -26,7 +26,7 @@ public class Alu {
         KEY_28(28, OPERATIONS.DIGIT_5, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
         KEY_29(29, OPERATIONS.DIGIT_6, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
         KEY_20(20, OPERATIONS.MULT, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_31(31, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
+        KEY_31(31, OPERATIONS.RS, OPERATIONS.UNKNOWN, OPERATIONS.PR),
         KEY_32(32, OPERATIONS.UNKNOWN, OPERATIONS.CLEAR_SIGMA, OPERATIONS.UNKNOWN),
         KEY_33(33, OPERATIONS.RDN, OPERATIONS.UNKNOWN, OPERATIONS.RUP),
         KEY_34(34, OPERATIONS.XCHGXY, OPERATIONS.CLEAR_REGS, OPERATIONS.RND),
@@ -81,9 +81,10 @@ public class Alu {
 
     public enum OPERATIONS {
         BEGIN("BEGIN"),
-        END("END"),
         PR("P/R"),
         RS("R/S"),
+        SST("SST"),
+        BST("BST"),
         F("F"),
         G("G"),
         I("I"),
@@ -1442,6 +1443,10 @@ public class Alu {
         return proglines.get(progLineNumber);
     }
 
+    public int getProgLinesSize() {
+        return proglines.size();
+    }
+
     public void addProgLineAtNumber(ProgLine progLine, int progLineNumber) {
         proglines.add(progLineNumber, progLine);
     }
@@ -1476,14 +1481,9 @@ public class Alu {
 
     private void setupProgLines() {
         proglines = new ArrayList<ProgLine>();
-        proglines.add(new ProgLine());
+        proglines.add(new ProgLine());   //  Index 0
         ProgLine progLine = proglines.get(0);
-        progLine.setOp(0, OPERATIONS.END);
-        progLine.setNumber(MAX_LINES - 1);   //  9999
-        proglines.add(0, new ProgLine());   //  Viendra avant l'index 0 précédent
-        progLine = proglines.get(0);
         progLine.setOp(0, OPERATIONS.BEGIN);
-        progLine.setNumber(0);   //  0000
     }
 
     public String progLineToString(int progLineNumber, boolean displaySymbol) {   //  displaySymbol True => Afficher uniquement symboles ; displaySymbol False => afficher keyCodes (et parfois symbol (p.ex. ".5" ...)

@@ -61,6 +61,8 @@ public class MainActivity extends Activity {
     private final String ERROR_STO = "STO ?";
     private final String ERROR_RCL = "RCL ?";
     private final String ERROR_INDEX = "Invalid index";
+    private final String ERROR_NO_PROG = "Invalid instruction";
+
 
     public enum SWTIMER_SHP_KEY_NAMES {SHOW_EXPIRATION_TIME, ADD_NEW_CHRONOTIMER_TO_LIST, SET_CLOCK_APP_ALARM_ON_START_TIMER, KEEP_SCREEN, REQUESTED_CLOCK_APP_ALARM_DISMISSES}
     //endregion
@@ -301,7 +303,6 @@ public class MainActivity extends Activity {
             if (mode.equals(MODES.EDIT)) {
                 if (newProgLine) {
                     tProgLine = new ProgLine();
-                    currentProgLineNumber = currentProgLineNumber + 1;
                 }
             }
         }
@@ -1377,32 +1378,74 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-            if (op.equals(OPERATIONS.PR)) {
-                if (mode.equals(MODES.NORM)) {
-                    sssssssssssssss
-                            mode = MODES.EDIT;
-                    disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
-                } else { //  PROG_EDIT
+            if (op.equals(OPERATIONS.BEGIN)) {
+                if (mode.equals(MODES.RUN)) {
+                    error = ERROR_NO_PROG;
                     mode = MODES.NORM;
+                    newProgLine = true;
+                }
+            }
+            if (op.equals(OPERATIONS.PR)) {
+                if (mode.equals(MODES.NORM)) {   //  NORM -> EDIT
+                    mode = MODES.EDIT;
+                    newProgLine = false;
+                    tProgLine = alu.getProgLine(currentProgLineNumber);
+                    feedOps(tProgLine);
+                    newProgLine = true;
+                }
+                if (mode.equals(MODES.EDIT)) {   //  EDIT -> NORM
+                    mode = MODES.NORM;
+                    newProgLine = true;
+                }
+            }
+            if (op.equals(OPERATIONS.RS)) {
+                if (mode.equals(MODES.NORM)) {   //  NORM -> RUN
+                    mode = MODES.RUN;
+                    newProgLine = false;
+                    tProgLine = alu.getProgLine(currentProgLineNumber);
+                    feedOps(tProgLine);
+                    newProgLine = true;
+                }
+                if (mode.equals(MODES.RUN)) {   //  RUN -> NORM
+                    mode = MODES.NORM;
+                    newProgLine = true;
+                }
+            }
+            if (op.equals(OPERATIONS.SST)) {   //  END -> BEGIN
+                if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {
+                    newProgLine = false;
+                    currentProgLineNumber = currentProgLineNumber + 1;
+                    if (currentProgLineNumber > (alu.getProgLinesSize() - 1)) {
+                        currentProgLineNumber = 0;
+                    }
+                    tProgLine = alu.getProgLine(currentProgLineNumber);
+                    feedOps(tProgLine);
+                    newProgLine = true;
+                }
+            }
+            if (op.equals(OPERATIONS.BST)) {   //  BEGIN -> END
+                if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {
+                    newProgLine = false;
+                    currentProgLineNumber = currentProgLineNumber - 1;
+                    if (currentProgLineNumber < 0) {
+                        currentProgLineNumber = alu.getProgLinesSize() - 1;
+                    }
+                    tProgLine = alu.getProgLine(currentProgLineNumber);
+                    feedOps(tProgLine);
+                    newProgLine = true;
                 }
             }
             if ((op.equals(OPERATIONS.HYP)) || (op.equals(OPERATIONS.AHYP))) {
                 inOp = op;   //  Attente de paramètre (SIN, COS, TAN)
             }
             if ((op.equals(OPERATIONS.FIX)) || (op.equals(OPERATIONS.SCI)) || (op.equals(OPERATIONS.ENG))) {
-                inOp = op;   //  Attente de paramètre  (chiffre entre 0 et 9 (ou I))
+                inOp = op;
             }
-            if (op.equals(OPERATIONS.STO)) {
-                inOp = op;   //  Attente de paramètre (Registre (n ou .n) ou I ou (i), éventuellement précédé de +-*/)
-            }
-            if (op.equals(OPERATIONS.RCL)) {
-                inOp = op;   //  Attente de paramètre (Registre (n ou .n) ou I ou (i) ou DIM (i), éventuellement précédé de +-*/)
+            if ((op.equals(OPERATIONS.STO)) || (op.equals(OPERATIONS.RCL)) || (op.equals(OPERATIONS.XCHG))) {
+                inOp = op;
             }
             if (op.equals(OPERATIONS.DIM)) {
-                inOp = op;   //  Attendre du paramètre (i)
-            }
-            if (op.equals(OPERATIONS.XCHG)) {
-                inOp = op;   //  Attente de paramètre (Registre (n ou .n) ou I ou (i))
+                inOp = op;
             }
             if (error.equals("")) {   //  Pas d'erreur nouvelle
                 if (mode.equals(MODES.NORM)) {
@@ -1437,9 +1480,15 @@ public class MainActivity extends Activity {
                         dotMatrixDisplayUpdater.displayText(disp, true);
                     }
                 }
+                if (mode.equals(MODES.RUN)) {
+                    newProgLine = false;
+                    tProgLine = alu.getProgLine(currentProgLineNumber);
+                    feedOps(tProgLine);
+                }
             } else {    //  Erreur (ou Prefix) nouvelle
                 if (mode.equals(MODES.RUN)) {
                     mode = MODES.NORM;
+                    newProgLine = true;
                 }
                 dotMatrixDisplayUpdater.displayText(error, false);
                 alpha = "";
@@ -1475,15 +1524,31 @@ public class MainActivity extends Activity {
     }
 
     public boolean canExecAfterHandling(ProgLine progLine) {
-        boolean res = false;
-        if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.RUN))) {   //  Exécuter la ligne
-            res = true;
-        } else {   //  EDIT
+        boolean res = true;   //  Exécuter la ligne
+        if (mode.equals(MODES.RUN)) {
+            currentProgLineNumber = currentProgLineNumber + 1;   //  Par défaut
+            if (currentProgLineNumber > (alu.getProgLinesSize() - 1)) {
+                currentProgLineNumber = 0;
+            }
+        }
+        if (mode.equals(MODES.EDIT)) {   //  EDIT
             if (newProgLine) {   //  Créer une nouvelle ligne
+                currentProgLineNumber = currentProgLineNumber + 1;
                 alu.addProgLineAtNumber(progLine, currentProgLineNumber);
+                res = false;   //  Ne pas exécuter la ligne
             }
         }
         return res;
+    }
+
+    private void feedOps(ProgLine progLine) {
+        int n = progLine.getOpsSize();
+        for (int i = 0; i <= (n - 1); i = i + 1) {
+            OPERATIONS op = progLine.getOp(i);
+            if (op != null) {
+                keyOp(op);
+            }
+        }
     }
 
     private void updateSideDisplay() {
