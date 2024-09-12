@@ -1402,6 +1402,7 @@ public class MainActivity extends Activity {
                 if (mode.equals(MODES.NORM)) {   //  NORM -> RUN
                     mode = MODES.RUN;
                     newProgLine = false;
+                    alu.rebuildlabelToprogLineNumberMap();   //  Réassocier les labels à leur n° de ligne
                     tProgLine = alu.getProgLine(currentProgLineNumber);
                     feedOps(tProgLine);
                     newProgLine = true;

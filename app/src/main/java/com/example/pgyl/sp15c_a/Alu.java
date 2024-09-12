@@ -17,7 +17,7 @@ public class Alu {
         KEY_19(19, OPERATIONS.DIGIT_9, OPERATIONS.ENG, OPERATIONS.GRAD),
         KEY_10(10, OPERATIONS.DIV, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
         KEY_21(21, OPERATIONS.SST, OPERATIONS.UNKNOWN, OPERATIONS.BST),
-        KEY_22(22, OPERATIONS.UNKNOWN, OPERATIONS.HYP, OPERATIONS.AHYP),
+        KEY_22(22, OPERATIONS.GTO, OPERATIONS.HYP, OPERATIONS.AHYP),
         KEY_23(23, OPERATIONS.SIN, OPERATIONS.DIM, OPERATIONS.ASIN),
         KEY_24(24, OPERATIONS.COS, OPERATIONS.UNKNOWN, OPERATIONS.ACOS),
         KEY_25(25, OPERATIONS.TAN, OPERATIONS.UNKNOWN, OPERATIONS.ATAN),
@@ -27,7 +27,7 @@ public class Alu {
         KEY_29(29, OPERATIONS.DIGIT_6, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
         KEY_20(20, OPERATIONS.MULT, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
         KEY_31(31, OPERATIONS.RS, OPERATIONS.UNKNOWN, OPERATIONS.PR),
-        KEY_32(32, OPERATIONS.UNKNOWN, OPERATIONS.CLEAR_SIGMA, OPERATIONS.UNKNOWN),
+        KEY_32(32, OPERATIONS.GSB, OPERATIONS.CLEAR_SIGMA, OPERATIONS.UNKNOWN),
         KEY_33(33, OPERATIONS.RDN, OPERATIONS.UNKNOWN, OPERATIONS.RUP),
         KEY_34(34, OPERATIONS.XCHGXY, OPERATIONS.CLEAR_REGS, OPERATIONS.RND),
         KEY_35(35, OPERATIONS.BACK, OPERATIONS.CLEAR_PREFIX, OPERATIONS.CLX),
@@ -85,10 +85,13 @@ public class Alu {
         RS("R/S"),
         SST("SST"),
         BST("BST"),
+        GTO("GTO"),
+        GSB("GSB"),
         F("F"),
         G("G"),
         I("I"),
         INDI("(i)"),
+        LBL("LBL"),
         DIGIT_0("0"),
         DIGIT_1("1"),
         DIGIT_2("2"),
@@ -215,6 +218,26 @@ public class Alu {
         }   //  Servira aussi d'index dans regs
     }
 
+    public enum LABELS {   //  Registres de base (I, R0 à R9, R.0 à R.9) (avec les registres classiques de données (data) à partir de R0)
+        L0("0"), L1("1"), L2("2"), L3("3"), L4("4"), L5("5"), L6("6"), L7("7"), L8("8"), L9("9"),
+        LDOTD0(".0"), LDOT1(".1"), LDOT2(".2"), LDOT3(".3"), LDOT4(".4"), LDOT5(".5"), LDOT6(".6"), LDOT7(".7"), LDOT8(".8"), LDOT9(".9"),
+        LA("A"), LB("B"), LC("C"), LD("D"), LE("E");
+
+        private String symbol;
+
+        LABELS(String symbol) {
+            this.symbol = symbol;
+        }
+
+        public String SYMBOL() {
+            return symbol;
+        }
+
+        public int INDEX() {
+            return ordinal();
+        }
+    }
+
     public enum STATS {
         N(2), SUM_X(3), SUM_X2(4), SUM_Y(5), SUM_Y2(6), SUM_XY(7);
 
@@ -260,6 +283,9 @@ public class Alu {
     private HashMap<OPERATIONS, KEYS> opToKeyMap;
     private HashMap<OPERATIONS, Integer> opToShiftKeyCodeMap;
     private HashMap<Integer, KEYS> keyCodeToKeyMap;
+    private HashMap<String, LABELS> symbolToLabelMap;
+    private HashMap<Integer, LABELS> indexToLabelMap;
+    private HashMap<LABELS, Integer> labelToprogLineNumberMap;
     private ArrayList<ProgLine> proglines;
     private ArrayList<Integer> stkRet;
 
@@ -1554,5 +1580,69 @@ public class Alu {
                 opToShiftKeyCodeMap.put(op, SHIFT_G_KEY_CODE);
             }
         }
+
+        symbolToLabelMap = new HashMap<String, LABELS>();
+        indexToLabelMap = new HashMap<Integer, LABELS>();
+        for (LABELS lbl : LABELS.values()) {
+            indexToLabelMap.put(lbl.INDEX(), lbl);
+            symbolToLabelMap.put(lbl.SYMBOL(), lbl);
+        }
+    }
+
+    public void rebuildlabelToprogLineNumberMap() {
+        labelToprogLineNumberMap = new HashMap<LABELS, Integer>();
+        int n = proglines.size();
+        for (int i = 0; i <= (n - 1); i = i + 1) {
+            ProgLine progLine = proglines.get(i);
+            OPERATIONS op = progLine.getOp(0);
+            if (op.equals(OPERATIONS.LBL)) {
+                OPERATIONS op1 = progLine.getOp(1);   //  "."
+                String s = (op1 != null ? op1.SYMBOL() : "");
+                labelToprogLineNumberMap.put(symbolToLabelMap.get(s), i);
+            }
+        }
+    }
+
+    public int getDestProgLineNumber(ProgLine progLine) {
+        int res = -1;
+        OPERATIONS op = progLine.getOp(0);
+        OPERATIONS op1 = progLine.getOp(1);   //  "."
+        String s = (op1 != null ? op1.SYMBOL() : "");
+        s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
+        switch (op) {
+            case GTO:
+                if (s.equals(OPERATIONS.I.SYMBOL())) {   //  GTO I
+                    int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
+                    if (n >= 0) {   //  GTO I positif => GTO LBL
+                        if (n <= LABELS.values().length - 1) {
+                            LABELS lbl = indexToLabelMap.get(n);
+                            res = labelToprogLineNumberMap.get(lbl);
+                        }
+                    } else {   //  GTO I négatif => Goto ProgLineNumber
+                        res = -n;
+                    }
+                } else {   //  GTO [.]n ou A-E
+                    LABELS lbl = symbolToLabelMap.get(s);
+                    res = labelToprogLineNumberMap.get(lbl);
+                }
+                break;
+            case GSB:
+                if (s.equals(OPERATIONS.I.SYMBOL())) {   //  GSB I
+                    int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
+                    if (n >= 0) {   //  GSB I positif => GSB LBL
+                        if (n <= LABELS.values().length - 1) {
+                            LABELS lbl = indexToLabelMap.get(n);
+                            res = labelToprogLineNumberMap.get(lbl);
+                        }
+                    } else {   //  GSB I négatif => NOP
+                        //  NOP
+                    }
+                } else {   //  GSB [.]n ou A-E
+                    LABELS lbl = symbolToLabelMap.get(s);
+                    res = labelToprogLineNumberMap.get(lbl);
+                }
+                break;
+        }
+        return res;
     }
 }
