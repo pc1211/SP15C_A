@@ -5,81 +5,7 @@ import java.util.HashMap;
 import java.util.Locale;
 
 public class Alu {
-    public enum KEYS {
-        KEY_11(11, OPERATIONS.SQRT, OPERATIONS.UNKNOWN, OPERATIONS.SQR),
-        KEY_12(12, OPERATIONS.EXP, OPERATIONS.UNKNOWN, OPERATIONS.LN),
-        KEY_13(13, OPERATIONS.EXP10, OPERATIONS.UNKNOWN, OPERATIONS.LOG),
-        KEY_14(14, OPERATIONS.POWER, OPERATIONS.UNKNOWN, OPERATIONS.PC),
-        KEY_15(15, OPERATIONS.INV, OPERATIONS.UNKNOWN, OPERATIONS.DPC),
-        KEY_16(16, OPERATIONS.CHS, OPERATIONS.UNKNOWN, OPERATIONS.ABS),
-        KEY_17(17, OPERATIONS.DIGIT_7, OPERATIONS.FIX, OPERATIONS.DEG),
-        KEY_18(18, OPERATIONS.DIGIT_8, OPERATIONS.SCI, OPERATIONS.RAD),
-        KEY_19(19, OPERATIONS.DIGIT_9, OPERATIONS.ENG, OPERATIONS.GRAD),
-        KEY_10(10, OPERATIONS.DIV, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_21(21, OPERATIONS.SST, OPERATIONS.UNKNOWN, OPERATIONS.BST),
-        KEY_22(22, OPERATIONS.GTO, OPERATIONS.HYP, OPERATIONS.AHYP),
-        KEY_23(23, OPERATIONS.SIN, OPERATIONS.DIM, OPERATIONS.ASIN),
-        KEY_24(24, OPERATIONS.COS, OPERATIONS.UNKNOWN, OPERATIONS.ACOS),
-        KEY_25(25, OPERATIONS.TAN, OPERATIONS.UNKNOWN, OPERATIONS.ATAN),
-        KEY_26(26, OPERATIONS.EEX, OPERATIONS.UNKNOWN, OPERATIONS.PI),
-        KEY_27(27, OPERATIONS.DIGIT_4, OPERATIONS.XCHG, OPERATIONS.UNKNOWN),
-        KEY_28(28, OPERATIONS.DIGIT_5, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_29(29, OPERATIONS.DIGIT_6, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_20(20, OPERATIONS.MULT, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_31(31, OPERATIONS.RS, OPERATIONS.UNKNOWN, OPERATIONS.PR),
-        KEY_32(32, OPERATIONS.GSB, OPERATIONS.CLEAR_SIGMA, OPERATIONS.UNKNOWN),
-        KEY_33(33, OPERATIONS.RDN, OPERATIONS.UNKNOWN, OPERATIONS.RUP),
-        KEY_34(34, OPERATIONS.XCHGXY, OPERATIONS.CLEAR_REGS, OPERATIONS.RND),
-        KEY_35(35, OPERATIONS.BACK, OPERATIONS.CLEAR_PREFIX, OPERATIONS.CLX),
-        KEY_36(36, OPERATIONS.ENTER, OPERATIONS.RAND, OPERATIONS.LASTX),
-        KEY_37(37, OPERATIONS.DIGIT_1, OPERATIONS.RECT, OPERATIONS.POL),
-        KEY_38(38, OPERATIONS.DIGIT_2, OPERATIONS.HMS, OPERATIONS.H),
-        KEY_39(39, OPERATIONS.DIGIT_3, OPERATIONS.TO_RAD, OPERATIONS.TO_DEG),
-        KEY_30(30, OPERATIONS.MINUS, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_41(41, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_42(42, OPERATIONS.F, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_43(43, OPERATIONS.G, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_44(44, OPERATIONS.STO, OPERATIONS.FRAC, OPERATIONS.INT),
-        KEY_45(45, OPERATIONS.RCL, OPERATIONS.UNKNOWN, OPERATIONS.UNKNOWN),
-        KEY_47(47, OPERATIONS.DIGIT_0, OPERATIONS.FACT, OPERATIONS.MEAN),
-        KEY_48(48, OPERATIONS.DOT, OPERATIONS.YER, OPERATIONS.STDEV),
-        KEY_49(49, OPERATIONS.SIGMA_PLUS, OPERATIONS.LR, OPERATIONS.SIGMA_MINUS),
-        KEY_40(40, OPERATIONS.PLUS, OPERATIONS.PERM, OPERATIONS.COMB);
-
-        private int code;
-        private OPERATIONS uOp;   //  Unshifted operation
-        private OPERATIONS fOp;   //  Shift F operation
-        private OPERATIONS gOp;   //  Shift G operation
-
-        KEYS(int code, OPERATIONS uOp, OPERATIONS fOp, OPERATIONS gOp) {
-            this.code = code;
-            this.uOp = uOp;
-            this.fOp = fOp;
-            this.gOp = gOp;
-        }
-
-        public int CODE() {
-            return code;
-        }
-
-        public OPERATIONS UNSHIFTED_OP() {
-            return uOp;
-        }
-
-        public OPERATIONS SHIFT_F_OP() {
-            return fOp;
-        }
-
-        public OPERATIONS SHIFT_G_OP() {
-            return gOp;
-        }
-
-        public int INDEX() {
-            return ordinal();
-        }
-    }
-
-    public enum OPERATIONS {
+    public enum OPS {
         BEGIN("BEGIN"),
         PR("P/R"),
         RS("R/S"),
@@ -87,11 +13,12 @@ public class Alu {
         BST("BST"),
         GTO("GTO"),
         GSB("GSB"),
+        LBL("LBL"),
+        MEM("MEM"),
         F("F"),
         G("G"),
         I("I"),
         INDI("(i)"),
-        LBL("LBL"),
         DIGIT_0("0"),
         DIGIT_1("1"),
         DIGIT_2("2"),
@@ -133,12 +60,27 @@ public class Alu {
         ATAN("ATAN"),
         HYP("HYP"),
         AHYP("AHYP"),
+        // Debut Bloc Cas particuliers, à coder en clair en op0 (p.ex ACOSH, "x<0?") et en normal à partir de op1 (HYP-1 COS, TEST 2)
         SINH("SINH"),
         COSH("COSH"),
         TANH("TANH"),
         ASINH("ASINH"),
         ACOSH("ACOSH"),
         ATANH("ATANH"),
+        XNE0("x<>0?"),
+        XG0("x>0?"),
+        XL0("x<0?"),
+        XGE0("x>=0?"),
+        XLE0("x<=0?"),
+        XEY("x=y?"),
+        XNEY("x<>y?"),
+        XGY("x>y?"),
+        XLY("x<y?"),
+        XGEY("x>=y?"),
+        // Fin Bloc Cas particuliers
+        XLEY("x<=y?"),
+        XE0("x=0?"),
+        TEST("TEST"),
         SQRT("SQRT"),
         SQR("SQR"),
         EXP("EXP"),
@@ -178,12 +120,131 @@ public class Alu {
 
         private String symbol;
 
-        OPERATIONS(String symbol) {
+        OPS(String symbol) {
             this.symbol = symbol;
         }
 
         public String SYMBOL() {
             return symbol;
+        }
+
+        public int INDEX() {
+            return ordinal();
+        }
+    }
+
+    public enum KEYS {
+        KEY_11(11, OPS.SQRT, OPS.UNKNOWN, OPS.SQR),
+        KEY_12(12, OPS.EXP, OPS.UNKNOWN, OPS.LN),
+        KEY_13(13, OPS.EXP10, OPS.UNKNOWN, OPS.LOG),
+        KEY_14(14, OPS.POWER, OPS.UNKNOWN, OPS.PC),
+        KEY_15(15, OPS.INV, OPS.UNKNOWN, OPS.DPC),
+        KEY_16(16, OPS.CHS, OPS.UNKNOWN, OPS.ABS),
+        KEY_17(17, OPS.DIGIT_7, OPS.FIX, OPS.DEG),
+        KEY_18(18, OPS.DIGIT_8, OPS.SCI, OPS.RAD),
+        KEY_19(19, OPS.DIGIT_9, OPS.ENG, OPS.GRAD),
+        KEY_10(10, OPS.DIV, OPS.UNKNOWN, OPS.XLEY),
+        KEY_21(21, OPS.SST, OPS.UNKNOWN, OPS.BST),
+        KEY_22(22, OPS.GTO, OPS.HYP, OPS.AHYP),
+        KEY_23(23, OPS.SIN, OPS.DIM, OPS.ASIN),
+        KEY_24(24, OPS.COS, OPS.UNKNOWN, OPS.ACOS),
+        KEY_25(25, OPS.TAN, OPS.UNKNOWN, OPS.ATAN),
+        KEY_26(26, OPS.EEX, OPS.UNKNOWN, OPS.PI),
+        KEY_27(27, OPS.DIGIT_4, OPS.XCHG, OPS.UNKNOWN),
+        KEY_28(28, OPS.DIGIT_5, OPS.UNKNOWN, OPS.UNKNOWN),
+        KEY_29(29, OPS.DIGIT_6, OPS.UNKNOWN, OPS.UNKNOWN),
+        KEY_20(20, OPS.MULT, OPS.UNKNOWN, OPS.XE0),
+        KEY_31(31, OPS.RS, OPS.UNKNOWN, OPS.PR),
+        KEY_32(32, OPS.GSB, OPS.CLEAR_SIGMA, OPS.UNKNOWN),
+        KEY_33(33, OPS.RDN, OPS.UNKNOWN, OPS.RUP),
+        KEY_34(34, OPS.XCHGXY, OPS.CLEAR_REGS, OPS.RND),
+        KEY_35(35, OPS.BACK, OPS.CLEAR_PREFIX, OPS.CLX),
+        KEY_36(36, OPS.ENTER, OPS.RAND, OPS.LASTX),
+        KEY_37(37, OPS.DIGIT_1, OPS.RECT, OPS.POL),
+        KEY_38(38, OPS.DIGIT_2, OPS.HMS, OPS.H),
+        KEY_39(39, OPS.DIGIT_3, OPS.TO_RAD, OPS.TO_DEG),
+        KEY_30(30, OPS.MINUS, OPS.UNKNOWN, OPS.TEST),
+        KEY_41(41, OPS.UNKNOWN, OPS.UNKNOWN, OPS.UNKNOWN),
+        KEY_42(42, OPS.F, OPS.UNKNOWN, OPS.UNKNOWN),
+        KEY_43(43, OPS.G, OPS.UNKNOWN, OPS.UNKNOWN),
+        KEY_44(44, OPS.STO, OPS.FRAC, OPS.INT),
+        KEY_45(45, OPS.RCL, OPS.UNKNOWN, OPS.MEM),    //  MEM inactif
+        KEY_47(47, OPS.DIGIT_0, OPS.FACT, OPS.MEAN),
+        KEY_48(48, OPS.DOT, OPS.YER, OPS.STDEV),
+        KEY_49(49, OPS.SIGMA_PLUS, OPS.LR, OPS.SIGMA_MINUS),
+        KEY_40(40, OPS.PLUS, OPS.PERM, OPS.COMB);
+
+        private int code;
+        private OPS uOp;   //  Unshifted operation
+        private OPS fOp;   //  Shift F operation
+        private OPS gOp;   //  Shift G operation
+
+        KEYS(int code, OPS uOp, OPS fOp, OPS gOp) {
+            this.code = code;
+            this.uOp = uOp;
+            this.fOp = fOp;
+            this.gOp = gOp;
+        }
+
+        public int CODE() {
+            return code;
+        }
+
+        public OPS UNSHIFTED_OP() {
+            return uOp;
+        }
+
+        public OPS SHIFT_F_OP() {
+            return fOp;
+        }
+
+        public OPS SHIFT_G_OP() {
+            return gOp;
+        }
+
+        public int INDEX() {
+            return ordinal();
+        }
+    }
+
+    public enum INDIRECT_KEYS {
+        IK1(OPS.SINH, OPS.HYP, OPS.SIN),
+        IK2(OPS.COSH, OPS.HYP, OPS.COS),
+        IK3(OPS.TANH, OPS.HYP, OPS.TAN),
+        IK4(OPS.ASINH, OPS.AHYP, OPS.SIN),
+        IK5(OPS.ACOSH, OPS.AHYP, OPS.COS),
+        IK6(OPS.ATANH, OPS.AHYP, OPS.TAN),
+        IK7(OPS.XNE0, OPS.TEST, OPS.DIGIT_0),
+        IK8(OPS.XG0, OPS.TEST, OPS.DIGIT_1),
+        IK9(OPS.XL0, OPS.TEST, OPS.DIGIT_2),
+        IK10(OPS.XGE0, OPS.TEST, OPS.DIGIT_3),
+        IK11(OPS.XLE0, OPS.TEST, OPS.DIGIT_4),
+        IK12(OPS.XEY, OPS.TEST, OPS.DIGIT_5),
+        IK13(OPS.XNEY, OPS.TEST, OPS.DIGIT_6),
+        IK14(OPS.XGY, OPS.TEST, OPS.DIGIT_7),
+        IK15(OPS.XLY, OPS.TEST, OPS.DIGIT_8),
+        IK16(OPS.XGEY, OPS.TEST, OPS.DIGIT_9);
+
+        private OPS op;
+        private OPS prefixOp;
+        private OPS lastOp;
+
+        INDIRECT_KEYS(OPS Op, OPS prefixOp, OPS lastOp) {
+            this.op = Op;
+            this.prefixOp = prefixOp;
+            this.lastOp = lastOp;
+        }
+
+        public OPS OP() {
+            return op;
+        }
+
+        public OPS PREFIX_OP() {
+            return prefixOp;
+        }
+
+        public OPS LAST_OP() {
+            return lastOp;
         }
 
         public int INDEX() {
@@ -238,12 +299,12 @@ public class Alu {
         }
     }
 
-    public enum STATS {
+    public enum STAT_OPS {
         N(2), SUM_X(3), SUM_X2(4), SUM_Y(5), SUM_Y2(6), SUM_XY(7);
 
         private int dataRegIndex;
 
-        STATS(int dataRegIndex) {
+        STAT_OPS(int dataRegIndex) {
             this.dataRegIndex = dataRegIndex;
         }
 
@@ -254,6 +315,16 @@ public class Alu {
         public int INDEX() {
             return ordinal();
         }   //  Servira aussi d'index dans regs
+    }
+
+    class PairOp {
+        OPS op1;
+        OPS op2;
+
+        PairOp(OPS op1, OPS op2) {
+            this.op1 = op1;
+            this.op2 = op2;
+        }
     }
 
     final int MAX_DIGITS = 10;
@@ -276,13 +347,14 @@ public class Alu {
 
     private double[] stkRegs;
     private ArrayList<Double> regs;   //  Les registres de BASE_REGS puis les suivants (accessibles par (i) )
-    private OPERATIONS roundMode;
+    private OPS roundMode;
     private int roundParam;
-    private OPERATIONS angleMode;
+    private OPS angleMode;
     private HashMap<String, BASE_REGS> symbolToBaseRegMap;
-    private HashMap<OPERATIONS, KEYS> opToKeyMap;
-    private HashMap<OPERATIONS, Integer> opToShiftKeyCodeMap;
-    private HashMap<Integer, KEYS> keyCodeToKeyMap;
+    private HashMap<OPS, KEYS> opToKeyMap;
+    private HashMap<OPS, Integer> opToShiftKeyCodeMap;
+    private HashMap<OPS, INDIRECT_KEYS> opToIndirectKeyMap;
+    private HashMap<PairOp, OPS> indirectOpsToOpMap;
     private HashMap<String, LABELS> symbolToLabelMap;
     private HashMap<Integer, LABELS> indexToLabelMap;
     private HashMap<LABELS, Integer> labelToprogLineNumberMap;
@@ -305,8 +377,8 @@ public class Alu {
 
         setupProgLines();
         setupReturnStack();
-        angleMode = OPERATIONS.RAD;
-        roundMode = OPERATIONS.FIX;
+        angleMode = OPS.RAD;
+        roundMode = OPS.FIX;
         roundParam = 4;
     }
 
@@ -355,27 +427,30 @@ public class Alu {
         return symbolToBaseRegMap.get(symbol).INDEX();
     }
 
-    public KEYS getKeyByOp(OPERATIONS op) {
+    public boolean opIsIndirectKey(OPS op) {
+        return (opToIndirectKeyMap.get(op) != null);
+    }
+
+    public OPS getOpByIndirectKeyOps(OPS prefixOp, OPS lastOp) {
+        PairOp pairOp = new PairOp(prefixOp, lastOp);
+        OPS op = indirectOpsToOpMap.get(pairOp);
+        pairOp = null;
+        return op;
+    }
+
+    public KEYS getKeyByOp(OPS op) {
         return opToKeyMap.get(op);
-    }
-
-    public int getShiftKeyCodeByOp(OPERATIONS op) {
-        return opToShiftKeyCodeMap.get(op);
-    }
-
-    public KEYS getKeyByKeyCode(int keyCode) {
-        return keyCodeToKeyMap.get(keyCode);
     }
 
     public ArrayList<Double> getRegs() {
         return regs;
     }
 
-    public void setAngleMode(OPERATIONS angleMode) {
+    public void setAngleMode(OPS angleMode) {
         this.angleMode = angleMode;
     }
 
-    public void setRoundMode(OPERATIONS roundMode) {
+    public void setRoundMode(OPS roundMode) {
         this.roundMode = roundMode;
     }
 
@@ -383,11 +458,11 @@ public class Alu {
         this.roundParam = Math.min(MAX_DIGITS - 1, roundParam);
     }
 
-    public OPERATIONS getAngleMode() {
+    public OPS getAngleMode() {
         return angleMode;
     }
 
-    public OPERATIONS getRoundMode() {
+    public OPS getRoundMode() {
         return roundMode;
     }
 
@@ -447,7 +522,7 @@ public class Alu {
         return error;
     }
 
-    public String xToRegOp(int index, OPERATIONS op) {   //  STO+-*/ R
+    public String xToRegOp(int index, OPS op) {   //  STO+-*/ R
         String error1 = "";
         String error2 = "";
         try {
@@ -479,7 +554,7 @@ public class Alu {
         return error2;
     }
 
-    public String regToXOp(int index, OPERATIONS op) {   //   RCL+-*/ R
+    public String regToXOp(int index, OPS op) {   //   RCL+-*/ R
         String error1 = "";
         String error2 = "";
         try {
@@ -1045,6 +1120,51 @@ public class Alu {
         return error;
     }
 
+    public boolean test(OPS op) {
+        boolean res = false;
+        double x = round(stkRegs[STK_REGS.X.INDEX()], MAX_DIGITS + 1);
+        double y = round(stkRegs[STK_REGS.Y.INDEX()], MAX_DIGITS + 1);
+        switch (op) {
+            case XNE0:
+                res = (x != 0d);
+                break;
+            case XG0:
+                res = (x > 0d);
+                break;
+            case XL0:
+                res = (x < 0d);
+                break;
+            case XGE0:
+                res = (x >= 0d);
+                break;
+            case XLE0:
+                res = (x <= 0d);
+                break;
+            case XEY:
+                res = (x == y);
+                break;
+            case XNEY:
+                res = (x != y);
+                break;
+            case XGY:
+                res = (x > y);
+                break;
+            case XLY:
+                res = (x < y);
+                break;
+            case XGEY:
+                res = (x >= y);
+                break;
+            case XLEY:
+                res = (x <= y);
+                break;
+            case XE0:
+                res = (x == 0d);
+                break;
+        }
+        return res;
+    }
+
     public String factX() {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
@@ -1062,7 +1182,7 @@ public class Alu {
 
     public String clStats() {   //  LASTX non modifié
         String error = "";
-        for (STATS stat : STATS.values()) {
+        for (STAT_OPS stat : STAT_OPS.values()) {
             int index = stat.DATA_REG_INDEX() + BASE_REGS.R0.INDEX();
             setRegContentsByIndex(index, 0);
         }
@@ -1077,27 +1197,27 @@ public class Alu {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         try {
-            int index = getRegIndexByDataIndex(STATS.N.DATA_REG_INDEX());
+            int index = getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX());
             int nMod = (int) getRegContentsByIndex(index) + 1;
             setRegContentsByIndex(index, nMod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_X.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX());
             double sumXMod = getRegContentsByIndex(index) + stkRegs[STK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumXMod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_X2.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX());
             double sumX2Mod = getRegContentsByIndex(index) + stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumX2Mod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_Y.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX());
             double sumYMod = getRegContentsByIndex(index) + stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumYMod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_Y2.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX());
             double sumY2Mod = getRegContentsByIndex(index) + stkRegs[STK_REGS.Y.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumY2Mod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_XY.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX());
             double sumXYMod = getRegContentsByIndex(index) + stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumXYMod);
 
@@ -1129,27 +1249,27 @@ public class Alu {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         try {
-            int index = getRegIndexByDataIndex(STATS.N.DATA_REG_INDEX());
+            int index = getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX());
             int nMod = (int) getRegContentsByIndex(index) - 1;
             setRegContentsByIndex(index, nMod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_X.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX());
             double sumXMod = getRegContentsByIndex(index) - stkRegs[STK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumXMod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_X2.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX());
             double sumX2Mod = getRegContentsByIndex(index) - stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumX2Mod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_Y.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX());
             double sumYMod = getRegContentsByIndex(index) - stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumYMod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_Y2.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX());
             double sumY2Mod = getRegContentsByIndex(index) - stkRegs[STK_REGS.Y.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumY2Mod);
 
-            index = getRegIndexByDataIndex(STATS.SUM_XY.DATA_REG_INDEX());
+            index = getRegIndexByDataIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX());
             double sumXYMod = getRegContentsByIndex(index) - stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumXYMod);
 
@@ -1179,10 +1299,10 @@ public class Alu {
 
     public String mean() {   //  LASTX non modifié
         String error = "";
-        double n = getRegContentsByIndex(getRegIndexByDataIndex(STATS.N.DATA_REG_INDEX()));
+        double n = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX()));
         if (n > 0) {
-            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_X.DATA_REG_INDEX()));
-            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_Y.DATA_REG_INDEX()));
+            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
             double meanX = sumX / n;
             double meanY = sumY / n;
             stkRegs[STK_REGS.X.INDEX()] = meanX;
@@ -1195,12 +1315,12 @@ public class Alu {
 
     public String stDev() {   //  LASTX non modifié
         String error = "";
-        double n = getRegContentsByIndex(getRegIndexByDataIndex(STATS.N.DATA_REG_INDEX()));
+        double n = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX()));
         if (n > 1) {
-            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_X.DATA_REG_INDEX()));
-            double sumX2 = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_X2.DATA_REG_INDEX()));
-            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_Y.DATA_REG_INDEX()));
-            double sumY2 = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_Y2.DATA_REG_INDEX()));
+            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+            double sumX2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX()));
+            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
+            double sumY2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX()));
             double mv = n * sumX2 - sumX * sumX;
             double nv = n * sumY2 - sumY * sumY;
             double stDevX = Math.sqrt(mv / (n * (n - 1)));
@@ -1215,13 +1335,13 @@ public class Alu {
 
     public String lr() {   //  LASTX non modifié
         String error = "";
-        double n = getRegContentsByIndex(getRegIndexByDataIndex(STATS.N.DATA_REG_INDEX()));
+        double n = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX()));
         if (n > 1) {
-            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_X.DATA_REG_INDEX()));
-            double sumX2 = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_X2.DATA_REG_INDEX()));
-            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_Y.DATA_REG_INDEX()));
-            double sumY2 = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_Y2.DATA_REG_INDEX()));
-            double sumXY = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_XY.DATA_REG_INDEX()));
+            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+            double sumX2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX()));
+            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
+            double sumY2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX()));
+            double sumXY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX()));
             double mv = n * sumX2 - sumX * sumX;
             double nv = n * sumY2 - sumY * sumY;
             double p = n * sumXY - sumX * sumY;
@@ -1238,13 +1358,13 @@ public class Alu {
     public String yer() {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        double n = getRegContentsByIndex(getRegIndexByDataIndex(STATS.N.DATA_REG_INDEX()));
+        double n = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX()));
         if (n > 1) {
-            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_X.DATA_REG_INDEX()));
-            double sumX2 = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_X2.DATA_REG_INDEX()));
-            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_Y.DATA_REG_INDEX()));
-            double sumY2 = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_Y2.DATA_REG_INDEX()));
-            double sumXY = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_XY.DATA_REG_INDEX()));
+            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+            double sumX2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX()));
+            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
+            double sumY2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX()));
+            double sumXY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX()));
             double mv = n * sumX2 - sumX * sumX;
             double nv = n * sumY2 - sumY * sumY;
             double p = n * sumXY - sumX * sumY;
@@ -1261,8 +1381,8 @@ public class Alu {
 
     public String sumXYToXY() {
         String error = "";
-        double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_X.DATA_REG_INDEX()));
-        double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STATS.SUM_Y.DATA_REG_INDEX()));
+        double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+        double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
         stkRegs[STK_REGS.X.INDEX()] = sumX;
         stkRegs[STK_REGS.Y.INDEX()] = sumY;
         return error;
@@ -1367,18 +1487,18 @@ public class Alu {
             mant = val / Math.pow(10, exp);   //  Entre 0 et 1
         }
         int expr = 0;
-        OPERATIONS rm = roundMode;   //  FIX, SCI, ENG
-        if (rm.equals(OPERATIONS.FIX)) {
+        OPS rm = roundMode;   //  FIX, SCI, ENG
+        if (rm.equals(OPS.FIX)) {
             expr = 0;
             if (val != 0) {
                 if ((val >= Math.pow(10, MAX_DIGITS)) || (val < Math.pow(10, -roundParam))) {   //  Trop grand ou trop petit => Afficher comme SCI
-                    rm = OPERATIONS.SCI;
+                    rm = OPS.SCI;
                 }
             }
         }
-        if (!rm.equals(OPERATIONS.FIX)) {   //  SCI ou ENG
+        if (!rm.equals(OPS.FIX)) {   //  SCI ou ENG
             expr = exp - 1;
-            if (rm.equals(OPERATIONS.ENG)) {   //  Ajuster pour obtenir un exposant multiple de 3
+            if (rm.equals(OPS.ENG)) {   //  Ajuster pour obtenir un exposant multiple de 3
                 int p = Math.abs(expr) % 3;
                 if (p != 0) {
                     expr = expr - (expr < 0 ? 3 - p : p);
@@ -1387,7 +1507,7 @@ public class Alu {
         }
         double valr = mant * Math.pow(10, exp - expr);
         res = String.format(Locale.US, "%,." + (Math.min(roundParam, MAX_DIGITS - (exp - expr))) + "f", valr);
-        if (!rm.equals(OPERATIONS.FIX)) {   //  SCI ou ENG
+        if (!rm.equals(OPS.FIX)) {   //  SCI ou ENG
             res = res + "E" + expr;
         }
         if (value < 0) {
@@ -1446,6 +1566,15 @@ public class Alu {
             d = Double.parseDouble(sNumber);
         } catch (IllegalArgumentException | SecurityException ex) {
             res = false;   //  Echec
+        }
+        return res;
+    }
+
+    private double round(double value, int n) {
+        int scale = (int) Math.pow(10, n);
+        double res = Math.round(Math.abs(value) * scale) / scale;
+        if (value < 0) {
+            res = -res;
         }
         return res;
     }
@@ -1509,44 +1638,50 @@ public class Alu {
         proglines = new ArrayList<ProgLine>();
         proglines.add(new ProgLine());   //  Index 0
         ProgLine progLine = proglines.get(0);
-        progLine.setOp(0, OPERATIONS.BEGIN);
+        progLine.setOp(0, OPS.BEGIN);
     }
 
     public String progLineToString(int progLineNumber, boolean displaySymbol) {   //  displaySymbol True => Afficher uniquement symboles ; displaySymbol False => afficher keyCodes (et parfois symbol (p.ex. ".5" ...)
+        final String SEP = " ";
         String res = "";
-        ProgLine progLine = proglines.get(progLineNumber);
-
-        OPERATIONS[] ops = progLine.getOps();
+        String s = "";
+        ProgLine progLine = proglines.get(progLineNumber);   //  Cas particulier: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
+        // Suite: Ce qui implique que si Affichage symboles: Afficher uniquement op0, Si Affichage Codes: Afficher à partir de op1
+        OPS[] ops = progLine.getOps();
         for (int i = 0; i <= (ops.length - 1); i = i + 1) {
             if (ops[i] != null) {
-                KEYS key = getKeyByOp(ops[i]);
-                if (res.equals("")) {   //  Préfixer de l'éventuelle touche shift F ou G
-                    int shiftKeyCode = getShiftKeyCodeByOp(ops[i]);
-                    if (shiftKeyCode != UNSHIFTED_KEY_CODE) {   //  Pas Unshifted => Operation avec shift F ou G
-                        if (!displaySymbol) {
-                            res = String.valueOf(shiftKeyCode);
-                        }
-                    }
-                }
-                String s = (!displaySymbol ? String.valueOf(key.CODE()) : ops[i].SYMBOL());   //  keyCode, sans formatage
-                if (!displaySymbol) {
-                    if (ops[i].equals(OPERATIONS.DOT)) {   //  Si "." est suivi par un chiffre n => afficher .n
-                        if (i < (ops.length - 1)) {
-                            if (ops[i + 1] != null) {
-                                OPERATIONS nextOp = ops[i + 1];
-                                if (((nextOp.INDEX() >= OPERATIONS.DIGIT_0.INDEX()) && (nextOp.INDEX() <= OPERATIONS.DIGIT_9.INDEX()))) {
-                                    s = OPERATIONS.DOT.SYMBOL();
+                if (!displaySymbol) {   //  Codes
+                    if ((i > 0) || (opToIndirectKeyMap.get(ops[i]) == null)) {   //  Cf Cas particuliers
+                        KEYS key = opToKeyMap.get(ops[i]);
+                        s = String.valueOf(key.CODE());
+                        if (ops[i].equals(OPS.DOT)) {   //  Si "" est suivi par un chiffre n => afficher .n
+                            if (i < (ops.length - 1)) {
+                                if (ops[i + 1] != null) {
+                                    OPS nextOp = ops[i + 1];
+                                    if (((nextOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (nextOp.INDEX() <= OPS.DIGIT_9.INDEX()))) {
+                                        s = OPS.DOT.SYMBOL();
+                                    }
                                 }
                             }
+                        } else {   //  Pas "."
+                            OPS unshiftedOp = key.UNSHIFTED_OP();   //  Opération sans aucune touche Shift
+                            if (((unshiftedOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (unshiftedOp.INDEX() <= OPS.DIGIT_9.INDEX()))) {   //  Afficher chiffre (même si operation n'est pas chiffre)
+                                s = unshiftedOp.SYMBOL();
+                            }
                         }
-                    } else {   //  Pas "."
-                        OPERATIONS unshiftedOp = key.UNSHIFTED_OP();   //  Opération sans aucune touche Shift
-                        if (((unshiftedOp.INDEX() >= OPERATIONS.DIGIT_0.INDEX()) && (unshiftedOp.INDEX() <= OPERATIONS.DIGIT_9.INDEX()))) {   //  Afficher chiffre (même si operation n'est pas chiffre)
-                            s = unshiftedOp.SYMBOL();
+                        if (i == 0) {
+                            int shiftKeyCode = opToShiftKeyCodeMap.get(ops[i]);   //  Préfixer de l'éventuelle touche shift F ou G
+                            if (shiftKeyCode != UNSHIFTED_KEY_CODE) {
+                                s = shiftKeyCode + SEP + s;
+                            }
                         }
                     }
+                } else {   //  Symboles
+                    if ((i == 0) || (opToIndirectKeyMap.get(ops[i]) == null)) {   //  Cf Cas particuliers
+                        s = ops[i].SYMBOL();
+                    }
                 }
-                res = res + (!res.equals("") ? " " : "") + s;
+                res = res + (!res.equals("") ? SEP : "") + s;
             }
             res = String.format("0000", progLineNumber) + ": " + res;
         }
@@ -1554,38 +1689,58 @@ public class Alu {
     }
 
     private void setupMaps() {
-        symbolToBaseRegMap = new HashMap<String, BASE_REGS>();
-        for (BASE_REGS baseReg : BASE_REGS.values()) {   //  Uniquement pour les registres de base (I, R0 à R9, R.0 à R.9)
-            symbolToBaseRegMap.put(baseReg.SYMBOL(), baseReg);
-        }
-
-        opToKeyMap = new HashMap<OPERATIONS, KEYS>();
-        opToShiftKeyCodeMap = new HashMap<OPERATIONS, Integer>();
-        keyCodeToKeyMap = new HashMap<Integer, KEYS>();
+        opToKeyMap = new HashMap<OPS, KEYS>();
+        opToShiftKeyCodeMap = new HashMap<OPS, Integer>();
         for (KEYS key : KEYS.values()) {
-            keyCodeToKeyMap.put(key.CODE(), key);
-            OPERATIONS op = key.UNSHIFTED_OP();
-            if (!op.equals(OPERATIONS.UNKNOWN)) {
+            OPS op = key.UNSHIFTED_OP();
+            if (!op.equals(OPS.UNKNOWN)) {
                 opToKeyMap.put(op, key);
                 opToShiftKeyCodeMap.put(op, UNSHIFTED_KEY_CODE);
             }
             op = key.SHIFT_F_OP();
-            if (!op.equals(OPERATIONS.UNKNOWN)) {
+            if (!op.equals(OPS.UNKNOWN)) {
                 opToKeyMap.put(op, key);
                 opToShiftKeyCodeMap.put(op, SHIFT_F_KEY_CODE);
             }
             op = key.SHIFT_G_OP();
-            if (!op.equals(OPERATIONS.UNKNOWN)) {
+            if (!op.equals(OPS.UNKNOWN)) {
                 opToKeyMap.put(op, key);
                 opToShiftKeyCodeMap.put(op, SHIFT_G_KEY_CODE);
             }
         }
-
+        // Cas particuliers: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
+        // Suite: Ce qui implique que si Affichage symboles: Afficher uniquement op0, Si Affichage Codes: Afficher à partir de op1
+        indirectOpsToOpMap = new HashMap<PairOp, OPS>();
+        opToIndirectKeyMap = new HashMap<OPS, INDIRECT_KEYS>();
+        for (INDIRECT_KEYS indirectKey : INDIRECT_KEYS.values()) {
+            OPS op = indirectKey.OP();
+            OPS prefixOp = indirectKey.PREFIX_OP();
+            OPS lastOp = indirectKey.LAST_OP();
+            opToIndirectKeyMap.put(op, indirectKey);
+            PairOp pairOp = new PairOp(prefixOp, lastOp);
+            indirectOpsToOpMap.put(pairOp, op);
+            pairOp = null;
+            KEYS key = opToKeyMap.get(prefixOp);
+            opToKeyMap.put(op, key);
+            if (key.UNSHIFTED_OP().equals(op)) {
+                opToShiftKeyCodeMap.put(op, UNSHIFTED_KEY_CODE);
+            }
+            if (key.SHIFT_F_OP().equals(op)) {
+                opToShiftKeyCodeMap.put(op, SHIFT_F_KEY_CODE);
+            }
+            if (key.SHIFT_G_OP().equals(op)) {
+                opToShiftKeyCodeMap.put(op, SHIFT_G_KEY_CODE);
+            }
+        }
         symbolToLabelMap = new HashMap<String, LABELS>();
         indexToLabelMap = new HashMap<Integer, LABELS>();
         for (LABELS lbl : LABELS.values()) {
             indexToLabelMap.put(lbl.INDEX(), lbl);
             symbolToLabelMap.put(lbl.SYMBOL(), lbl);
+        }
+        symbolToBaseRegMap = new HashMap<String, BASE_REGS>();
+        for (BASE_REGS baseReg : BASE_REGS.values()) {   //  Uniquement pour les registres de base (I, R0 à R9, R.0 à R.9)
+            symbolToBaseRegMap.put(baseReg.SYMBOL(), baseReg);
         }
     }
 
@@ -1594,9 +1749,9 @@ public class Alu {
         int n = proglines.size();
         for (int i = 0; i <= (n - 1); i = i + 1) {
             ProgLine progLine = proglines.get(i);
-            OPERATIONS op = progLine.getOp(0);
-            if (op.equals(OPERATIONS.LBL)) {
-                OPERATIONS op1 = progLine.getOp(1);   //  "."
+            OPS op = progLine.getOp(0);
+            if (op.equals(OPS.LBL)) {
+                OPS op1 = progLine.getOp(1);   //  "."
                 String s = (op1 != null ? op1.SYMBOL() : "");
                 labelToprogLineNumberMap.put(symbolToLabelMap.get(s), i);
             }
@@ -1605,13 +1760,13 @@ public class Alu {
 
     public int getDestProgLineNumber(ProgLine progLine) {
         int res = -1;
-        OPERATIONS op = progLine.getOp(0);
-        OPERATIONS op1 = progLine.getOp(1);   //  "."
+        OPS op = progLine.getOp(0);   //  GTO ou GSB
+        OPS op1 = progLine.getOp(1);   //  "."
         String s = (op1 != null ? op1.SYMBOL() : "");
         s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
         switch (op) {
             case GTO:
-                if (s.equals(OPERATIONS.I.SYMBOL())) {   //  GTO I
+                if (s.equals(OPS.I.SYMBOL())) {   //  GTO I
                     int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
                     if (n >= 0) {   //  GTO I positif => GTO LBL
                         if (n <= LABELS.values().length - 1) {
@@ -1627,7 +1782,7 @@ public class Alu {
                 }
                 break;
             case GSB:
-                if (s.equals(OPERATIONS.I.SYMBOL())) {   //  GSB I
+                if (s.equals(OPS.I.SYMBOL())) {   //  GSB I
                     int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
                     if (n >= 0) {   //  GSB I positif => GSB LBL
                         if (n <= LABELS.values().length - 1) {

@@ -1,21 +1,21 @@
 package com.example.pgyl.sp15c_a;
 
-import static com.example.pgyl.sp15c_a.Alu.OPERATIONS;
+import static com.example.pgyl.sp15c_a.Alu.OPS;
 
 public class ProgLine {
 
     private final int MAX_OPS = 5;
 
-    private OPERATIONS[] ops;
+    private OPS[] ops;
 
     public ProgLine() {
-        ops = new OPERATIONS[MAX_OPS];
+        ops = new OPS[MAX_OPS];
         for (int i = 0; i <= (ops.length - 1); i = i + 1) {
             ops[i] = null;
         }
     }
 
-    public OPERATIONS[] getOps() {
+    public OPS[] getOps() {
         return ops;
     }
 
@@ -23,11 +23,11 @@ public class ProgLine {
         return ops.length;
     }
 
-    public void setOp(int index, OPERATIONS op) {
+    public void setOp(int index, OPS op) {
         ops[index] = op;
     }
 
-    public OPERATIONS getOp(int index) {
+    public OPS getOp(int index) {
         return ops[index];
     }
 }
