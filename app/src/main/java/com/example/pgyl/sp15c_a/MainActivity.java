@@ -348,7 +348,7 @@ public class MainActivity extends Activity {
                                 }
                                 op = OPS.UNKNOWN;   //  Ne pas traiter plus loin dans cette procédure
                             }
-                            if (op.equals(OPS.RAND)) {   //  STO RAN #
+                            if (op.equals(OPS.RAND)) {   //  STO RAN # traité mais sans effet
                                 tProgLine.setOp(1, op);
                                 if (canExecAfterHandling(tProgLine)) {
                                     if (alphaToX()) {
@@ -437,11 +437,11 @@ public class MainActivity extends Activity {
                         }
                         if (op.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
                             if (tProgLine.getOp(1) != null) {   //  Le +-*/ ne peut suivre un "."
-                                inOp = null;
                                 error = ERROR_RCL;
                             } else {   //  Un "." suit +-*/    OK
                                 tProgLine.setOp(2, op);
                             }
+                            inOp = null;
                             op = OPS.UNKNOWN;   //  Ne pas traiter plus loin dans cette procédure
                         }
                         if (op.equals(OPS.SIGMA_PLUS)) {   //  RCL SIGMA+
@@ -521,12 +521,9 @@ public class MainActivity extends Activity {
                                 error = "RANGE 0-" + alu.getDataRegIndexByIndex(alu.getRegsAbsoluteSizeMax() - 1);
                             }
                         }
-                        inOp = null;   //  Opération terminée
-                        op = OPS.UNKNOWN;   //  Ne pas traiter plus loin dans cette procédure
-                    } else {    //  Pas (i)
-                        inOp = null;
-                        op = OPS.UNKNOWN;   //  Ne pas traiter plus loin dans cette procédure
                     }
+                    inOp = null;   //  Opération terminée
+                    op = OPS.UNKNOWN;   //  Ne pas traiter plus loin dans cette procédure
                 }
             }
             if (inOp != null) {
@@ -579,7 +576,7 @@ public class MainActivity extends Activity {
                 }
             }
             if (inOp != null) {
-                OPS dop = alu.getOpByIndirectKeyOps(inOp, op);   //  Pas null pou opérations indirectes (cf INDIRECT_KEYS) : HYP, AHYP, TEST
+                OPS dop = alu.getOpByIndirectKeyOps(inOp, op);   //  Pas null pour opérations indirectes (cf INDIRECT_KEYS) : HYP, AHYP, TEST
                 if (op != null) {   // Cas particuliers: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
                     // Suite: Ce qui implique que si Affichage symboles: Afficher uniquement op0, Si Affichage Codes: Afficher à partir de op1
                     tProgLine.setOp(1, inOp);   //  Garder l'opération initiale (AHYP COS , TEST n) après op0
@@ -661,10 +658,10 @@ public class MainActivity extends Activity {
                                 alpha = alpha + s;
                             }
                         }
-                        if (mode.equals(MODES.EDIT)) {
-                            if (canExecAfterHandling(tProgLine)) {
-                                //  NOP
-                            }
+                    }
+                    if (mode.equals(MODES.EDIT)) {
+                        if (canExecAfterHandling(tProgLine)) {
+                            //  NOP
                         }
                     }
                 }
@@ -1260,23 +1257,6 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-            if ((op.equals(OPS.XE0)) || (op.equals(OPS.XLEY)) ||
-                    (op.equals(OPS.XNE0)) || (op.equals(OPS.XG0)) || (op.equals(OPS.XL0)) || (op.equals(OPS.XGE0)) ||
-                    (op.equals(OPS.XLE0)) || (op.equals(OPS.XEY)) || (op.equals(OPS.XNEY)) || (op.equals(OPS.XGY)) ||
-                    (op.equals(OPS.XLY)) || (op.equals(OPS.XGEY))) {
-
-                if (canExecAfterHandling(tProgLine)) {
-                    if (alphaToX()) {
-                        if (alu.test(op)) {
-                            currentProgLineNumber = currentProgLineNumber + 1;   //  cad Skip if True
-                            if (currentProgLineNumber > (alu.getProgLinesSize() - 1)) {
-                                currentProgLineNumber = 0;
-                            }
-                        }
-                        stackLiftEnabled = true;
-                    }
-                }
-            }
             if (op.equals(OPS.FACT)) {
                 if (canExecAfterHandling(tProgLine)) {
                     if (alphaToX()) {
@@ -1378,6 +1358,23 @@ public class MainActivity extends Activity {
                     }
                 }
             }
+            if ((op.equals(OPS.XE0)) || (op.equals(OPS.XLEY)) ||
+                    (op.equals(OPS.XNE0)) || (op.equals(OPS.XG0)) || (op.equals(OPS.XL0)) || (op.equals(OPS.XGE0)) ||
+                    (op.equals(OPS.XLE0)) || (op.equals(OPS.XEY)) || (op.equals(OPS.XNEY)) || (op.equals(OPS.XGY)) ||
+                    (op.equals(OPS.XLY)) || (op.equals(OPS.XGEY))) {
+
+                if (canExecAfterHandling(tProgLine)) {
+                    if (alphaToX()) {
+                        if (alu.test(op)) {
+                            currentProgLineNumber = currentProgLineNumber + 1;   //  cad Skip if True
+                            if (currentProgLineNumber > (alu.getProgLinesSize() - 1)) {
+                                currentProgLineNumber = 0;
+                            }
+                        }
+                        stackLiftEnabled = true;
+                    }
+                }
+            }
             if (op.equals(OPS.BEGIN)) {
                 if (mode.equals(MODES.RUN)) {
                     error = ERROR_NO_PROG;
@@ -1386,30 +1383,42 @@ public class MainActivity extends Activity {
                 }
             }
             if (op.equals(OPS.PR)) {
-                if (mode.equals(MODES.NORM)) {   //  NORM -> EDIT
-                    mode = MODES.EDIT;
-                    newProgLine = false;
-                    tProgLine = alu.getProgLine(currentProgLineNumber);
-                    feedOps(tProgLine);
-                    newProgLine = true;
+                boolean sw = false;
+                if (!sw) {
+                    if (mode.equals(MODES.NORM)) {   //  NORM -> EDIT
+                        sw = true;
+                        mode = MODES.EDIT;
+                        newProgLine = false;
+                        tProgLine = alu.getProgLine(currentProgLineNumber);
+                        feedOps(tProgLine);
+                        newProgLine = true;
+                    }
                 }
-                if (mode.equals(MODES.EDIT)) {   //  EDIT -> NORM
-                    mode = MODES.NORM;
-                    newProgLine = true;
+                if (!sw) {
+                    if (mode.equals(MODES.EDIT)) {   //  EDIT -> NORM
+                        sw = true;
+                        mode = MODES.NORM;
+                        newProgLine = true;
+                    }
                 }
             }
             if (op.equals(OPS.RS)) {
-                if (mode.equals(MODES.NORM)) {   //  NORM -> RUN
-                    mode = MODES.RUN;
-                    newProgLine = false;
-                    alu.rebuildlabelToprogLineNumberMap();   //  Réassocier les labels à leur n° de ligne
-                    tProgLine = alu.getProgLine(currentProgLineNumber);
-                    feedOps(tProgLine);
-                    newProgLine = true;
+                boolean sw = false;
+                if (!sw) {
+                    if (mode.equals(MODES.NORM)) {   //  NORM -> RUN
+                        mode = MODES.RUN;
+                        newProgLine = false;
+                        alu.rebuildlabelToprogLineNumberMap();   //  Réassocier les labels à leur n° de ligne
+                        tProgLine = alu.getProgLine(currentProgLineNumber);
+                        feedOps(tProgLine);
+                        newProgLine = true;
+                    }
                 }
-                if (mode.equals(MODES.RUN)) {   //  RUN -> NORM
-                    mode = MODES.NORM;
-                    newProgLine = true;
+                if (!sw) {
+                    if (mode.equals(MODES.RUN)) {   //  RUN -> NORM
+                        mode = MODES.NORM;
+                        newProgLine = true;
+                    }
                 }
             }
             if (op.equals(OPS.SST)) {   //  END -> BEGIN
@@ -1436,17 +1445,11 @@ public class MainActivity extends Activity {
                     newProgLine = true;
                 }
             }
-            if ((op.equals(OPS.FIX)) || (op.equals(OPS.SCI)) || (op.equals(OPS.ENG))) {
+            if ((op.equals(OPS.FIX)) || (op.equals(OPS.SCI)) || (op.equals(OPS.ENG)) ||
+                    (op.equals(OPS.STO)) || (op.equals(OPS.RCL)) || (op.equals(OPS.XCHG)) ||
+                    (op.equals(OPS.HYP)) || (op.equals(OPS.AHYP)) || (op.equals(OPS.TEST)) ||
+                    (op.equals(OPS.DIM))) {
                 inOp = op;   //  Attente de paramètre
-            }
-            if ((op.equals(OPS.STO)) || (op.equals(OPS.RCL)) || (op.equals(OPS.XCHG))) {
-                inOp = op;
-            }
-            if (op.equals(OPS.DIM)) {
-                inOp = op;
-            }
-            if ((op.equals(OPS.HYP)) || (op.equals(OPS.AHYP)) || (op.equals(OPS.TEST))) {
-                inOp = op;
             }
             if (inOp == null) {    //  Ligne terminée (déjà enregistrée dans progLines)
                 if (error.equals("")) {   //  Pas d'erreur nouvelle
@@ -1503,7 +1506,7 @@ public class MainActivity extends Activity {
             }
             if (mode.equals(MODES.EDIT)) {
                 disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
-                dotMatrixDisplayUpdater.displayText(disp, true);
+                dotMatrixDisplayUpdater.displayText(disp, false);
             }
         }
         dotMatrixDisplayView.updateDisplay();
@@ -1525,7 +1528,7 @@ public class MainActivity extends Activity {
     }
 
     public boolean canExecAfterHandling(ProgLine progLine) {
-        boolean res = true;   //  Exécuter la ligne
+        boolean res = true;   //  Exécuter la ligne (NORM ou RUN)
         if (mode.equals(MODES.RUN)) {   //  Une exécution en mode NORM (p.ex 5, COS) ne change normalement pas currentProgLineNumber
             currentProgLineNumber = currentProgLineNumber + 1;   //  Par défaut
             if (currentProgLineNumber > (alu.getProgLinesSize() - 1)) {
@@ -1557,7 +1560,7 @@ public class MainActivity extends Activity {
     }
 
     private void updateSideDisplay() {
-        sideDotMatrixDisplayUpdater.displayText(alu.getAngleMode().toString().toLowerCase() + " " + alu.getRoundMode().toString().toLowerCase() + alu.getRoundParam(), false);
+        sideDotMatrixDisplayUpdater.displayText(mode.toString().toLowerCase() + " " + alu.getAngleMode().toString().toLowerCase() + " " + alu.getRoundMode().toString().toLowerCase() + alu.getRoundParam(), false);
         sideDotMatrixDisplayView.updateDisplay();
     }
 

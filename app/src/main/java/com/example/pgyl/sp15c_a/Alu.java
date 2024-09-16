@@ -147,8 +147,8 @@ public class Alu {
         KEY_21(21, OPS.SST, OPS.UNKNOWN, OPS.BST),
         KEY_22(22, OPS.GTO, OPS.HYP, OPS.AHYP),
         KEY_23(23, OPS.SIN, OPS.DIM, OPS.ASIN),
-        KEY_24(24, OPS.COS, OPS.UNKNOWN, OPS.ACOS),
-        KEY_25(25, OPS.TAN, OPS.UNKNOWN, OPS.ATAN),
+        KEY_24(24, OPS.COS, OPS.INDI, OPS.ACOS),
+        KEY_25(25, OPS.TAN, OPS.I, OPS.ATAN),
         KEY_26(26, OPS.EEX, OPS.UNKNOWN, OPS.PI),
         KEY_27(27, OPS.DIGIT_4, OPS.XCHG, OPS.UNKNOWN),
         KEY_28(28, OPS.DIGIT_5, OPS.UNKNOWN, OPS.UNKNOWN),
@@ -1683,8 +1683,8 @@ public class Alu {
                 }
                 res = res + (!res.equals("") ? SEP : "") + s;
             }
-            res = String.format("0000", progLineNumber) + ": " + res;
         }
+        res = String.format("0000", progLineNumber) + ": " + res;
         return res;
     }
 
