@@ -14,11 +14,21 @@ public class Alu {
         GTO("GTO"),
         GSB("GSB"),
         LBL("LBL"),
+        RTN("RTN"),
+        USER("USER"),
         MEM("MEM"),
+        //  ****************************** Début Bloc (à laisser dans l'ordre)
+        A("A"),
+        B("B"),
+        C("C"),
+        D("D"),
+        E("E"),
+        //  ** **************************** Fin Bloc
         F("F"),
         G("G"),
         I("I"),
         INDI("(i)"),
+        //  ****************************** Début Bloc (à laisser dans l'ordre)
         DIGIT_0("0"),
         DIGIT_1("1"),
         DIGIT_2("2"),
@@ -29,6 +39,7 @@ public class Alu {
         DIGIT_7("7"),
         DIGIT_8("8"),
         DIGIT_9("9"),
+        //  ****************************** Fin Bloc
         DOT("."),
         EEX("E"),
         CHS("-"),
@@ -60,7 +71,6 @@ public class Alu {
         ATAN("ATAN"),
         HYP("HYP"),
         AHYP("AHYP"),
-        // Debut Bloc Cas particuliers, à coder en clair en op0 (p.ex ACOSH, "x<0?") et en normal à partir de op1 (HYP-1 COS, TEST 2)
         SINH("SINH"),
         COSH("COSH"),
         TANH("TANH"),
@@ -77,7 +87,6 @@ public class Alu {
         XGY("x>y?"),
         XLY("x<y?"),
         XGEY("x>=y?"),
-        // Fin Bloc Cas particuliers
         XLEY("x<=y?"),
         XE0("x=0?"),
         TEST("TEST"),
@@ -93,7 +102,6 @@ public class Alu {
         DPC("DELTA%"),
         ABS("ABS"),
         RND("RND"),
-        CLEAR_PREFIX("PREFIX"),
         RAND("RAND"),
         RECT("->R"),
         POL("->P"),
@@ -113,9 +121,14 @@ public class Alu {
         STDEV("STDEV"),
         YER("YR"),
         LR("LR"),
+        CLEAR_PREFIX("PREFIX"),
         CLEAR_SIGMA("CLSIGMA"),
         CLEAR_REGS("CLREG"),
+        CLEAR_PRGM("CLPRGM"),
         XCHG("X<>"),
+        SF("SF"),
+        CF("CF"),
+        TF("TF"),
         UNKNOWN("?");
 
         private String symbol;
@@ -134,29 +147,29 @@ public class Alu {
     }
 
     public enum KEYS {
-        KEY_11(11, OPS.SQRT, OPS.UNKNOWN, OPS.SQR),
-        KEY_12(12, OPS.EXP, OPS.UNKNOWN, OPS.LN),
-        KEY_13(13, OPS.EXP10, OPS.UNKNOWN, OPS.LOG),
-        KEY_14(14, OPS.POWER, OPS.UNKNOWN, OPS.PC),
-        KEY_15(15, OPS.INV, OPS.UNKNOWN, OPS.DPC),
+        KEY_11(11, OPS.SQRT, OPS.A, OPS.SQR),
+        KEY_12(12, OPS.EXP, OPS.B, OPS.LN),
+        KEY_13(13, OPS.EXP10, OPS.C, OPS.LOG),
+        KEY_14(14, OPS.POWER, OPS.D, OPS.PC),
+        KEY_15(15, OPS.INV, OPS.E, OPS.DPC),
         KEY_16(16, OPS.CHS, OPS.UNKNOWN, OPS.ABS),
         KEY_17(17, OPS.DIGIT_7, OPS.FIX, OPS.DEG),
         KEY_18(18, OPS.DIGIT_8, OPS.SCI, OPS.RAD),
         KEY_19(19, OPS.DIGIT_9, OPS.ENG, OPS.GRAD),
         KEY_10(10, OPS.DIV, OPS.UNKNOWN, OPS.XLEY),
-        KEY_21(21, OPS.SST, OPS.UNKNOWN, OPS.BST),
+        KEY_21(21, OPS.SST, OPS.LBL, OPS.BST),
         KEY_22(22, OPS.GTO, OPS.HYP, OPS.AHYP),
         KEY_23(23, OPS.SIN, OPS.DIM, OPS.ASIN),
         KEY_24(24, OPS.COS, OPS.INDI, OPS.ACOS),
         KEY_25(25, OPS.TAN, OPS.I, OPS.ATAN),
         KEY_26(26, OPS.EEX, OPS.UNKNOWN, OPS.PI),
-        KEY_27(27, OPS.DIGIT_4, OPS.XCHG, OPS.UNKNOWN),
-        KEY_28(28, OPS.DIGIT_5, OPS.UNKNOWN, OPS.UNKNOWN),
-        KEY_29(29, OPS.DIGIT_6, OPS.UNKNOWN, OPS.UNKNOWN),
+        KEY_27(27, OPS.DIGIT_4, OPS.XCHG, OPS.SF),
+        KEY_28(28, OPS.DIGIT_5, OPS.UNKNOWN, OPS.CF),
+        KEY_29(29, OPS.DIGIT_6, OPS.UNKNOWN, OPS.TF),
         KEY_20(20, OPS.MULT, OPS.UNKNOWN, OPS.XE0),
         KEY_31(31, OPS.RS, OPS.UNKNOWN, OPS.PR),
-        KEY_32(32, OPS.GSB, OPS.CLEAR_SIGMA, OPS.UNKNOWN),
-        KEY_33(33, OPS.RDN, OPS.UNKNOWN, OPS.RUP),
+        KEY_32(32, OPS.GSB, OPS.CLEAR_SIGMA, OPS.RTN),
+        KEY_33(33, OPS.RDN, OPS.CLEAR_PRGM, OPS.RUP),
         KEY_34(34, OPS.XCHGXY, OPS.CLEAR_REGS, OPS.RND),
         KEY_35(35, OPS.BACK, OPS.CLEAR_PREFIX, OPS.CLX),
         KEY_36(36, OPS.ENTER, OPS.RAND, OPS.LASTX),
@@ -168,7 +181,7 @@ public class Alu {
         KEY_42(42, OPS.F, OPS.UNKNOWN, OPS.UNKNOWN),
         KEY_43(43, OPS.G, OPS.UNKNOWN, OPS.UNKNOWN),
         KEY_44(44, OPS.STO, OPS.FRAC, OPS.INT),
-        KEY_45(45, OPS.RCL, OPS.UNKNOWN, OPS.MEM),    //  MEM inactif
+        KEY_45(45, OPS.RCL, OPS.USER, OPS.MEM),    //  MEM inactif
         KEY_47(47, OPS.DIGIT_0, OPS.FACT, OPS.MEAN),
         KEY_48(48, OPS.DOT, OPS.YER, OPS.STDEV),
         KEY_49(49, OPS.SIGMA_PLUS, OPS.LR, OPS.SIGMA_MINUS),
@@ -317,16 +330,6 @@ public class Alu {
         }   //  Servira aussi d'index dans regs
     }
 
-    class PairOp {
-        OPS op1;
-        OPS op2;
-
-        PairOp(OPS op1, OPS op2) {
-            this.op1 = op1;
-            this.op2 = op2;
-        }
-    }
-
     final int MAX_DIGITS = 10;
     final int REGS_ABSOLUTE_SIZE_MAX = 1000;   //  Max, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
     final int REGS_DEF_SIZE = 100;    //  Par défaut, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
@@ -334,18 +337,20 @@ public class Alu {
     final String ERROR_OVERFLOW = "Overflow";
     final String ERROR_LOG = "Log(Neg or 0)";
     final String ERROR_DIV_BY_0 = "Div By 0";
-    final String ERROR_NOT_NUMBER = "Not Number";
+    final String ERROR_NUMBER = "Invalid number";
     final String ERROR_SQRT_NEG = "Sqrt(Neg)";
     final String ERROR_STAT_0 = "Stat n <= 0";
     final String ERROR_STAT_1 = "Stat n <= 1";
     final String ERROR_PERM_COMB = "Perm/Comb ?";
     final int MAX_LINES = 9999;
+    final int MAX_FLAGS = 10;
     final int END_RETURN_STACK = -1;
     final int UNSHIFTED_KEY_CODE = 0;
     final int SHIFT_F_KEY_CODE = 42;
     final int SHIFT_G_KEY_CODE = 43;
 
     private double[] stkRegs;
+    private boolean[] flags;
     private ArrayList<Double> regs;   //  Les registres de BASE_REGS puis les suivants (accessibles par (i) )
     private OPS roundMode;
     private int roundParam;
@@ -373,13 +378,41 @@ public class Alu {
 
         setupMaps();
         stkRegs = new double[STK_REGS.values().length];
-        stackClear();
-
+        clearStack();
+        flags = new boolean[MAX_FLAGS];
+        clearFlags();
         setupProgLines();
         setupReturnStack();
         angleMode = OPS.RAD;
         roundMode = OPS.FIX;
         roundParam = 4;
+    }
+
+    public void close() {
+        stkRegs = null;
+        flags = null;
+        stkRet.clear();
+        stkRet = null;
+        regs.clear();
+        regs = null;
+        proglines.clear();
+        proglines = null;
+        symbolToBaseRegMap.clear();
+        symbolToBaseRegMap = null;
+        opToKeyMap.clear();
+        opToKeyMap = null;
+        opToShiftKeyCodeMap.clear();
+        opToShiftKeyCodeMap = null;
+        opToIndirectKeyMap.clear();
+        opToIndirectKeyMap = null;
+        indirectOpsToOpMap.clear();
+        indirectOpsToOpMap = null;
+        symbolToLabelMap.clear();
+        symbolToLabelMap = null;
+        indexToLabelMap.clear();
+        indexToLabelMap = null;
+        labelToprogLineNumberMap.clear();
+        labelToprogLineNumberMap = null;
     }
 
     public String setDataRegsSize(int dataRegsSize) {   //  les registres de données classiques (data) commencent à partir de R0
@@ -423,7 +456,7 @@ public class Alu {
         return index - BASE_REGS.R0.INDEX();
     }   //  les registres de données classiques (data) commencent à partir de R0
 
-    public int getRegIndexBySymbol(String symbol) {   //  Pour les premiers registres de regs, ceux de BASE_REGS (I, R0 à R9, R.0 à R.9)
+    public int getRegIndexBySymbol(String symbol) {   //  Pour les premiers registres de regs, cad ceux de BASE_REGS (I, R0 à R9, R.0 à R.9)
         return symbolToBaseRegMap.get(symbol).INDEX();
     }
 
@@ -1165,6 +1198,18 @@ public class Alu {
         return res;
     }
 
+    public void setFlag(int index) {
+        flags[index] = true;
+    }
+
+    public void clearFlag(int index) {
+        flags[index] = false;
+    }
+
+    public boolean testFlag(int index) {
+        return flags[index];
+    }
+
     public String factX() {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
@@ -1418,12 +1463,19 @@ public class Alu {
         stkRegs[STK_REGS.Y.INDEX()] = temp;
     }
 
-    public void stackClear() {   //  T,Z,Y,X -> 0,0,0,0
+    public void clearStack() {   //  T,Z,Y,X -> 0,0,0,0
         stkRegs[STK_REGS.X.INDEX()] = 0;
         stkRegs[STK_REGS.Y.INDEX()] = 0;
         stkRegs[STK_REGS.Z.INDEX()] = 0;
         stkRegs[STK_REGS.T.INDEX()] = 0;
         stkRegs[STK_REGS.LX.INDEX()] = 0;
+    }
+
+    public void clearFlags() {
+        int n = flags.length;
+        for (int i = 1; i <= (n - 1); i = i + 1) {
+            flags[i] = false;
+        }
     }
 
     public void stackRollDown() {   //  T,Z,Y,X -> X,T,Z,Y
@@ -1472,7 +1524,7 @@ public class Alu {
         if (isDouble(alpha)) {
             stkRegs[STK_REGS.X.INDEX()] = Double.parseDouble(alpha);
         } else {
-            error = ERROR_NOT_NUMBER;   //  Echec
+            error = ERROR_NUMBER;   //  Echec
         }
         return error;
     }
@@ -1559,7 +1611,7 @@ public class Alu {
         return res;
     }
 
-    private boolean isDouble(String sNumber) {
+    public boolean isDouble(String sNumber) {
         boolean res = true;
         double d = 0;
         try {
@@ -1603,7 +1655,12 @@ public class Alu {
     }
 
     public void addProgLineAtNumber(ProgLine progLine, int progLineNumber) {
-        proglines.add(progLineNumber, progLine);
+        ProgLine newProgLine = new ProgLine();
+        int n = progLine.getOpsSize();
+        for (int i = 0; i <= (n - 1); i = i + 1) {   //  Copier dans la nouvelle ligne
+            newProgLine.setOp(i, progLine.getOp(i));
+        }
+        proglines.add(progLineNumber, newProgLine);
     }
 
     public void removeProgLineAtNumber(int progLineNumber) {
@@ -1617,21 +1674,11 @@ public class Alu {
         }
     }
 
-    public void addStkRetProgLineNumber(int progLineNumber) {   //  PUSH
-        stkRet.add(0, progLineNumber);
-    }
-
-    public int getLastStkRetProgLineNumber() {   //  POP1
-        return stkRet.get(0);
-    }
-
-    public void removeLastStkRetProgLineNumber() {   //  POP2
-        stkRet.remove(0);
-    }
-
-    private void setupReturnStack() {
-        stkRet = new ArrayList<Integer>();
-        stkRet.add(0, END_RETURN_STACK);
+    public void clearProgLines() {
+        proglines.clear();
+        proglines.add(new ProgLine());   //  Index 0
+        ProgLine progLine = proglines.get(0);
+        progLine.setOp(0, OPS.BEGIN);
     }
 
     private void setupProgLines() {
@@ -1645,47 +1692,97 @@ public class Alu {
         final String SEP = " ";
         String res = "";
         String s = "";
-        ProgLine progLine = proglines.get(progLineNumber);   //  Cas particulier: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
-        // Suite: Ce qui implique que si Affichage symboles: Afficher uniquement op0, Si Affichage Codes: Afficher à partir de op1
-        OPS[] ops = progLine.getOps();
-        for (int i = 0; i <= (ops.length - 1); i = i + 1) {
-            if (ops[i] != null) {
-                if (!displaySymbol) {   //  Codes
-                    if ((i > 0) || (opToIndirectKeyMap.get(ops[i]) == null)) {   //  Cf Cas particuliers
-                        KEYS key = opToKeyMap.get(ops[i]);
-                        s = String.valueOf(key.CODE());
-                        if (ops[i].equals(OPS.DOT)) {   //  Si "" est suivi par un chiffre n => afficher .n
-                            if (i < (ops.length - 1)) {
-                                if (ops[i + 1] != null) {
-                                    OPS nextOp = ops[i + 1];
-                                    if (((nextOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (nextOp.INDEX() <= OPS.DIGIT_9.INDEX()))) {
-                                        s = OPS.DOT.SYMBOL();
+        if (progLineNumber != 0) {
+            ProgLine progLine = proglines.get(progLineNumber);   //  Cas particulier: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
+            // Suite: Ce qui implique que si Affichage symboles: Afficher uniquement op0, Si Affichage Codes: Afficher à partir de op1
+            OPS[] ops = progLine.getOps();
+            boolean indirect = (opToIndirectKeyMap.get(ops[0]) != null);
+            for (int i = 0; i <= (ops.length - 1); i = i + 1) {
+                if (ops[i] != null) {
+                    String sep = SEP;
+                    if (!displaySymbol) {   //  Codes
+                        if ((i > 0) || !indirect) {   //  Cf Cas particuliers
+                            KEYS key = opToKeyMap.get(ops[i]);
+                            s = String.valueOf(key.CODE());
+                            if (ops[i].equals(OPS.DOT)) {   //  Si "" est suivi par un chiffre n => afficher .n
+                                if (i < (ops.length - 1)) {
+                                    if (ops[i + 1] != null) {
+                                        OPS nextOp = ops[i + 1];
+                                        if (((nextOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (nextOp.INDEX() <= OPS.DIGIT_9.INDEX()))) {
+                                            s = OPS.DOT.SYMBOL();
+                                        }
                                     }
                                 }
+                            } else {   //  Pas "."
+                                OPS unshiftedOp = key.UNSHIFTED_OP();   //  Opération sans aucune touche Shift
+                                if (((unshiftedOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (unshiftedOp.INDEX() <= OPS.DIGIT_9.INDEX()))) {   //  Afficher chiffre (même si operation n'est pas chiffre)
+                                    s = unshiftedOp.SYMBOL();
+                                }
                             }
-                        } else {   //  Pas "."
-                            OPS unshiftedOp = key.UNSHIFTED_OP();   //  Opération sans aucune touche Shift
-                            if (((unshiftedOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (unshiftedOp.INDEX() <= OPS.DIGIT_9.INDEX()))) {   //  Afficher chiffre (même si operation n'est pas chiffre)
-                                s = unshiftedOp.SYMBOL();
+                            if (res.equals("")) {   //  l'op à considérer n'est pas toujours à i=0 (ex. pour ATANH: 0:ATANH, 1:AHYP, 2:TAN)
+                                int shiftKeyCode = opToShiftKeyCodeMap.get(ops[i]);   //  Préfixer de l'éventuelle touche shift F ou G
+                                if (shiftKeyCode != UNSHIFTED_KEY_CODE) {
+                                    s = shiftKeyCode + sep + s;
+                                }
                             }
+                            res = res + (!res.equals("") ? sep : "") + s;
                         }
-                        if (i == 0) {
-                            int shiftKeyCode = opToShiftKeyCodeMap.get(ops[i]);   //  Préfixer de l'éventuelle touche shift F ou G
-                            if (shiftKeyCode != UNSHIFTED_KEY_CODE) {
-                                s = shiftKeyCode + SEP + s;
+                    } else {   //  Symboles
+                        if ((i == 0) || !indirect) {   //  Cf Cas particuliers
+                            if ((ops[i].equals(OPS.EEX)) || (ops[i].equals(OPS.CHS))) {
+                                s = ops[i].toString();
+                            } else {   //  Pas EEX ni CHS
+                                s = ops[i].SYMBOL();
                             }
+                            if (i == 1) {
+                                if ((ops[i - 1].equals(OPS.STO)) || (ops[i - 1].equals(OPS.RCL))) {
+                                    if ((ops[i].equals(OPS.PLUS)) || (ops[i].equals(OPS.MINUS)) || (ops[i].equals(OPS.MULT)) || (ops[i].equals(OPS.DIV))) {
+                                        sep = "";   //  Pour avoir +-*/ juste à côté de l'op: STO+ ... RCL* ..., et non STO + ... RCL * ...
+                                    }
+                                }
+                                if (ops[i].equals(OPS.XCHG)) {
+                                    sep = "";   //  Pour avoir X<>1  X<>(i) ...
+                                }
+                            }
+                            res = res + (!res.equals("") ? sep : "") + s;
                         }
-                    }
-                } else {   //  Symboles
-                    if ((i == 0) || (opToIndirectKeyMap.get(ops[i]) == null)) {   //  Cf Cas particuliers
-                        s = ops[i].SYMBOL();
                     }
                 }
-                res = res + (!res.equals("") ? SEP : "") + s;
+            }
+        } else {   //  Ligne 0
+            if (!displaySymbol) {   //  Codes
+                res = "00";
+            } else {   //  Symboles
+                res = OPS.BEGIN.SYMBOL();
             }
         }
-        res = String.format("0000", progLineNumber) + ": " + res;
+        res = String.format("%04d", progLineNumber) + ": " + res;
         return res;
+    }
+
+    public void addStkRetProgLineNumber(int progLineNumber) {   //  PUSH
+        stkRet.add(0, progLineNumber);
+    }
+
+    public int getLastStkRetProgLineNumber() {   //  POP1
+        return stkRet.get(0);
+    }
+
+    public boolean isStkRetEmpty() {
+        boolean res = false;
+        if (stkRet.get(0) == END_RETURN_STACK) {
+            res = true;
+        }
+        return res;
+    }
+
+    public void removeLastStkRetProgLineNumber() {   //  POP2
+        stkRet.remove(0);
+    }
+
+    private void setupReturnStack() {
+        stkRet = new ArrayList<Integer>();
+        stkRet.add(0, END_RETURN_STACK);
     }
 
     private void setupMaps() {
@@ -1760,12 +1857,12 @@ public class Alu {
 
     public int getDestProgLineNumber(ProgLine progLine) {
         int res = -1;
-        OPS op = progLine.getOp(0);   //  GTO ou GSB
-        OPS op1 = progLine.getOp(1);   //  "."
-        String s = (op1 != null ? op1.SYMBOL() : "");
-        s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
+        OPS op = progLine.getOp(0);   //  GTO, GSB ou A..E
         switch (op) {
             case GTO:
+                OPS op1 = progLine.getOp(1);   //  "." éventuel (si GTO ou GSB)
+                String s = (op1 != null ? op1.SYMBOL() : "");
+                s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
                 if (s.equals(OPS.I.SYMBOL())) {   //  GTO I
                     int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
                     if (n >= 0) {   //  GTO I positif => GTO LBL
@@ -1782,6 +1879,9 @@ public class Alu {
                 }
                 break;
             case GSB:
+                op1 = progLine.getOp(1);   //  "." éventuel (si GTO ou GSB)
+                s = (op1 != null ? op1.SYMBOL() : "");
+                s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
                 if (s.equals(OPS.I.SYMBOL())) {   //  GSB I
                     int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
                     if (n >= 0) {   //  GSB I positif => GSB LBL

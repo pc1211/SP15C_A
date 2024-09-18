@@ -4,7 +4,7 @@ import static com.example.pgyl.sp15c_a.Alu.OPS;
 
 public class ProgLine {
 
-    private final int MAX_OPS = 5;
+    private final int MAX_OPS = 7;   //  7 nécessaire pour GTO CHS nnnn
 
     private OPS[] ops;
 
