@@ -15,20 +15,22 @@ public class Alu {
         GSB("GSB"),
         LBL("LBL"),
         RTN("RTN"),
+        DSE("DSE"),
+        ISG("ISG"),
         USER("USER"),
         MEM("MEM"),
-        //  ****************************** Début Bloc (à laisser dans l'ordre)
+        //  ****************************** Début Bloc (à laisser dans l'ordre, pour identifier facilement "de A à E")
         A("A"),
         B("B"),
         C("C"),
         D("D"),
         E("E"),
-        //  ** **************************** Fin Bloc
+        //  ****************************** Fin Bloc
         F("F"),
         G("G"),
         I("I"),
         INDI("(i)"),
-        //  ****************************** Début Bloc (à laisser dans l'ordre)
+        //  ****************************** Début Bloc (à laisser dans l'ordre, pour identifier facilement "de 0 à 9")
         DIGIT_0("0"),
         DIGIT_1("1"),
         DIGIT_2("2"),
@@ -164,8 +166,8 @@ public class Alu {
         KEY_25(25, OPS.TAN, OPS.I, OPS.ATAN),
         KEY_26(26, OPS.EEX, OPS.UNKNOWN, OPS.PI),
         KEY_27(27, OPS.DIGIT_4, OPS.XCHG, OPS.SF),
-        KEY_28(28, OPS.DIGIT_5, OPS.UNKNOWN, OPS.CF),
-        KEY_29(29, OPS.DIGIT_6, OPS.UNKNOWN, OPS.TF),
+        KEY_28(28, OPS.DIGIT_5, OPS.DSE, OPS.CF),
+        KEY_29(29, OPS.DIGIT_6, OPS.ISG, OPS.TF),
         KEY_20(20, OPS.MULT, OPS.UNKNOWN, OPS.XE0),
         KEY_31(31, OPS.RS, OPS.UNKNOWN, OPS.PR),
         KEY_32(32, OPS.GSB, OPS.CLEAR_SIGMA, OPS.RTN),
@@ -331,8 +333,9 @@ public class Alu {
     }
 
     final int MAX_DIGITS = 10;
-    final int REGS_ABSOLUTE_SIZE_MAX = 1000;   //  Max, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
-    final int REGS_DEF_SIZE = 100;    //  Par défaut, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
+    final int MAX_RETS = 100;
+    final int MAX_REGS = 1000;   //  Max, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
+    final int DEF_MAX_REGS = 100;    //  Par défaut, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
 
     final String ERROR_OVERFLOW = "Overflow";
     final String ERROR_LOG = "Log(Neg or 0)";
@@ -372,7 +375,7 @@ public class Alu {
 
     private void init() {
         regs = new ArrayList<Double>();
-        for (int i = 0; i <= (REGS_DEF_SIZE - 1); i = i + 1) {   //  Les 21 registres de base (I, R0 à R9, R.0 à R.9) sont au début
+        for (int i = 0; i <= (DEF_MAX_REGS - 1); i = i + 1) {   //  Les 21 registres de base (I, R0 à R9, R.0 à R.9) sont au début
             regs.add(0d);
         }
 
@@ -421,12 +424,12 @@ public class Alu {
         int newSize = dataRegsSize + BASE_REGS.R0.INDEX();
         int n = newSize - oldSize;
         if (n > 0) {   //  Ajouter n registres
-            if (newSize <= REGS_ABSOLUTE_SIZE_MAX) {   //  Respecte Max
+            if (newSize <= MAX_REGS) {   //  Respecte Max
                 for (int i = 0; i <= (n - 1); i = i + 1) {
                     regs.add(0d);
                 }
             } else {  //  > > Max
-                res = "Max 0-" + (REGS_ABSOLUTE_SIZE_MAX - 1 - BASE_REGS.R0.INDEX());
+                res = "Max 0-" + (MAX_REGS - 1 - BASE_REGS.R0.INDEX());
             }
         } else {   //  Retirer n registres, en commençant par les derniers de la liste
             if (newSize >= BASE_REGS.values().length) {   //   Respecte Min
@@ -434,7 +437,7 @@ public class Alu {
                     regs.subList(newSize, oldSize).clear();
                 }
             } else {   //  < Min
-                res = "Max 0-" + (REGS_ABSOLUTE_SIZE_MAX - 1 - BASE_REGS.R0.INDEX());
+                res = "Max 0-" + (MAX_REGS - 1 - BASE_REGS.R0.INDEX());
             }
         }
         return res;
@@ -508,7 +511,7 @@ public class Alu {
     }
 
     public int getRegsAbsoluteSizeMax() {
-        return REGS_ABSOLUTE_SIZE_MAX;
+        return MAX_REGS;
     }
 
     public double[] getStkRegs() {
@@ -1760,8 +1763,13 @@ public class Alu {
         return res;
     }
 
-    public void addStkRetProgLineNumber(int progLineNumber) {   //  PUSH
-        stkRet.add(0, progLineNumber);
+    public boolean addStkRetProgLineNumber(int progLineNumber) {   //  PUSH
+        boolean res = false;
+        if (stkRet.size() < MAX_RETS) {
+            stkRet.add(0, progLineNumber);
+            res = true;
+        }
+        return res;
     }
 
     public int getLastStkRetProgLineNumber() {   //  POP1
