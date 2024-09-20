@@ -93,7 +93,7 @@ public class Alu {
         XE0("x=0?"),
         TEST("TEST"),
         SQRT("SQRT"),
-        SQR("SQR"),
+        SQR("x^2"),
         EXP("EXP"),
         LN("LN"),
         EXP10("10^X"),
@@ -333,6 +333,8 @@ public class Alu {
     }
 
     final int MAX_DIGITS = 10;
+    final int MAX_PROG_LINES = 9999;
+    final int MAX_FLAGS = 10;
     final int MAX_RETS = 100;
     final int MAX_REGS = 1000;   //  Max, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
     final int DEF_MAX_REGS = 100;    //  Par défaut, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
@@ -345,8 +347,7 @@ public class Alu {
     final String ERROR_STAT_0 = "Stat n <= 0";
     final String ERROR_STAT_1 = "Stat n <= 1";
     final String ERROR_PERM_COMB = "Perm/Comb ?";
-    final int MAX_LINES = 9999;
-    final int MAX_FLAGS = 10;
+
     final int END_RETURN_STACK = -1;
     final int UNSHIFTED_KEY_CODE = 0;
     final int SHIFT_F_KEY_CODE = 42;
@@ -1657,13 +1658,18 @@ public class Alu {
         return proglines.size();
     }
 
-    public void addProgLineAtNumber(ProgLine progLine, int progLineNumber) {
-        ProgLine newProgLine = new ProgLine();
+    public boolean addProgLineAtNumber(ProgLine progLine, int progLineNumber) {
+        boolean res = false;
         int n = progLine.getOpsSize();
-        for (int i = 0; i <= (n - 1); i = i + 1) {   //  Copier dans la nouvelle ligne
-            newProgLine.setOp(i, progLine.getOp(i));
+        if ((n + 1) <= MAX_PROG_LINES) {   //  Il y a encore assez de lignes dispponibles
+            ProgLine newProgLine = new ProgLine();
+            for (int i = 0; i <= (n - 1); i = i + 1) {   //  Copier dans la nouvelle ligne
+                newProgLine.setOp(i, progLine.getOp(i));
+            }
+            proglines.add(progLineNumber, newProgLine);
+            res = true;
         }
-        proglines.add(progLineNumber, newProgLine);
+        return res;
     }
 
     public void removeProgLineAtNumber(int progLineNumber) {
@@ -1679,16 +1685,16 @@ public class Alu {
 
     public void clearProgLines() {
         proglines.clear();
-        proglines.add(new ProgLine());   //  Index 0
-        ProgLine progLine = proglines.get(0);
+        ProgLine progLine = new ProgLine();
         progLine.setOp(0, OPS.BEGIN);
+        proglines.add(progLine);    // A l'index 0, proglines contient au moins BEGIN
     }
 
     private void setupProgLines() {
         proglines = new ArrayList<ProgLine>();
-        proglines.add(new ProgLine());   //  Index 0
-        ProgLine progLine = proglines.get(0);
+        ProgLine progLine = new ProgLine();
         progLine.setOp(0, OPS.BEGIN);
+        proglines.add(progLine);   // A l'index 0, proglines contient au moins BEGIN
     }
 
     public String progLineToString(int progLineNumber, boolean displaySymbol) {   //  displaySymbol True => Afficher uniquement symboles ; displaySymbol False => afficher keyCodes (et parfois symbol (p.ex. ".5" ...)
@@ -1760,6 +1766,71 @@ public class Alu {
             }
         }
         res = String.format("%04d", progLineNumber) + ": " + res;
+        return res;
+    }
+
+    public void rebuildlabelToprogLineNumberMap() {
+        labelToprogLineNumberMap = new HashMap<LABELS, Integer>();
+        int n = proglines.size();
+        for (int i = 0; i <= (n - 1); i = i + 1) {
+            ProgLine progLine = proglines.get(i);
+            OPS op = progLine.getOp(0);
+            if (op.equals(OPS.LBL)) {
+                OPS op1 = progLine.getOp(1);   //  "."
+                OPS op2 = progLine.getOp(2);   //  n ou A..E
+                String s = (op1 != null ? op1.SYMBOL() : "") + op2.SYMBOL();
+                labelToprogLineNumberMap.put(symbolToLabelMap.get(s), i);
+            }
+        }
+    }
+
+    public int getDestProgLineNumber(ProgLine progLine) {
+        int res = -1;
+        Integer pln = null;
+        OPS op = progLine.getOp(0);   //  GTO, GSB ou A..E
+        switch (op) {
+            case GTO:
+                OPS op1 = progLine.getOp(1);   //  "." éventuel (si GTO ou GSB)
+                String s = (op1 != null ? op1.SYMBOL() : "");
+                s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
+                if (s.equals(OPS.I.SYMBOL())) {   //  GTO I
+                    int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
+                    if (n >= 0) {   //  GTO I positif => GTO LBL
+                        if (n <= LABELS.values().length - 1) {
+                            LABELS lbl = indexToLabelMap.get(n);
+                            pln = labelToprogLineNumberMap.get(lbl);
+                        }
+                    } else {   //  GTO I négatif => Goto ProgLineNumber
+                        res = -n;
+                    }
+                } else {   //  GTO [.]n ou A-E
+                    LABELS lbl = symbolToLabelMap.get(s);
+                    pln = labelToprogLineNumberMap.get(lbl);
+                }
+                break;
+            case GSB:
+                op1 = progLine.getOp(1);   //  "." éventuel (si GTO ou GSB)
+                s = (op1 != null ? op1.SYMBOL() : "");
+                s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
+                if (s.equals(OPS.I.SYMBOL())) {   //  GSB I
+                    int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
+                    if (n >= 0) {   //  GSB I positif => GSB LBL
+                        if (n <= LABELS.values().length - 1) {
+                            LABELS lbl = indexToLabelMap.get(n);
+                            pln = labelToprogLineNumberMap.get(lbl);
+                        }
+                    } else {   //  GSB I négatif => NOP
+                        //  NOP
+                    }
+                } else {   //  GSB [.]n ou A-E
+                    LABELS lbl = symbolToLabelMap.get(s);
+                    pln = labelToprogLineNumberMap.get(lbl);
+                }
+                break;
+        }
+        if (pln != null) {
+            res = pln;
+        }
         return res;
     }
 
@@ -1847,65 +1918,5 @@ public class Alu {
         for (BASE_REGS baseReg : BASE_REGS.values()) {   //  Uniquement pour les registres de base (I, R0 à R9, R.0 à R.9)
             symbolToBaseRegMap.put(baseReg.SYMBOL(), baseReg);
         }
-    }
-
-    public void rebuildlabelToprogLineNumberMap() {
-        labelToprogLineNumberMap = new HashMap<LABELS, Integer>();
-        int n = proglines.size();
-        for (int i = 0; i <= (n - 1); i = i + 1) {
-            ProgLine progLine = proglines.get(i);
-            OPS op = progLine.getOp(0);
-            if (op.equals(OPS.LBL)) {
-                OPS op1 = progLine.getOp(1);   //  "."
-                String s = (op1 != null ? op1.SYMBOL() : "");
-                labelToprogLineNumberMap.put(symbolToLabelMap.get(s), i);
-            }
-        }
-    }
-
-    public int getDestProgLineNumber(ProgLine progLine) {
-        int res = -1;
-        OPS op = progLine.getOp(0);   //  GTO, GSB ou A..E
-        switch (op) {
-            case GTO:
-                OPS op1 = progLine.getOp(1);   //  "." éventuel (si GTO ou GSB)
-                String s = (op1 != null ? op1.SYMBOL() : "");
-                s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
-                if (s.equals(OPS.I.SYMBOL())) {   //  GTO I
-                    int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
-                    if (n >= 0) {   //  GTO I positif => GTO LBL
-                        if (n <= LABELS.values().length - 1) {
-                            LABELS lbl = indexToLabelMap.get(n);
-                            res = labelToprogLineNumberMap.get(lbl);
-                        }
-                    } else {   //  GTO I négatif => Goto ProgLineNumber
-                        res = -n;
-                    }
-                } else {   //  GTO [.]n ou A-E
-                    LABELS lbl = symbolToLabelMap.get(s);
-                    res = labelToprogLineNumberMap.get(lbl);
-                }
-                break;
-            case GSB:
-                op1 = progLine.getOp(1);   //  "." éventuel (si GTO ou GSB)
-                s = (op1 != null ? op1.SYMBOL() : "");
-                s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
-                if (s.equals(OPS.I.SYMBOL())) {   //  GSB I
-                    int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
-                    if (n >= 0) {   //  GSB I positif => GSB LBL
-                        if (n <= LABELS.values().length - 1) {
-                            LABELS lbl = indexToLabelMap.get(n);
-                            res = labelToprogLineNumberMap.get(lbl);
-                        }
-                    } else {   //  GSB I négatif => NOP
-                        //  NOP
-                    }
-                } else {   //  GSB [.]n ou A-E
-                    LABELS lbl = symbolToLabelMap.get(s);
-                    res = labelToprogLineNumberMap.get(lbl);
-                }
-                break;
-        }
-        return res;
     }
 }
