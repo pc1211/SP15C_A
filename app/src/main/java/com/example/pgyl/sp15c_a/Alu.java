@@ -346,7 +346,7 @@ public class Alu {
     final String ERROR_SQRT_NEG = "Sqrt(Neg)";
     final String ERROR_STAT_0 = "Stat n <= 0";
     final String ERROR_STAT_1 = "Stat n <= 1";
-    final String ERROR_PERM_COMB = "Perm/Comb ?";
+    final String ERROR_PERM_COMB = "Invalid Perm/Comb";
 
     final int END_RETURN_STACK = -1;
     final int UNSHIFTED_KEY_CODE = 0;
