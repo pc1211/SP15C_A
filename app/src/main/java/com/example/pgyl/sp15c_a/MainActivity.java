@@ -61,10 +61,10 @@ public class MainActivity extends Activity {
         }
     }
 
-    private final String ERROR_STO = "STO ?";
-    private final String ERROR_RCL = "RCL ?";
+    private final String ERROR_STO = "Invalid STO";
+    private final String ERROR_RCL = "Invalid RCL";
     private final String ERROR_INDEX = "Invalid index";
-    private final String ERROR_GTO = "Invalid GTO";
+    private final String ERROR_GTO_GSB = "Invalid GTO/GSB";
     private final String ERROR_NUMBER = "Invalid number";
     private final String ERROR_RET_STACK_FULL = "Ret stack full";
     private final String ERROR_PROG_LINES_FULL = "Prog lines full";
@@ -100,6 +100,7 @@ public class MainActivity extends Activity {
     private ProgLine tempProgLine;
     private ProgLine readProgLine;
     private int currentProgLineNumber;
+    private int nextProgLineNumber;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -332,6 +333,10 @@ public class MainActivity extends Activity {
         int indEex = 0;
         int indDot = 0;
         if (error.equals("")) {   //  Pas d'erreur (ou Prefix) antérieure
+            nextProgLineNumber = currentProgLineNumber;   //  Sauf mention contraire en mode NORM ou EDIT
+            if (mode.equals(MODES.RUN)) {
+                nextProgLineNumber = incProgLineNumber(currentProgLineNumber);
+            }
             if (inOp != null) {
                 shiftFOp = alu.getKeyByOp(op).SHIFT_F_OP();   //  Pour I, (i), ou A..E;
             }
@@ -622,7 +627,7 @@ public class MainActivity extends Activity {
 
                             if ((op.INDEX() >= OPS.A.INDEX()) && (op.INDEX() <= OPS.E.INDEX())) {
                                 if (tempProgLine.getOp(1) != null) {   //  .A à .E non admis
-                                    error = ERROR_GTO;
+                                    error = ERROR_GTO_GSB;
                                 }
                             }
                             if (error.equals("")) {
@@ -689,7 +694,7 @@ public class MainActivity extends Activity {
                                                         feedOps(readProgLine);
                                                         createNewProgLine = true;
                                                     } else {   //  Invalide
-                                                        error = ERROR_GTO;
+                                                        error = ERROR_GTO_GSB;
                                                     }
                                                 }
                                             }
@@ -699,7 +704,7 @@ public class MainActivity extends Activity {
                             } else {   //  Pas GTO CHS nnnn en mode EDIT
                                 if ((op.INDEX() >= OPS.A.INDEX()) && (op.INDEX() <= OPS.E.INDEX())) {
                                     if (tempProgLine.getOp(1) != null) {   //  .A à .E non admis
-                                        error = ERROR_GTO;
+                                        error = ERROR_GTO_GSB;
                                     }
                                 }
                                 if (error.equals("")) {
@@ -711,9 +716,9 @@ public class MainActivity extends Activity {
                                             }
                                             int dpln = alu.getDestProgLineNumber(tempProgLine);
                                             if (dpln != (-1)) {   //  OK
-                                                currentProgLineNumber = getPreviousdProgLineNumber(dpln);
+                                                nextProgLineNumber = dpln;
                                             } else {   //  Invalide
-                                                error = ERROR_GTO;
+                                                error = ERROR_GTO_GSB;
                                             }
                                         }
                                     }
@@ -725,10 +730,11 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-            if (inOp != null) {
-                if ((inOp.INDEX() >= OPS.A.INDEX()) && (inOp.INDEX() <= OPS.E.INDEX())) {
-                    op = inOp;
-                    inOp = OPS.GSB;   //  Conversion en GSB A..E, à examiner plus bas
+            if (inOp == null) {
+                if ((op.INDEX() >= OPS.A.INDEX()) && (op.INDEX() <= OPS.E.INDEX())) {
+                    shiftFOp = alu.getKeyByOp(op).SHIFT_F_OP();   //  Pour I, (i), ou A..E;
+                    inOp = OPS.GSB;
+                    tempProgLine.setOp(0, inOp);    //  Conversion en GSB A..E, à examiner ci-dessous
                 }
             }
             if (inOp != null) {
@@ -750,7 +756,7 @@ public class MainActivity extends Activity {
 
                             if ((op.INDEX() >= OPS.A.INDEX()) && (op.INDEX() <= OPS.E.INDEX())) {
                                 if (tempProgLine.getOp(1) != null) {   //  .A à .E non admis
-                                    error = ERROR_GTO;
+                                    error = ERROR_GTO_GSB;
                                 }
                             }
                             if (error.equals("")) {
@@ -758,7 +764,7 @@ public class MainActivity extends Activity {
                                 if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
                                     if (alphaToX()) {
                                         if (mode.equals(MODES.RUN)) {   //  Au retour, revenir à la ligne suivant l'actuelle
-                                            if (!alu.addStkRetProgLineNumber(getNextProgLineNumber(currentProgLineNumber))) {   //  MAX_RETS dépassé
+                                            if (!alu.addStkRetProgLineNumber(nextProgLineNumber)) {   //  MAX_RETS dépassé
                                                 error = ERROR_RET_STACK_FULL;
                                             }
                                         }
@@ -769,9 +775,9 @@ public class MainActivity extends Activity {
                                         }
                                         int dpln = alu.getDestProgLineNumber(tempProgLine);
                                         if (dpln != (-1)) {   //  OK
-                                            currentProgLineNumber = getPreviousdProgLineNumber(dpln);   //  Car plus bas, il est prévu getNextProgLineNumber() par défaut en mode RUN
+                                            nextProgLineNumber = dpln;
                                         } else {   //  Invalide
-                                            error = ERROR_GTO;
+                                            error = ERROR_GTO_GSB;
                                         }
                                     }
                                 }
@@ -799,7 +805,7 @@ public class MainActivity extends Activity {
                                         break;
                                     case TF:
                                         if (!alu.testFlag(flagIndex)) {   //  Skip next line if flag cleared
-                                            currentProgLineNumber = getNextProgLineNumber(currentProgLineNumber);
+                                            nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
                                         }
                                         break;
                                 }
@@ -921,7 +927,7 @@ public class MainActivity extends Activity {
                 if (mode.equals(MODES.EDIT)) {
                     if (currentProgLineNumber != 0) {   //  Interdiction d'effacer BEGIN
                         alu.removeProgLineAtNumber(currentProgLineNumber);
-                        currentProgLineNumber = getPreviousdProgLineNumber(currentProgLineNumber);
+                        nextProgLineNumber = decProgLineNumber(currentProgLineNumber);
                     }
                 }
             }
@@ -1591,7 +1597,7 @@ public class MainActivity extends Activity {
                 if (canExecAfterHandling(tempProgLine)) {
                     if (alphaToX()) {
                         if (alu.test(op)) {
-                            currentProgLineNumber = getNextProgLineNumber(currentProgLineNumber);
+                            nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
                         }
                     }
                 }
@@ -1612,7 +1618,7 @@ public class MainActivity extends Activity {
                         if (!alu.isStkRetEmpty()) {  //  La pile d'appel n'est pas vide
                             int dpln = alu.getLastStkRetProgLineNumber();
                             alu.removeLastStkRetProgLineNumber();
-                            currentProgLineNumber = getPreviousdProgLineNumber(dpln);    //  Car plus bas, il est prévu getNextProgLineNumber() par défaut en mode RUN
+                            nextProgLineNumber = dpln;
                         } else {   //  STOP
                             mode = MODES.NORM;
                             createNewProgLine = true;
@@ -1673,7 +1679,7 @@ public class MainActivity extends Activity {
                 if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {
                     if (alphaToX()) {
                         createNewProgLine = false;
-                        currentProgLineNumber = getNextProgLineNumber(currentProgLineNumber);
+                        currentProgLineNumber = incProgLineNumber(currentProgLineNumber);   //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ouEDIT
                         readProgLine = alu.getProgLine(currentProgLineNumber);
                         feedOps(readProgLine);
                         createNewProgLine = true;
@@ -1684,7 +1690,7 @@ public class MainActivity extends Activity {
                 if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {
                     if (alphaToX()) {
                         createNewProgLine = false;
-                        currentProgLineNumber = getPreviousdProgLineNumber(currentProgLineNumber);
+                        currentProgLineNumber = decProgLineNumber(currentProgLineNumber);
                         readProgLine = alu.getProgLine(currentProgLineNumber);
                         feedOps(readProgLine);
                         createNewProgLine = true;
@@ -1740,12 +1746,12 @@ public class MainActivity extends Activity {
                         }
                         dotMatrixDisplayUpdater.displayText(disp, true);
                     }
+                    currentProgLineNumber = nextProgLineNumber;
                     if (mode.equals(MODES.EDIT)) {
                         disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
                         dotMatrixDisplayUpdater.displayText(disp, false);
                     }
                     if (mode.equals(MODES.RUN)) {   //  On continue dans ce mode tant qu'il n'y a pas d'arrêt
-                        currentProgLineNumber = getNextProgLineNumber(currentProgLineNumber);
                         readProgLine = alu.getProgLine(currentProgLineNumber);
                         feedOps(readProgLine);
                     }
@@ -1807,7 +1813,7 @@ public class MainActivity extends Activity {
                 if (!alu.addProgLineAtNumber(progLine, pln)) {
                     error = ERROR_PROG_LINES_FULL;
                 } else {   //  OK nouvelle ligne en mode EDIT
-                    currentProgLineNumber = pln;
+                    nextProgLineNumber = pln;
                 }
             }
             res = false;   //  Ne pas exécuter la ligne
@@ -1829,7 +1835,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private int getNextProgLineNumber(int progLineNumber) {
+    private int incProgLineNumber(int progLineNumber) {
         int res = progLineNumber + 1;
         if (res == alu.getProgLinesSize()) {   //  N'existe pas => Premier
             res = 0;
@@ -1837,7 +1843,7 @@ public class MainActivity extends Activity {
         return res;
     }
 
-    private int getPreviousdProgLineNumber(int progLineNumber) {
+    private int decProgLineNumber(int progLineNumber) {
         int res = progLineNumber - 1;
         if (res < 0) {
             res = alu.getProgLinesSize() - 1;   //  BEGIN => Dernier
