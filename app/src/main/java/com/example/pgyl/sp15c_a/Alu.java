@@ -19,6 +19,9 @@ public class Alu {
         ISG("ISG"),
         USER("USER"),
         MEM("MEM"),
+        ON("ON"),
+        MATRIX("MATRIX"),
+        RESULT("RESULT"),
         //  ****************************** Début Bloc (à laisser dans l'ordre, pour identifier facilement "de A à E")
         A("A"),
         B("B"),
@@ -154,7 +157,7 @@ public class Alu {
         KEY_13(13, OPS.EXP10, OPS.C, OPS.LOG),
         KEY_14(14, OPS.POWER, OPS.D, OPS.PC),
         KEY_15(15, OPS.INV, OPS.E, OPS.DPC),
-        KEY_16(16, OPS.CHS, OPS.UNKNOWN, OPS.ABS),
+        KEY_16(16, OPS.CHS, OPS.MATRIX, OPS.ABS),   //  MATRIX inactif
         KEY_17(17, OPS.DIGIT_7, OPS.FIX, OPS.DEG),
         KEY_18(18, OPS.DIGIT_8, OPS.SCI, OPS.RAD),
         KEY_19(19, OPS.DIGIT_9, OPS.ENG, OPS.GRAD),
@@ -164,7 +167,7 @@ public class Alu {
         KEY_23(23, OPS.SIN, OPS.DIM, OPS.ASIN),
         KEY_24(24, OPS.COS, OPS.INDI, OPS.ACOS),
         KEY_25(25, OPS.TAN, OPS.I, OPS.ATAN),
-        KEY_26(26, OPS.EEX, OPS.UNKNOWN, OPS.PI),
+        KEY_26(26, OPS.EEX, OPS.RESULT, OPS.PI),   //  RESULT inactif
         KEY_27(27, OPS.DIGIT_4, OPS.XCHG, OPS.SF),
         KEY_28(28, OPS.DIGIT_5, OPS.DSE, OPS.CF),
         KEY_29(29, OPS.DIGIT_6, OPS.ISG, OPS.TF),
@@ -179,7 +182,7 @@ public class Alu {
         KEY_38(38, OPS.DIGIT_2, OPS.HMS, OPS.H),
         KEY_39(39, OPS.DIGIT_3, OPS.TO_RAD, OPS.TO_DEG),
         KEY_30(30, OPS.MINUS, OPS.UNKNOWN, OPS.TEST),
-        KEY_41(41, OPS.UNKNOWN, OPS.UNKNOWN, OPS.UNKNOWN),
+        KEY_41(41, OPS.ON, OPS.UNKNOWN, OPS.UNKNOWN),   //  ON inactif
         KEY_42(42, OPS.F, OPS.UNKNOWN, OPS.UNKNOWN),
         KEY_43(43, OPS.G, OPS.UNKNOWN, OPS.UNKNOWN),
         KEY_44(44, OPS.STO, OPS.FRAC, OPS.INT),

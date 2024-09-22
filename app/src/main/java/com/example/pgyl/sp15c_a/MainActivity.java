@@ -789,6 +789,85 @@ public class MainActivity extends Activity {
                 }
             }
             if (inOp != null) {
+                if ((inOp.equals(OPS.DSE)) || (inOp.equals(OPS.ISG))) {
+                    if (((op.INDEX() >= OPS.DIGIT_0.INDEX()) && (op.INDEX() <= OPS.DIGIT_9.INDEX())) ||
+                            (shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI)) || (op.equals(OPS.DOT))) {  //  Chiffre (entre 0 et 9) ou "." ou I (TAN)  ou "(i)" (COS)
+
+                        if ((shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI))) {
+                            op = shiftFOp;
+                        }
+                        if (op.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre (un chiffre)
+                            tempProgLine.setOp(1, op);
+                            op = OPS.UNKNOWN;   //  Ne pas traiter plus loin dans cette procédure
+                        }
+                        if ((op.INDEX() >= OPS.DIGIT_0.INDEX()) && (op.INDEX() <= OPS.DIGIT_9.INDEX()) ||
+                                (op.equals(OPS.I)) || (op.equals(OPS.INDI))) {   //  Chiffre ou I ou (i) => OK on peut enfin traiter;  (TAN: I) (COS: (i))
+
+                            int index = -1;
+                            if (op.equals(OPS.I)) { //  DSE/ISG I
+                                index = BASE_REGS.RI.INDEX();
+                            }
+                            if (op.equals(OPS.INDI)) { //  DSE/ISG (i))
+                                int dataIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
+                                index = alu.getRegIndexByDataIndex(dataIndex);
+                                if ((index < 0) || (index > alu.getRegsMaxIndex())) {
+                                    error = ERROR_INDEX;
+                                }
+                            }
+                            if ((op.INDEX() >= OPS.DIGIT_0.INDEX()) && (op.INDEX() <= OPS.DIGIT_9.INDEX())) {   //  Chiffre => DSE/ISG n ou DSE/ISG .n
+                                String s = op.SYMBOL();
+                                if (tempProgLine.getOp(1) != null) {   //  .n
+                                    s = OPS.DOT.SYMBOL() + s;
+                                }
+                                index = alu.getRegIndexBySymbol(s);   //
+                            }
+                            if (error.equals("")) {
+                                tempProgLine.setOp(2, op);
+                                if (canExecAfterHandling(tempProgLine)) {
+                                    if (alphaToX()) {
+                                        double value = alu.getRegContentsByIndex(index);   //  value: counter(nnnnn).goal(nnn)step(nn)
+                                        double v = Math.abs(value);
+                                        int counter = (int) v;
+                                        double g = (v - (double) counter) * 1000d;
+                                        int goal = (int) g;
+                                        double st = (g - (double) goal) * 1000d;
+                                        int step = (int) st;
+                                        if (step == 0) {
+                                            step = 1;
+                                        }
+                                        if (value < 0) {
+                                            counter = -counter;
+                                        }
+                                        switch (inOp) {
+                                            case DSE:
+                                                counter = counter - step;
+                                                if (counter <= goal) {
+                                                    nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
+                                                }
+                                                break;
+                                            case ISG:
+                                                counter = counter + step;
+                                                if (counter > goal) {
+                                                    nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
+                                                }
+                                                break;
+                                        }
+                                        value = Math.abs((double) counter) + ((double) goal + (double) step / 100d) / 1000d;
+                                        if (counter < 0) {
+                                            value = -value;
+                                        }
+                                        alu.setRegContentsByIndex(index, value);   //  Update register
+                                        stackLiftEnabled = true;
+                                    }
+                                }
+                            }
+                            inOp = null;
+                            op = OPS.UNKNOWN;   //  Ne pas traiter plus loin dans cette procédure
+                        }
+                    }
+                }
+            }
+            if (inOp != null) {
                 if ((inOp.equals(OPS.SF)) || (inOp.equals(OPS.CF)) || (inOp.equals(OPS.TF))) {
                     if ((op.INDEX() >= OPS.DIGIT_0.INDEX()) && (op.INDEX() <= OPS.DIGIT_9.INDEX())) {  //  Chiffre (entre 0 et 9)
 
@@ -1714,7 +1793,8 @@ public class MainActivity extends Activity {
                     (op.equals(OPS.HYP)) || (op.equals(OPS.AHYP)) || (op.equals(OPS.TEST)) ||
                     (op.equals(OPS.DIM)) || (op.equals(OPS.GTO)) || (op.equals(OPS.GSB)) || (op.equals(OPS.LBL)) ||
                     (op.equals(OPS.SF)) || (op.equals(OPS.CF)) || (op.equals(OPS.TF)) ||
-                    ((op.INDEX() >= OPS.A.INDEX()) && (op.INDEX() <= OPS.E.INDEX()))) {
+                    (op.equals(OPS.DSE)) || (op.equals(OPS.ISG)) ||
+                    ((op.INDEX() >= OPS.A.INDEX()) && (op.INDEX() <= OPS.E.INDEX()))) {   //  Entrée directe de A..E sera convertie en GSB A..E
                 inOp = op;   //  Attente de paramètre
             }
             if (inOp == null) {    //  Ligne terminée (déjà enregistrée dans progLines)
@@ -1810,10 +1890,10 @@ public class MainActivity extends Activity {
         if (mode.equals(MODES.EDIT)) {   //  EDIT
             if (createNewProgLine) {   //  Créer une nouvelle ligne
                 int pln = currentProgLineNumber + 1;   //  Pas getNextProgLineNumber(currentProgLineNumber), afin d' éviter Wrap around
-                if (!alu.addProgLineAtNumber(progLine, pln)) {
-                    error = ERROR_PROG_LINES_FULL;
-                } else {   //  OK nouvelle ligne en mode EDIT
+                if (alu.addProgLineAtNumber(progLine, pln)) {   //  OK nouvelle ligne en mode EDIT
                     nextProgLineNumber = pln;
+                } else {
+                    error = ERROR_PROG_LINES_FULL;
                 }
             }
             res = false;   //  Ne pas exécuter la ligne
