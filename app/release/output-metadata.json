@@ -4,16 +4,16 @@
     "type": "APK",
     "kind": "Directory"
   },
-  "applicationId": "com.example.bonux.swtimer_a",
+  "applicationId": "com.example.pgyl.sp15c_a",
   "variantName": "release",
   "elements": [
     {
       "type": "SINGLE",
       "filters": [],
       "attributes": [],
-      "versionCode": 242042304,
-      "versionName": "22/07/2024@23:04:13",
-      "outputFile": "SWTIMER_A-release.apk"
+      "versionCode": 242691738,
+      "versionName": "25/09/2024@17:38:31",
+      "outputFile": "SP15C_A-release.apk"
     }
   ],
   "elementType": "File"
