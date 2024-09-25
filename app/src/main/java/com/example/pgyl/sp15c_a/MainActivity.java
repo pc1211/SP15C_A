@@ -364,7 +364,7 @@ public class MainActivity extends Activity {
             handleGhostOp();   //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
             if (inOp != null) {   //  instruction MultiOps déjà engagée
                 shiftFOp = alu.getKeyByOp(currentOp).SHIFT_F_OP();   //  Pour I, (i), ou A..E;
-                handleEndMultiOps();   //  Test si Instruction MultiOps (Eventuellement inOp y deviendra null si instruction MultiOps complète (=> Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Nouvelle instruction))
+                handleEndMultiOps();   //  Test si fin d'nstruction MultiOps (Eventuellement inOp y deviendra null si instruction MultiOps complète (=> Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Nouvelle instruction))
             } else {   //  Pas d'instruction MultiOps déjà engagée
                 tempProgLine.setOp(0, currentOp);   //  Nouvelle instruction commence
                 handleDigitOps();   //  Test si Chiffre entré (ou CHS, EEX, "."): stackLift éventuel et se met en fin du nombre en cours (Si EDIT: Nouvelle instruction avec ce chiffre)
@@ -372,7 +372,7 @@ public class MainActivity extends Activity {
                 handleSpecialOps();   //  Test si Opération non MultiOps, spéciale (=> stackLift éventuel, Nbre en cours copié dans X et vidé, puis exécution éventuelle) (si EDIT: Nouvelle instruction éventuelle)
                 handleBeginMultiOps();  //  Test si début d'instruction MultiOps: inOp deviendra non null
             }
-            if (inOp == null) {    //  Instruction terminée (déjà enregistrée dans progLines si EDIT ou RUN)
+            if (inOp == null) {    //  Instruction terminée (déjà enregistrée dans progLines si EDIT ou RUN) ou éventuellement annulée pour problème de syntaxe mais sans erreur explicite
                 alu.clearProgLine(tempProgLine);   //  Préparer le terrain pour une nouvelle instruction
                 if (isKeyboardInterrupt) {
                     isKeyboardInterrupt = false;
@@ -394,6 +394,7 @@ public class MainActivity extends Activity {
                         dotMatrixDisplayView.setInvertOn(false);
                         createNewProgLine = true;
                         isAutoLine = false;
+                        inOp = null;
                     }
                     dotMatrixDisplayUpdater.displayText(error, false);
                     alpha = "";
@@ -599,11 +600,15 @@ public class MainActivity extends Activity {
         final float BUTTON_TOP_IMAGE_SIZE_COEFF = 0.7f;
         final float BUTTON_MID_IMAGE_SIZE_COEFF = 0.65f;
         final float BUTTON_LOW_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.65f;
         final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.55f;
         final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.3f;
         final float BUTTON_MID_31_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_32_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_33_IMAGE_SIZE_COEFF = 0.55f;
         final float BUTTON_MID_35_IMAGE_SIZE_COEFF = 0.5f;
         final float BUTTON_MID_36_IMAGE_SIZE_COEFF = 0.85f;
@@ -654,8 +659,17 @@ public class MainActivity extends Activity {
                             }
                         }
                         buttons[key.INDEX()].setHeightWeight(legendPos.INDEX(), heightWeight);
-                        if ((key.equals(KEYS.KEY_23)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SIN à adapter
+                        if ((key.equals(KEYS.KEY_21)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SST à adapter
+                            imageSizeCoeff = BUTTON_MID_21_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_22)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image GTO à adapter
+                            imageSizeCoeff = BUTTON_MID_22_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_23)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image COS à adapter
                             imageSizeCoeff = BUTTON_MID_23_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_24)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SIN à adapter
+                            imageSizeCoeff = BUTTON_MID_24_IMAGE_SIZE_COEFF;
                         }
                         if ((key.equals(KEYS.KEY_25)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image TAN à adapter
                             imageSizeCoeff = BUTTON_MID_25_IMAGE_SIZE_COEFF;
@@ -666,8 +680,11 @@ public class MainActivity extends Activity {
                         if ((key.equals(KEYS.KEY_30)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image Minus à adapter
                             imageSizeCoeff = BUTTON_MID_30_IMAGE_SIZE_COEFF;
                         }
-                        if ((key.equals(KEYS.KEY_31)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image RDN à adapter
+                        if ((key.equals(KEYS.KEY_31)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image R/S à adapter
                             imageSizeCoeff = BUTTON_MID_31_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_32)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image GSB à adapter
+                            imageSizeCoeff = BUTTON_MID_32_IMAGE_SIZE_COEFF;
                         }
                         if ((key.equals(KEYS.KEY_33)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image RDN à adapter
                             imageSizeCoeff = BUTTON_MID_33_IMAGE_SIZE_COEFF;
@@ -753,30 +770,36 @@ public class MainActivity extends Activity {
                 tempProgLine.setOp(1, inOp);   //  Garder l'opération initiale (AHYP COS , TEST n) après op0; op0 sera fixé dans handleOp()
                 tempProgLine.setOp(2, currentOp);
                 currentOp = dop;   //  l'opération est requalifiée en son équivalent direct et sera examinée plus bas
+                KEYS key = alu.getKeyByOp(inOp);
+                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                buttons[key.INDEX()].updateDisplay();
                 inOp = null;
             }
         }
     }
 
     private void handleEndMultiOps() {
-        boolean isComplete = false;
-        if ((inOp.equals(OPS.FIX)) || (inOp.equals(OPS.SCI)) || (inOp.equals(OPS.ENG))) {
-            if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()))
-                    || (shiftFOp.equals(OPS.I))) {   //  Chiffre (entre 0 et 9) ou contenu dans I (Touche TAN)
+        if (inOp != null) {
+            boolean isComplete = false;
+            boolean mustWait = false;
+            if ((inOp.equals(OPS.FIX)) || (inOp.equals(OPS.SCI)) || (inOp.equals(OPS.ENG))) {
+                if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()))
+                        || (shiftFOp.equals(OPS.I))) {   //  Chiffre (entre 0 et 9) ou contenu dans I (Touche TAN)
 
-                isComplete = true;
-                if (shiftFOp.equals(OPS.I)) {
-                    currentOp = shiftFOp;
-                }
-                tempProgLine.setOp(1, currentOp);
-                if (canExecAfterHandling(tempProgLine)) {
-                    if (alphaToX()) {   //  Si on tape 5 puis 6 puis FIX 4 => On doit voir 56 avec 4 décimales
-                        alu.setRoundMode(inOp);
-                        int n = (currentOp.equals(OPS.I) ? (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX()) : Integer.valueOf(currentOp.SYMBOL()));
-                        alu.setRoundParam(n);
+                    if (shiftFOp.equals(OPS.I)) {
+                        currentOp = shiftFOp;
                     }
+                    isComplete = true;
+                    tempProgLine.setOp(1, currentOp);
+                    if (canExecAfterHandling(tempProgLine)) {
+                        if (alphaToX()) {   //  Si on tape 5 puis 6 puis FIX 4 => On doit voir 56 avec 4 décimales
+                            alu.setRoundMode(inOp);
+                            int n = (currentOp.equals(OPS.I) ? (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX()) : Integer.valueOf(currentOp.SYMBOL()));
+                            alu.setRoundParam(n);
+                        }
+                    }
+                    //  FIX/SCI/ENG neutre sur stacklift
                 }
-                //  FIX/SCI/ENG neutre sur stacklift
             }
             if (inOp.equals(OPS.STO)) {
                 if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
@@ -789,15 +812,18 @@ public class MainActivity extends Activity {
                     }
                     if ((currentOp.equals(OPS.PLUS)) || (currentOp.equals(OPS.MINUS)) || (currentOp.equals(OPS.MULT)) || (currentOp.equals(OPS.DIV))) {   //  +-*/ => On continue à attendre
                         tempProgLine.setOp(1, currentOp);
+                        mustWait = true;
                     }
                     if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
                         if (tempProgLine.getOp(1) != null) {   //  Le +-*/ ne peut suivre un "."
                             error = ERROR_STO;
                         } else {   //  Un "." suit +-*/    OK
                             tempProgLine.setOp(2, currentOp);
+                            mustWait = true;
                         }
                     }
                     if (currentOp.equals(OPS.RAND)) {   //  STO RAN # traité mais sans effet
+                        isComplete = true;
                         tempProgLine.setOp(1, currentOp);
                         if (canExecAfterHandling(tempProgLine)) {
                             if (alphaToX()) {
@@ -809,7 +835,6 @@ public class MainActivity extends Activity {
                     if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
                             (currentOp.equals(OPS.I)) || (currentOp.equals(OPS.INDI))) {   //  Chiffre ou I ou (i) => OK on peut enfin traiter;  (TAN: I) (COS: (i))
 
-                        isComplete = true;
                         int index = -1;
                         if (currentOp.equals(OPS.I)) {
                             index = BASE_REGS.RI.INDEX();
@@ -829,6 +854,7 @@ public class MainActivity extends Activity {
                             index = alu.getRegIndexBySymbol(s);
                         }
                         if (error.equals("")) {
+                            isComplete = true;
                             tempProgLine.setOp(3, currentOp);
                             if (canExecAfterHandling(tempProgLine)) {
                                 if (alphaToX()) {
@@ -842,89 +868,157 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-        }
-        if (inOp.equals(OPS.RCL)) {
-            if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
-                    (currentOp.equals(OPS.DIM)) || (currentOp.equals(OPS.SIGMA_PLUS)) ||
-                    (shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI)) || (currentOp.equals(OPS.DOT)) ||
-                    (currentOp.equals(OPS.PLUS)) || (currentOp.equals(OPS.MINUS)) || (currentOp.equals(OPS.MULT)) || (currentOp.equals(OPS.DIV))) {  //  Eventuel +-*/ puis Chiffre (entre 0 et 9) ou "." ou I (TAN)  ou "(i)" (COS)
+            if (inOp.equals(OPS.RCL)) {
+                if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
+                        (shiftFOp.equals(OPS.DIM)) || (currentOp.equals(OPS.SIGMA_PLUS)) ||
+                        (shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI)) || (currentOp.equals(OPS.DOT)) ||
+                        (currentOp.equals(OPS.PLUS)) || (currentOp.equals(OPS.MINUS)) || (currentOp.equals(OPS.MULT)) || (currentOp.equals(OPS.DIV))) {  //  Eventuel +-*/ puis Chiffre (entre 0 et 9) ou "." ou I (TAN)  ou "(i)" (COS)
 
-                if ((shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.I))) {
-                    currentOp = shiftFOp;
-                }
-                if ((currentOp.equals(OPS.PLUS)) || (currentOp.equals(OPS.MINUS)) || (currentOp.equals(OPS.MULT)) || (currentOp.equals(OPS.DIV))) {   //  +-*/ => On continue à attendre
-                    tempProgLine.setOp(1, currentOp);
-                }
-                if (currentOp.equals(OPS.DIM)) {   //  Attendre maintenant (i) dans RCL DIM (i)
-                    tempProgLine.setOp(3, currentOp);
-                }
-                if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
-                    if (tempProgLine.getOp(1) != null) {   //  Le +-*/ ne peut suivre un "."
-                        error = ERROR_RCL;
-                    } else {   //  Un "." suit +-*/    OK
-                        tempProgLine.setOp(2, currentOp);
+                    if ((shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI)) || (shiftFOp.equals(OPS.DIM))) {
+                        currentOp = shiftFOp;
                     }
-                }
-                if (currentOp.equals(OPS.INDI)) {   //  COS: (i), dans RCL DIM (i)
-                    isComplete = true;
-                    if (tempProgLine.getOp(3) != null) {
-                        if (tempProgLine.getOp(3).equals(OPS.DIM)) {  //  RCL DIM (i) à traiter
-                            currentOp = OPS.INDI;
-                            tempProgLine.setOp(4, currentOp);
-                            if (canExecAfterHandling(tempProgLine)) {
-                                if (alphaToX()) {
-                                    stackLiftIfEnabled();
-                                    int n = alu.getRegsMaxIndex();
-                                    alu.setStkRegContent(STK_REGS.X, alu.getDataRegIndexByIndex(n));
+                    if ((currentOp.equals(OPS.PLUS)) || (currentOp.equals(OPS.MINUS)) || (currentOp.equals(OPS.MULT)) || (currentOp.equals(OPS.DIV))) {   //  +-*/ => On continue à attendre
+                        tempProgLine.setOp(1, currentOp);
+                        mustWait = true;
+                    }
+                    if (currentOp.equals(OPS.DIM)) {   //  Attendre maintenant (i) dans RCL DIM (i)
+                        tempProgLine.setOp(3, currentOp);
+                        mustWait = true;
+                    }
+                    if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
+                        if (tempProgLine.getOp(1) != null) {   //  Le +-*/ ne peut suivre un "."
+                            error = ERROR_RCL;
+                        } else {   //  Un "." suit +-*/    OK
+                            tempProgLine.setOp(2, currentOp);
+                            mustWait = true;
+                        }
+                    }
+                    if (currentOp.equals(OPS.INDI)) {   //  COS: (i), dans RCL DIM (i)
+                        if (tempProgLine.getOp(3) != null) {
+                            if (tempProgLine.getOp(3).equals(OPS.DIM)) {  //  RCL DIM (i) à traiter
+                                isComplete = true;
+                                currentOp = OPS.INDI;
+                                tempProgLine.setOp(4, currentOp);
+                                if (canExecAfterHandling(tempProgLine)) {
+                                    if (alphaToX()) {
+                                        stackLiftIfEnabled();
+                                        int n = alu.getRegsMaxIndex();
+                                        alu.setStkRegContent(STK_REGS.X, alu.getDataRegIndexByIndex(n));
+                                        stackLiftEnabled = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (currentOp.equals(OPS.SIGMA_PLUS)) {   //  RCL SIGMA+
+                        isComplete = true;
+                        tempProgLine.setOp(4, currentOp);
+                        if (canExecAfterHandling(tempProgLine)) {
+                            if (alphaToX()) {
+                                alu.stackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
+                                stackLiftIfEnabled();
+                                error = alu.sumXYToXY();
+                                if (error.equals("")) {
                                     stackLiftEnabled = true;
                                 }
                             }
                         }
                     }
-                }
-                if (currentOp.equals(OPS.SIGMA_PLUS)) {   //  RCL SIGMA+
-                    isComplete = true;
-                    tempProgLine.setOp(4, currentOp);
-                    if (canExecAfterHandling(tempProgLine)) {
-                        if (alphaToX()) {
-                            alu.stackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
-                            stackLiftIfEnabled();
-                            error = alu.sumXYToXY();
+                    if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
+                            (currentOp.equals(OPS.I)) || (currentOp.equals(OPS.INDI))) {   //  Chiffre ou I ou (i) => OK on peut enfin traiter;  (TAN: I) (COS: (i))
+
+                        if (tempProgLine.getOp(3) == null) {   //  cad ne pas interférer avec RCL DIM (i)
+                            int index = -1;
+                            if (currentOp.equals(OPS.I)) { //  I
+                                index = BASE_REGS.RI.INDEX();
+                            }
+                            if (currentOp.equals(OPS.INDI)) { //  (i))
+                                int dataIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
+                                index = alu.getRegIndexByDataIndex(dataIndex);
+                                if ((index < 0) || (index > alu.getRegsMaxIndex())) {
+                                    error = ERROR_INDEX;
+                                }
+                            }
+                            if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {   //  Chiffre => Rn ou R.n
+                                String s = currentOp.SYMBOL();
+                                if (tempProgLine.getOp(2) != null) {   //  R.n
+                                    s = OPS.DOT.SYMBOL() + s;
+                                }
+                                index = alu.getRegIndexBySymbol(s);   //
+                            }
                             if (error.equals("")) {
-                                stackLiftEnabled = true;
+                                isComplete = true;
+                                tempProgLine.setOp(4, currentOp);
+                                if (canExecAfterHandling(tempProgLine)) {
+                                    if (alphaToX()) {
+                                        stackLiftIfEnabled();
+                                        error = (tempProgLine.getOp(1) != null ? alu.regToXOp(index, tempProgLine.getOp(1)) : alu.regToX(index));
+                                        if (error.equals("")) {
+                                            stackLiftEnabled = true;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
-                if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
-                        (currentOp.equals(OPS.I)) || (currentOp.equals(OPS.INDI))) {   //  Chiffre ou I ou (i) => OK on peut enfin traiter;  (TAN: I) (COS: (i))
+            }
+            if (inOp.equals(OPS.DIM)) {   //  DIM (i)
+                if (shiftFOp.equals(OPS.INDI)) {   //  COS: (i) était attendu après DIM
+                    isComplete = true;
+                    currentOp = OPS.INDI;
+                    tempProgLine.setOp(1, currentOp);
+                    if (canExecAfterHandling(tempProgLine)) {
+                        if (alphaToX()) {   //  Si on tape 5 puis 6 puis DIM (i) => On doit voir 56  (dataRegIndex max)
+                            int n = (int) alu.getStkRegContents(STK_REGS.X);
+                            error = alu.setDataRegsSize(n + 1);   //  n=max Data Index
+                            if (error.equals("")) {
+                                stackLiftEnabled = true;
+                            } else {   //  Erreur
+                                error = "RANGE 0-" + alu.getDataRegIndexByIndex(alu.getRegsAbsoluteSizeMax() - 1);
+                            }
+                        }
+                    }
+                }
+            }
+            if (inOp.equals(OPS.XCHG)) {
+                if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
+                        (shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI)) || (currentOp.equals(OPS.DOT))) {  //  Chiffre (entre 0 et 9) ou "." ou I (TAN)  ou "(i)" (COS)
 
-                    if (tempProgLine.getOp(3) == null) {   //  cad ne pas interférer avec RCL DIM (i)
-                        isComplete = true;
+                    if ((shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI))) {
+                        currentOp = shiftFOp;
+                    }
+                    if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre (un chiffre)
+                        tempProgLine.setOp(1, currentOp);
+                        mustWait = true;
+                    }
+                    if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
+                            (currentOp.equals(OPS.I)) || (currentOp.equals(OPS.INDI))) {   //  Chiffre ou I ou (i) => OK on peut enfin traiter;  (TAN: I) (COS: (i))
+
                         int index = -1;
-                        if (currentOp.equals(OPS.I)) { //  I
+                        if (currentOp.equals(OPS.I)) { //  X<>I
                             index = BASE_REGS.RI.INDEX();
                         }
-                        if (currentOp.equals(OPS.INDI)) { //  (i))
+                        if (currentOp.equals(OPS.INDI)) { //  X<>(i))
                             int dataIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
                             index = alu.getRegIndexByDataIndex(dataIndex);
                             if ((index < 0) || (index > alu.getRegsMaxIndex())) {
                                 error = ERROR_INDEX;
                             }
                         }
-                        if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {   //  Chiffre => Rn ou R.n
+                        if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {   //  Chiffre => X<>n ou X<>.n
                             String s = currentOp.SYMBOL();
-                            if (tempProgLine.getOp(2) != null) {   //  R.n
+                            if (tempProgLine.getOp(1) != null) {   //  .n
                                 s = OPS.DOT.SYMBOL() + s;
                             }
                             index = alu.getRegIndexBySymbol(s);   //
                         }
                         if (error.equals("")) {
-                            tempProgLine.setOp(4, currentOp);
+                            isComplete = true;
+                            tempProgLine.setOp(2, currentOp);
                             if (canExecAfterHandling(tempProgLine)) {
                                 if (alphaToX()) {
-                                    stackLiftIfEnabled();
-                                    error = (tempProgLine.getOp(1) != null ? alu.regToXOp(index, tempProgLine.getOp(1)) : alu.regToX(index));
+                                    error = alu.xXchgReg(index);
                                     if (error.equals("")) {
                                         stackLiftEnabled = true;
                                     }
@@ -934,155 +1028,134 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-        }
-        if (inOp.equals(OPS.DIM)) {   //  DIM (i)
-            if (shiftFOp.equals(OPS.INDI)) {   //  COS: (i) était attendu après DIM
-                isComplete = true;
-                currentOp = OPS.INDI;
-                tempProgLine.setOp(1, currentOp);
-                if (canExecAfterHandling(tempProgLine)) {
-                    if (alphaToX()) {   //  Si on tape 5 puis 6 puis DIM (i) => On doit voir 56  (dataRegIndex max)
-                        int n = (int) alu.getStkRegContents(STK_REGS.X);
-                        error = alu.setDataRegsSize(n + 1);   //  n=max Data Index
+            if (inOp.equals(OPS.LBL)) {
+                if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
+                        ((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) ||
+                        (currentOp.equals(OPS.DOT))) {  //  Chiffre (entre 0 et 9) (avec "." antérieur éventuel) ou A..E
+
+                    if ((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) {
+                        currentOp = shiftFOp;
+                    }
+                    if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
+                        tempProgLine.setOp(1, currentOp);
+                        mustWait = true;
+                    }
+                    if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
+                            ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) ||
+                            (currentOp.equals(alu.getKeyByOp(OPS.I).UNSHIFTED_OP()))) {   //  [.]Chiffre ou lettre   => OK on peut enfin traiter;
+
+                        if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
+                            if (tempProgLine.getOp(1) != null) {   //  .A à .E non admis
+                                error = ERROR_GTO_GSB;
+                            }
+                        }
                         if (error.equals("")) {
-                            stackLiftEnabled = true;
-                        } else {   //  Erreur
-                            error = "RANGE 0-" + alu.getDataRegIndexByIndex(alu.getRegsAbsoluteSizeMax() - 1);
-                        }
-                    }
-                }
-            }
-        }
-        if (inOp.equals(OPS.XCHG)) {
-            if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
-                    (shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI)) || (currentOp.equals(OPS.DOT))) {  //  Chiffre (entre 0 et 9) ou "." ou I (TAN)  ou "(i)" (COS)
-
-                if ((shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI))) {
-                    currentOp = shiftFOp;
-                }
-                if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre (un chiffre)
-                    tempProgLine.setOp(1, currentOp);
-                }
-                if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
-                        (currentOp.equals(OPS.I)) || (currentOp.equals(OPS.INDI))) {   //  Chiffre ou I ou (i) => OK on peut enfin traiter;  (TAN: I) (COS: (i))
-
-                    isComplete = true;
-                    int index = -1;
-                    if (currentOp.equals(OPS.I)) { //  X<>I
-                        index = BASE_REGS.RI.INDEX();
-                    }
-                    if (currentOp.equals(OPS.INDI)) { //  X<>(i))
-                        int dataIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
-                        index = alu.getRegIndexByDataIndex(dataIndex);
-                        if ((index < 0) || (index > alu.getRegsMaxIndex())) {
-                            error = ERROR_INDEX;
-                        }
-                    }
-                    if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {   //  Chiffre => X<>n ou X<>.n
-                        String s = currentOp.SYMBOL();
-                        if (tempProgLine.getOp(1) != null) {   //  .n
-                            s = OPS.DOT.SYMBOL() + s;
-                        }
-                        index = alu.getRegIndexBySymbol(s);   //
-                    }
-                    if (error.equals("")) {
-                        tempProgLine.setOp(2, currentOp);
-                        if (canExecAfterHandling(tempProgLine)) {
-                            if (alphaToX()) {
-                                error = alu.xXchgReg(index);
-                                if (error.equals("")) {
-                                    stackLiftEnabled = true;
+                            isComplete = true;
+                            tempProgLine.setOp(2, currentOp);
+                            if (canExecAfterHandling(tempProgLine)) {    //  Neutre sur StackLift ???
+                                if (alphaToX()) {
+                                    //  NOP
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-        if (inOp.equals(OPS.LBL)) {
-            if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
-                    ((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) ||
-                    (currentOp.equals(OPS.DOT))) {  //  Chiffre (entre 0 et 9) (avec "." antérieur éventuel) ou A..E
+            if (inOp.equals(OPS.GTO)) {
+                if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
+                        ((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) ||
+                        (shiftFOp.equals(OPS.I)) || (currentOp.equals(OPS.DOT)) ||
+                        (currentOp.equals(OPS.CHS))) { //  Pour GTO CHS nnnn en mode EDIT   //  Chiffre (entre 0 et 9) (avec "." antérieur éventuel) ou A..E ou I (TAN)
 
-                if ((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) {
-                    currentOp = shiftFOp;
-                }
-                if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
-                    tempProgLine.setOp(1, currentOp);
-                }
-                if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
-                        ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) ||
-                        (currentOp.equals(alu.getKeyByOp(OPS.I).UNSHIFTED_OP()))) {   //  [.]Chiffre ou lettre   => OK on peut enfin traiter;
-
-                    isComplete = true;
-                    if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
-                        if (tempProgLine.getOp(1) != null) {   //  .A à .E non admis
-                            error = ERROR_GTO_GSB;
+                    if (((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) || (shiftFOp.equals(OPS.I))) {
+                        currentOp = shiftFOp;
+                    }
+                    if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
+                        tempProgLine.setOp(1, currentOp);
+                        mustWait = true;
+                    }
+                    if (currentOp.equals(OPS.CHS)) {   //  Normalement, on va continuer à attendre
+                        if (mode.equals(MODES.EDIT)) {   //  GTO CHS nnnn uniquement en mode EDIT
+                            tempProgLine.setOp(2, currentOp);
+                            mustWait = true;
                         }
                     }
-                    if (error.equals("")) {
-                        tempProgLine.setOp(2, currentOp);
-                        if (canExecAfterHandling(tempProgLine)) {    //  Neutre sur StackLift ???
-                            if (alphaToX()) {
-                                //  NOP
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (inOp.equals(OPS.GTO)) {
-            if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
-                    ((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) ||
-                    (shiftFOp.equals(OPS.I)) || (currentOp.equals(OPS.DOT)) ||
-                    (currentOp.equals(OPS.CHS))) { //  Pour GTO CHS nnnn en mode EDIT   //  Chiffre (entre 0 et 9) (avec "." antérieur éventuel) ou A..E ou I (TAN)
+                    if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
+                            ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) ||
+                            (currentOp.equals(OPS.I))) {   //  [.]Chiffre ou lettre ou I  => OK on peut enfin traiter;  (TAN: I)
 
-                if (((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) || (shiftFOp.equals(OPS.I))) {
-                    currentOp = shiftFOp;
-                }
-                if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
-                    tempProgLine.setOp(1, currentOp);
-                }
-                if (currentOp.equals(OPS.CHS)) {   //  Normalement, on va continuer à attendre
-                    if (mode.equals(MODES.EDIT)) {   //  GTO CHS nnnn uniquement en mode EDIT
-                        tempProgLine.setOp(2, currentOp);
-                    }
-                }
-                if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
-                        ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) ||
-                        (currentOp.equals(OPS.I))) {   //  [.]Chiffre ou lettre ou I  => OK on peut enfin traiter;  (TAN: I)
-
-                    if ((tempProgLine.getOp(2) != null) && (!isAutoLine)) {    //  GTO CHS nnnn en mode EDIT et pas en mode de lecture automatique de lignes
-                        if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {
-                            if (tempProgLine.getOp(3) == null) {
-                                tempProgLine.setOp(3, currentOp);
-                            } else {  //  Op3 déjà occupé
-                                if (tempProgLine.getOp(4) == null) {
-                                    tempProgLine.setOp(4, currentOp);
-                                } else {   //  Op4 déjà occupé
-                                    if (tempProgLine.getOp(5) == null) {
-                                        tempProgLine.setOp(5, currentOp);
-                                    } else {   //  Op5 déjà occupé
-                                        if (tempProgLine.getOp(6) == null) {   // OK nnnn
-                                            isComplete = true;
-                                            tempProgLine.setOp(6, currentOp);
-                                            int dpln = Integer.valueOf(tempProgLine.getOp(6).SYMBOL()) + 10 * (
-                                                    Integer.valueOf(tempProgLine.getOp(5).SYMBOL()) + 10 * (
-                                                            Integer.valueOf(tempProgLine.getOp(4).SYMBOL()) + 10 * (
-                                                                    Integer.valueOf(tempProgLine.getOp(3).SYMBOL()))));
-                                            if (dpln <= (alu.getProgLinesSize() - 1)) {
-                                                nextProgLineNumber = dpln;
-                                                createNewProgLine = false;
-                                            } else {   //  Invalide
-                                                error = ERROR_GTO_GSB;
+                        if ((tempProgLine.getOp(2) != null) && (!isAutoLine)) {    //  GTO CHS nnnn en mode EDIT et pas en mode de lecture automatique de lignes
+                            if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {
+                                if (tempProgLine.getOp(3) == null) {
+                                    tempProgLine.setOp(3, currentOp);
+                                } else {  //  Op3 déjà occupé
+                                    if (tempProgLine.getOp(4) == null) {
+                                        tempProgLine.setOp(4, currentOp);
+                                    } else {   //  Op4 déjà occupé
+                                        if (tempProgLine.getOp(5) == null) {
+                                            tempProgLine.setOp(5, currentOp);
+                                        } else {   //  Op5 déjà occupé
+                                            if (tempProgLine.getOp(6) == null) {   // OK nnnn
+                                                tempProgLine.setOp(6, currentOp);
+                                                int dpln = Integer.valueOf(tempProgLine.getOp(6).SYMBOL()) + 10 * (
+                                                        Integer.valueOf(tempProgLine.getOp(5).SYMBOL()) + 10 * (
+                                                                Integer.valueOf(tempProgLine.getOp(4).SYMBOL()) + 10 * (
+                                                                        Integer.valueOf(tempProgLine.getOp(3).SYMBOL()))));
+                                                if (dpln <= (alu.getProgLinesSize() - 1)) {
+                                                    isComplete = true;
+                                                    nextProgLineNumber = dpln;
+                                                    createNewProgLine = false;
+                                                } else {   //  Invalide
+                                                    error = ERROR_GTO_GSB;
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
+                        } else {   //  Pas GTO CHS nnnn en mode EDIT
+                            if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
+                                if (tempProgLine.getOp(1) != null) {   //  .A à .E non admis
+                                    error = ERROR_GTO_GSB;
+                                }
+                            }
+                            if (error.equals("")) {
+                                tempProgLine.setOp(2, currentOp);
+                                if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
+                                    if (alphaToX()) {
+                                        if (mode.equals(MODES.NORM)) {
+                                            alu.rebuildlabelToprogLineNumberMap();
+                                        }
+                                        int dpln = alu.getDestProgLineNumber(tempProgLine);
+                                        if (dpln != (-1)) {   //  OK
+                                            isComplete = true;
+                                            nextProgLineNumber = dpln;
+                                        } else {   //  Invalide
+                                            error = ERROR_GTO_GSB;
+                                        }
+                                    }
+                                }
+                            }
                         }
-                    } else {   //  Pas GTO CHS nnnn en mode EDIT
-                        isComplete = true;
+                    }
+                }
+            }
+            if (inOp.equals(OPS.GSB)) {
+                if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
+                        ((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) ||
+                        (shiftFOp.equals(OPS.I)) || (currentOp.equals(OPS.DOT))) {  //  Chiffre (entre 0 et 9) (avec "." antérieur éventuel) ou A..E ou I (TAN)
+
+                    if (((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) || (shiftFOp.equals(OPS.I))) {
+                        currentOp = shiftFOp;
+                    }
+                    if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
+                        tempProgLine.setOp(1, currentOp);
+                        mustWait = true;
+                    }
+                    if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
+                            ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) ||
+                            (currentOp.equals(OPS.I))) {   //  [.]Chiffre ou lettre ou I  => OK on peut enfin traiter;  (TAN: I)
+
                         if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
                             if (tempProgLine.getOp(1) != null) {   //  .A à .E non admis
                                 error = ERROR_GTO_GSB;
@@ -1092,11 +1165,21 @@ public class MainActivity extends Activity {
                             tempProgLine.setOp(2, currentOp);
                             if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
                                 if (alphaToX()) {
-                                    if (mode.equals(MODES.NORM)) {
+                                    if (mode.equals(MODES.RUN)) {   //  Au retour, revenir à la ligne suivant l'actuelle
+                                        if (!alu.addStkRetProgLineNumber(nextProgLineNumber)) {   //  MAX_RETS dépassé
+                                            error = ERROR_RET_STACK_FULL;
+                                        }
+                                    }
+                                    if (mode.equals(MODES.NORM)) {   //   Exécuter un GSB, c'est se mettre en mode RUN car plusieurs lignes à exécuter
                                         alu.rebuildlabelToprogLineNumberMap();
+                                        nowmRUN = System.currentTimeMillis();
+                                        mode = MODES.RUN;
+                                        createNewProgLine = false;
+                                        isAutoLine = true;
                                     }
                                     int dpln = alu.getDestProgLineNumber(tempProgLine);
                                     if (dpln != (-1)) {   //  OK
+                                        isComplete = true;
                                         nextProgLineNumber = dpln;
                                     } else {   //  Invalide
                                         error = ERROR_GTO_GSB;
@@ -1107,160 +1190,114 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-        }
-        if (inOp.equals(OPS.GSB)) {
-            if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
-                    ((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) ||
-                    (shiftFOp.equals(OPS.I)) || (currentOp.equals(OPS.DOT))) {  //  Chiffre (entre 0 et 9) (avec "." antérieur éventuel) ou A..E ou I (TAN)
+            if ((inOp.equals(OPS.DSE)) || (inOp.equals(OPS.ISG))) {
+                if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
+                        (shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI)) || (currentOp.equals(OPS.DOT))) {  //  Chiffre (entre 0 et 9) ou "." ou I (TAN)  ou "(i)" (COS)
 
-                if (((shiftFOp.INDEX() >= OPS.A.INDEX()) && (shiftFOp.INDEX() <= OPS.E.INDEX())) || (shiftFOp.equals(OPS.I))) {
-                    currentOp = shiftFOp;
-                }
-                if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre
-                    tempProgLine.setOp(1, currentOp);
-                }
-                if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
-                        ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) ||
-                        (currentOp.equals(OPS.I))) {   //  [.]Chiffre ou lettre ou I  => OK on peut enfin traiter;  (TAN: I)
-
-                    isComplete = true;
-                    if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
-                        if (tempProgLine.getOp(1) != null) {   //  .A à .E non admis
-                            error = ERROR_GTO_GSB;
-                        }
+                    if ((shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI))) {
+                        currentOp = shiftFOp;
                     }
-                    if (error.equals("")) {
-                        tempProgLine.setOp(2, currentOp);
-                        if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
-                            if (alphaToX()) {
-                                if (mode.equals(MODES.RUN)) {   //  Au retour, revenir à la ligne suivant l'actuelle
-                                    if (!alu.addStkRetProgLineNumber(nextProgLineNumber)) {   //  MAX_RETS dépassé
-                                        error = ERROR_RET_STACK_FULL;
+                    if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre (un chiffre)
+                        tempProgLine.setOp(1, currentOp);
+                        mustWait = true;
+                    }
+                    if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
+                            (currentOp.equals(OPS.I)) || (currentOp.equals(OPS.INDI))) {   //  Chiffre ou I ou (i) => OK on peut enfin traiter;  (TAN: I) (COS: (i))
+
+                        int index = -1;
+                        if (currentOp.equals(OPS.I)) { //  DSE/ISG I
+                            index = BASE_REGS.RI.INDEX();
+                        }
+                        if (currentOp.equals(OPS.INDI)) { //  DSE/ISG (i))
+                            int dataIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
+                            index = alu.getRegIndexByDataIndex(dataIndex);
+                            if ((index < 0) || (index > alu.getRegsMaxIndex())) {
+                                error = ERROR_INDEX;
+                            }
+                        }
+                        if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {   //  Chiffre => DSE/ISG n ou DSE/ISG .n
+                            String s = currentOp.SYMBOL();
+                            if (tempProgLine.getOp(1) != null) {   //  .n
+                                s = OPS.DOT.SYMBOL() + s;
+                            }
+                            index = alu.getRegIndexBySymbol(s);   //
+                        }
+                        if (error.equals("")) {
+                            isComplete = true;
+                            tempProgLine.setOp(2, currentOp);
+                            if (canExecAfterHandling(tempProgLine)) {
+                                if (alphaToX()) {
+                                    double value = alu.getRegContentsByIndex(index);   //  value: counter(nnnnn).goal(nnn)step(nn)
+                                    double v = Math.abs(value);
+                                    int counter = (int) v;
+                                    double g = (v - (double) counter) * 1000d;
+                                    int goal = (int) g;
+                                    double st = (g - (double) goal) * 1000d;
+                                    int step = (int) st;
+                                    if (step == 0) {
+                                        step = 1;
                                     }
-                                }
-                                if (mode.equals(MODES.NORM)) {   //   Exécuter un GSB, c'est se mettre en mode RUN car plusieurs lignes à exécuter
-                                    alu.rebuildlabelToprogLineNumberMap();
-                                    nowmRUN = System.currentTimeMillis();
-                                    mode = MODES.RUN;
-                                    createNewProgLine = false;
-                                    isAutoLine = true;
-                                }
-                                int dpln = alu.getDestProgLineNumber(tempProgLine);
-                                if (dpln != (-1)) {   //  OK
-                                    nextProgLineNumber = dpln;
-                                } else {   //  Invalide
-                                    error = ERROR_GTO_GSB;
+                                    if (value < 0) {
+                                        counter = -counter;
+                                    }
+                                    switch (inOp) {
+                                        case DSE:
+                                            counter = counter - step;
+                                            if (counter <= goal) {
+                                                nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
+                                            }
+                                            break;
+                                        case ISG:
+                                            counter = counter + step;
+                                            if (counter > goal) {
+                                                nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
+                                            }
+                                            break;
+                                    }
+                                    value = Math.abs((double) counter) + ((double) goal + (double) step / 100d) / 1000d;
+                                    if (counter < 0) {
+                                        value = -value;
+                                    }
+                                    alu.setRegContentsByIndex(index, value);   //  Update register
+                                    stackLiftEnabled = true;
                                 }
                             }
                         }
                     }
                 }
             }
-        }
-        if ((inOp.equals(OPS.DSE)) || (inOp.equals(OPS.ISG))) {
-            if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
-                    (shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI)) || (currentOp.equals(OPS.DOT))) {  //  Chiffre (entre 0 et 9) ou "." ou I (TAN)  ou "(i)" (COS)
-
-                if ((shiftFOp.equals(OPS.I)) || (shiftFOp.equals(OPS.INDI))) {
-                    currentOp = shiftFOp;
-                }
-                if (currentOp.equals(OPS.DOT)) {   //  Normalement, on va continuer à attendre (un chiffre)
-                    tempProgLine.setOp(1, currentOp);
-                    currentOp = OPS.UNKNOWN;   //  Ne pas traiter plus loin dans cette procédure
-                }
-                if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX()) ||
-                        (currentOp.equals(OPS.I)) || (currentOp.equals(OPS.INDI))) {   //  Chiffre ou I ou (i) => OK on peut enfin traiter;  (TAN: I) (COS: (i))
+            if ((inOp.equals(OPS.SF)) || (inOp.equals(OPS.CF)) || (inOp.equals(OPS.TF))) {
+                if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {  //  Chiffre (entre 0 et 9)
 
                     isComplete = true;
-                    int index = -1;
-                    if (currentOp.equals(OPS.I)) { //  DSE/ISG I
-                        index = BASE_REGS.RI.INDEX();
-                    }
-                    if (currentOp.equals(OPS.INDI)) { //  DSE/ISG (i))
-                        int dataIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
-                        index = alu.getRegIndexByDataIndex(dataIndex);
-                        if ((index < 0) || (index > alu.getRegsMaxIndex())) {
-                            error = ERROR_INDEX;
-                        }
-                    }
-                    if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {   //  Chiffre => DSE/ISG n ou DSE/ISG .n
-                        String s = currentOp.SYMBOL();
-                        if (tempProgLine.getOp(1) != null) {   //  .n
-                            s = OPS.DOT.SYMBOL() + s;
-                        }
-                        index = alu.getRegIndexBySymbol(s);   //
-                    }
-                    if (error.equals("")) {
-                        tempProgLine.setOp(2, currentOp);
-                        if (canExecAfterHandling(tempProgLine)) {
-                            if (alphaToX()) {
-                                double value = alu.getRegContentsByIndex(index);   //  value: counter(nnnnn).goal(nnn)step(nn)
-                                double v = Math.abs(value);
-                                int counter = (int) v;
-                                double g = (v - (double) counter) * 1000d;
-                                int goal = (int) g;
-                                double st = (g - (double) goal) * 1000d;
-                                int step = (int) st;
-                                if (step == 0) {
-                                    step = 1;
-                                }
-                                if (value < 0) {
-                                    counter = -counter;
-                                }
-                                switch (inOp) {
-                                    case DSE:
-                                        counter = counter - step;
-                                        if (counter <= goal) {
-                                            nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
-                                        }
-                                        break;
-                                    case ISG:
-                                        counter = counter + step;
-                                        if (counter > goal) {
-                                            nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
-                                        }
-                                        break;
-                                }
-                                value = Math.abs((double) counter) + ((double) goal + (double) step / 100d) / 1000d;
-                                if (counter < 0) {
-                                    value = -value;
-                                }
-                                alu.setRegContentsByIndex(index, value);   //  Update register
-                                stackLiftEnabled = true;
+                    tempProgLine.setOp(1, currentOp);
+                    int flagIndex = Integer.valueOf(currentOp.SYMBOL());
+                    if (canExecAfterHandling(tempProgLine)) {
+                        if (alphaToX()) {
+                            switch (currentOp) {
+                                case SF:
+                                    alu.setFlag(flagIndex);
+                                    break;
+                                case CF:
+                                    alu.clearFlag(flagIndex);
+                                    break;
+                                case TF:
+                                    if (!alu.testFlag(flagIndex)) {   //  Skip next line if flag cleared
+                                        nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
+                                    }
+                                    break;
                             }
+                            stackLiftEnabled = true;
                         }
                     }
                 }
             }
-        }
-        if ((inOp.equals(OPS.SF)) || (inOp.equals(OPS.CF)) || (inOp.equals(OPS.TF))) {
-            if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {  //  Chiffre (entre 0 et 9)
-
-                isComplete = true;
-                tempProgLine.setOp(1, currentOp);
-                int flagIndex = Integer.valueOf(currentOp.SYMBOL());
-                if (canExecAfterHandling(tempProgLine)) {
-                    if (alphaToX()) {
-                        switch (currentOp) {
-                            case SF:
-                                alu.setFlag(flagIndex);
-                                break;
-                            case CF:
-                                alu.clearFlag(flagIndex);
-                                break;
-                            case TF:
-                                if (!alu.testFlag(flagIndex)) {   //  Skip next line if flag cleared
-                                    nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
-                                }
-                                break;
-                        }
-                        stackLiftEnabled = true;
-                    }
-                }
+            KEYS key = alu.getKeyByOp(inOp);
+            if ((isComplete) || (!mustWait)) {
+                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                buttons[key.INDEX()].updateDisplay();
+                inOp = null;   //  Pour la condition !mustWait, il s'agit ici d'annuler cette opération foireuse (incomplet et problème de syntaxe (avec error explicite ou pas))
             }
-        }
-        if (isComplete) {
-            inOp = null;
         }
     }
 
@@ -2171,6 +2208,9 @@ public class MainActivity extends Activity {
                 (currentOp.equals(OPS.SF)) || (currentOp.equals(OPS.CF)) || (currentOp.equals(OPS.TF)) ||
                 (currentOp.equals(OPS.DSE)) || (currentOp.equals(OPS.ISG))) {
             inOp = currentOp;   //  Début d'instruction MultiOps
+            KEYS key = alu.getKeyByOp(inOp);
+            swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+            buttons[key.INDEX()].updateDisplay();
         }
     }
 
