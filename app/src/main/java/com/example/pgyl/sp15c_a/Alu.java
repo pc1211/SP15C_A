@@ -20,6 +20,7 @@ public class Alu {
         USER("USER"),
         MEM("MEM"),
         ON("ON"),
+        PSE("PSE"),
         MATRIX("MATRIX"),
         RESULT("RESULT"),
         //  ****************************** Début Bloc (à laisser dans l'ordre, pour identifier facilement "de A à E")
@@ -172,7 +173,7 @@ public class Alu {
         KEY_28(28, OPS.DIGIT_5, OPS.DSE, OPS.CF),
         KEY_29(29, OPS.DIGIT_6, OPS.ISG, OPS.TF),
         KEY_20(20, OPS.MULT, OPS.UNKNOWN, OPS.XE0),
-        KEY_31(31, OPS.RS, OPS.UNKNOWN, OPS.PR),
+        KEY_31(31, OPS.RS, OPS.PSE, OPS.PR),
         KEY_32(32, OPS.GSB, OPS.CLEAR_SIGMA, OPS.RTN),
         KEY_33(33, OPS.RDN, OPS.CLEAR_PRGM, OPS.RUP),
         KEY_34(34, OPS.XCHGXY, OPS.CLEAR_REGS, OPS.RND),
@@ -225,29 +226,29 @@ public class Alu {
         }
     }
 
-    public enum INDIRECT_KEYS {
-        IK1(OPS.SINH, OPS.HYP, OPS.SIN),
-        IK2(OPS.COSH, OPS.HYP, OPS.COS),
-        IK3(OPS.TANH, OPS.HYP, OPS.TAN),
-        IK4(OPS.ASINH, OPS.AHYP, OPS.SIN),
-        IK5(OPS.ACOSH, OPS.AHYP, OPS.COS),
-        IK6(OPS.ATANH, OPS.AHYP, OPS.TAN),
-        IK7(OPS.XNE0, OPS.TEST, OPS.DIGIT_0),
-        IK8(OPS.XG0, OPS.TEST, OPS.DIGIT_1),
-        IK9(OPS.XL0, OPS.TEST, OPS.DIGIT_2),
-        IK10(OPS.XGE0, OPS.TEST, OPS.DIGIT_3),
-        IK11(OPS.XLE0, OPS.TEST, OPS.DIGIT_4),
-        IK12(OPS.XEY, OPS.TEST, OPS.DIGIT_5),
-        IK13(OPS.XNEY, OPS.TEST, OPS.DIGIT_6),
-        IK14(OPS.XGY, OPS.TEST, OPS.DIGIT_7),
-        IK15(OPS.XLY, OPS.TEST, OPS.DIGIT_8),
-        IK16(OPS.XGEY, OPS.TEST, OPS.DIGIT_9);
+    public enum GHOST_KEYS {
+        GHOST_KEY_1(OPS.SINH, OPS.HYP, OPS.SIN),
+        GHOST_KEY_2(OPS.COSH, OPS.HYP, OPS.COS),
+        GHOST_KEY_3(OPS.TANH, OPS.HYP, OPS.TAN),
+        GHOST_KEY_4(OPS.ASINH, OPS.AHYP, OPS.SIN),
+        GHOST_KEY_5(OPS.ACOSH, OPS.AHYP, OPS.COS),
+        GHOST_KEY_6(OPS.ATANH, OPS.AHYP, OPS.TAN),
+        GHOST_KEY_7(OPS.XNE0, OPS.TEST, OPS.DIGIT_0),
+        GHOST_KEY_8(OPS.XG0, OPS.TEST, OPS.DIGIT_1),
+        GHOST_KEY_9(OPS.XL0, OPS.TEST, OPS.DIGIT_2),
+        GHOST_KEY_10(OPS.XGE0, OPS.TEST, OPS.DIGIT_3),
+        GHOST_KEY_11(OPS.XLE0, OPS.TEST, OPS.DIGIT_4),
+        GHOST_KEY_12(OPS.XEY, OPS.TEST, OPS.DIGIT_5),
+        GHOST_KEY_13(OPS.XNEY, OPS.TEST, OPS.DIGIT_6),
+        GHOST_KEY_14(OPS.XGY, OPS.TEST, OPS.DIGIT_7),
+        GHOST_KEY_15(OPS.XLY, OPS.TEST, OPS.DIGIT_8),
+        GHOST_KEY_16(OPS.XGEY, OPS.TEST, OPS.DIGIT_9);
 
         private OPS op;
         private OPS prefixOp;
         private OPS lastOp;
 
-        INDIRECT_KEYS(OPS Op, OPS prefixOp, OPS lastOp) {
+        GHOST_KEYS(OPS Op, OPS prefixOp, OPS lastOp) {
             this.op = Op;
             this.prefixOp = prefixOp;
             this.lastOp = lastOp;
@@ -365,8 +366,8 @@ public class Alu {
     private HashMap<String, BASE_REGS> symbolToBaseRegMap;
     private HashMap<OPS, KEYS> opToKeyMap;
     private HashMap<OPS, Integer> opToShiftKeyCodeMap;
-    private HashMap<OPS, INDIRECT_KEYS> opToIndirectKeyMap;
-    private HashMap<PairOp, OPS> indirectOpsToOpMap;
+    private HashMap<OPS, GHOST_KEYS> opToGhostKeyMap;
+    private HashMap<PairOp, OPS> ghostOpsToOpMap;
     private HashMap<String, LABELS> symbolToLabelMap;
     private HashMap<Integer, LABELS> indexToLabelMap;
     private HashMap<LABELS, Integer> labelToprogLineNumberMap;
@@ -410,10 +411,10 @@ public class Alu {
         opToKeyMap = null;
         opToShiftKeyCodeMap.clear();
         opToShiftKeyCodeMap = null;
-        opToIndirectKeyMap.clear();
-        opToIndirectKeyMap = null;
-        indirectOpsToOpMap.clear();
-        indirectOpsToOpMap = null;
+        opToGhostKeyMap.clear();
+        opToGhostKeyMap = null;
+        ghostOpsToOpMap.clear();
+        ghostOpsToOpMap = null;
         symbolToLabelMap.clear();
         symbolToLabelMap = null;
         indexToLabelMap.clear();
@@ -467,13 +468,13 @@ public class Alu {
         return symbolToBaseRegMap.get(symbol).INDEX();
     }
 
-    public boolean opIsIndirectKey(OPS op) {
-        return (opToIndirectKeyMap.get(op) != null);
+    public boolean opIsGhostKey(OPS op) {
+        return (opToGhostKeyMap.get(op) != null);
     }
 
-    public OPS getOpByIndirectKeyOps(OPS prefixOp, OPS lastOp) {
+    public OPS getOpByGhostKeyOps(OPS prefixOp, OPS lastOp) {
         PairOp pairOp = new PairOp(prefixOp, lastOp);
-        OPS op = indirectOpsToOpMap.get(pairOp);
+        OPS op = ghostOpsToOpMap.get(pairOp);
         pairOp = null;
         return op;
     }
@@ -1536,7 +1537,7 @@ public class Alu {
         return error;
     }
 
-    private String roundForDisplay(double value) {
+    public String roundForDisplay(double value) {
         double val = Math.abs(value);
         String res = "";
         int exp = 1;
@@ -1567,7 +1568,7 @@ public class Alu {
         double valr = mant * Math.pow(10, exp - expr);
         res = String.format(Locale.US, "%,." + (Math.min(roundParam, MAX_DIGITS - (exp - expr))) + "f", valr);
         if (!rm.equals(OPS.FIX)) {   //  SCI ou ENG
-            res = res + "E" + expr;
+            res = res + " E" + expr;
         }
         if (value < 0) {
             res = "-" + res;
@@ -1708,12 +1709,12 @@ public class Alu {
             ProgLine progLine = proglines.get(progLineNumber);   //  Cas particulier: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
             // Suite: Ce qui implique que si Affichage symboles: Afficher uniquement op0, Si Affichage Codes: Afficher à partir de op1
             OPS[] ops = progLine.getOps();
-            boolean indirect = (opToIndirectKeyMap.get(ops[0]) != null);
+            boolean isGhost = (opToGhostKeyMap.get(ops[0]) != null);
             for (int i = 0; i <= (ops.length - 1); i = i + 1) {
                 if (ops[i] != null) {
                     String sep = SEP;
                     if (!displaySymbol) {   //  Codes
-                        if ((i > 0) || !indirect) {   //  Cf Cas particuliers
+                        if ((i > 0) || !isGhost) {   //  Cf Cas particuliers
                             KEYS key = opToKeyMap.get(ops[i]);
                             s = String.valueOf(key.CODE());
                             if (ops[i].equals(OPS.DOT)) {   //  Si "" est suivi par un chiffre n => afficher .n
@@ -1740,7 +1741,7 @@ public class Alu {
                             res = res + (!res.equals("") ? sep : "") + s;
                         }
                     } else {   //  Symboles
-                        if ((i == 0) || !indirect) {   //  Cf Cas particuliers
+                        if ((i == 0) || !isGhost) {   //  Cf Cas particuliers
                             if ((ops[i].equals(OPS.EEX)) || (ops[i].equals(OPS.CHS))) {
                                 s = ops[i].toString();
                             } else {   //  Pas EEX ni CHS
@@ -1889,15 +1890,15 @@ public class Alu {
         }
         // Cas particuliers: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
         // Suite: Ce qui implique que si Affichage symboles: Afficher uniquement op0, Si Affichage Codes: Afficher à partir de op1
-        indirectOpsToOpMap = new HashMap<PairOp, OPS>();
-        opToIndirectKeyMap = new HashMap<OPS, INDIRECT_KEYS>();
-        for (INDIRECT_KEYS indirectKey : INDIRECT_KEYS.values()) {
-            OPS op = indirectKey.OP();
-            OPS prefixOp = indirectKey.PREFIX_OP();
-            OPS lastOp = indirectKey.LAST_OP();
-            opToIndirectKeyMap.put(op, indirectKey);
+        ghostOpsToOpMap = new HashMap<PairOp, OPS>();
+        opToGhostKeyMap = new HashMap<OPS, GHOST_KEYS>();
+        for (GHOST_KEYS ghostKey : GHOST_KEYS.values()) {
+            OPS op = ghostKey.OP();
+            OPS prefixOp = ghostKey.PREFIX_OP();
+            OPS lastOp = ghostKey.LAST_OP();
+            opToGhostKeyMap.put(op, ghostKey);
             PairOp pairOp = new PairOp(prefixOp, lastOp);
-            indirectOpsToOpMap.put(pairOp, op);
+            ghostOpsToOpMap.put(pairOp, op);
             pairOp = null;
             KEYS key = opToKeyMap.get(prefixOp);
             opToKeyMap.put(op, key);
