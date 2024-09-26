@@ -99,7 +99,6 @@ public class MainActivity extends Activity {
     private String error;
     private String alpha;
     private boolean stackLiftEnabled;
-    private boolean createNewProgLine;
     private boolean displaySymbol;
     private boolean user;
     private OPS inOp = null;
@@ -111,6 +110,7 @@ public class MainActivity extends Activity {
     private long nowmPSE;
     private long nowmRUN;
     private int readProgLineOpIndex;
+    private boolean lineIsGhostKey;
     private Handler handlerTime;
     private Runnable runnableTime;
     private boolean isAuto;
@@ -181,12 +181,12 @@ public class MainActivity extends Activity {
         isAutoLine = false;
         isAuto = false;
         readProgLineOpIndex = 0;
+        lineIsGhostKey = false;
         isKeyboardInterrupt = false;
         tempProgLine = new ProgLine();
         readProgLine = new ProgLine();
         currentProgLineNumber = 0;
         displaySymbol = true;
-        createNewProgLine = false;
         user = false;
         updateInterval = AUTO_UPDATE_INTERVAL_MS;
         shiftFOp = null;
@@ -350,18 +350,17 @@ public class MainActivity extends Activity {
     private void handleCurrentOp() {
         inHandle = true;
         String disp;
-        createNewProgLine = true;
-        if (isAutoLine) {   //  Op obtenu automatiquement (p.ex. en mode RUN)
+        if (isAutoLine) {   //  Op à obtenir automatiquement (p.ex. en mode RUN)
             currentOp = readProgLine.getOp(readProgLineOpIndex);
             readProgLineOpIndex = readProgLineOpIndex + 1;
         }
         if (error.equals("")) {   //  Pas d'erreur (ou Prefix) antérieure
+            handleDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
+            handleGhostOp();   //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
             nextProgLineNumber = currentProgLineNumber;   //  Sauf mention contraire en mode NORM ou EDIT
             if (mode.equals(MODES.RUN)) {
                 nextProgLineNumber = incProgLineNumber(currentProgLineNumber);   //  Sauf mention contraire (GTO, GSB, RTN, A..E, ...)
             }
-            handleAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
-            handleGhostOp();   //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
             if (inOp != null) {   //  instruction MultiOps déjà engagée
                 shiftFOp = alu.getKeyByOp(currentOp).SHIFT_F_OP();   //  Pour I, (i), ou A..E;
                 handleEndMultiOps();   //  Test si fin d'nstruction MultiOps (Eventuellement inOp y deviendra null si instruction MultiOps complète (=> Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Nouvelle instruction))
@@ -374,10 +373,6 @@ public class MainActivity extends Activity {
             }
             if (inOp == null) {    //  Instruction terminée (déjà enregistrée dans progLines si EDIT ou RUN) ou éventuellement annulée pour problème de syntaxe mais sans erreur explicite
                 alu.clearProgLine(tempProgLine);   //  Préparer le terrain pour une nouvelle instruction
-                if (isKeyboardInterrupt) {
-                    isKeyboardInterrupt = false;
-                    error = ERROR_KEYBOARD_INTERRUPT;
-                }
                 if (error.equals("")) {   //  Pas d'erreur nouvelle
                     if (mode.equals(MODES.NORM)) {    //  A voir selon alpha si entrée de nombre en cours ou pas
                         disp = (alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber());   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
@@ -388,11 +383,15 @@ public class MainActivity extends Activity {
                         disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
                         dotMatrixDisplayUpdater.displayText(disp, false);
                     }
-                } else {    //  Erreur (ou Prefix) nouvelle
+                    if (isKeyboardInterrupt) {
+                        isKeyboardInterrupt = false;
+                        error = ERROR_KEYBOARD_INTERRUPT;
+                    }
+                }
+                if (!error.equals("")) {    //  Erreur (ou Prefix) nouvelle
                     if (mode.equals(MODES.RUN)) {   //  STOP
                         mode = MODES.NORM;
                         dotMatrixDisplayView.setInvertOn(false);
-                        createNewProgLine = true;
                         isAutoLine = false;
                         inOp = null;
                     }
@@ -417,25 +416,18 @@ public class MainActivity extends Activity {
             updateSideDisplay();
         }
         if (isAutoLine) {   //  Obtenir automatiquement le prochain op pour le tour suivant
-            readProgLineOpIndex = getValidProgLineOpIndex(readProgLine, readProgLineOpIndex);   //  Les ops d'une progLine ne se suivent pas toujours immédiatement
-            if (readProgLineOpIndex == -1) {  //  Il n'y a plus d'ops dans la progLine
+            readProgLineOpIndex = getNextValidProgLineOpIndex(readProgLine, readProgLineOpIndex);   //  Les ops d'une progLine ne ne sont pas toujours côte à côte
+            if ((readProgLineOpIndex == -1) || ((lineIsGhostKey) && (readProgLineOpIndex > 0))) {   //  Il n'y a plus d'ops dans la progLine
                 if (mode.equals(MODES.RUN)) {
                     readProgLine = alu.getProgLine(currentProgLineNumber);    //  Ligne suivante
                     readProgLineOpIndex = 0;   //  Op0 toujours disponible
+                    lineIsGhostKey = alu.isGhostKey(readProgLine.getOp(readProgLineOpIndex));   //  Si Ghost key => Ne pas aller au-delà de Op0
                 } else {   //  Pas RUN
                     isAutoLine = false;
                 }
             }
         }
-        if (isAutoLine) {
-            if (!isAuto) {
-                startAutomatic();
-            }
-        } else {   //  Pas autoLine
-            if (isAuto) {
-                stopAutomatic();
-            }
-        }
+        startOrStopAutomatic();
         inHandle = false;
     }
 
@@ -600,12 +592,14 @@ public class MainActivity extends Activity {
         final float BUTTON_TOP_IMAGE_SIZE_COEFF = 0.7f;
         final float BUTTON_MID_IMAGE_SIZE_COEFF = 0.65f;
         final float BUTTON_LOW_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_15_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_TOP_20_IMAGE_SIZE_COEFF = 0.8f;
         final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.65f;
+        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.64f;
         final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.55f;
-        final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.55f;
         final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.3f;
         final float BUTTON_MID_31_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_32_IMAGE_SIZE_COEFF = 0.6f;
@@ -659,16 +653,22 @@ public class MainActivity extends Activity {
                             }
                         }
                         buttons[key.INDEX()].setHeightWeight(legendPos.INDEX(), heightWeight);
+                        if ((key.equals(KEYS.KEY_15)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image CHS à adapter
+                            imageSizeCoeff = BUTTON_MID_15_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_20)) && (legendPos.equals(LEGEND_POS.TOP))) {   //  Image INTEG à adapter
+                            imageSizeCoeff = BUTTON_TOP_20_IMAGE_SIZE_COEFF;
+                        }
                         if ((key.equals(KEYS.KEY_21)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SST à adapter
                             imageSizeCoeff = BUTTON_MID_21_IMAGE_SIZE_COEFF;
                         }
                         if ((key.equals(KEYS.KEY_22)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image GTO à adapter
                             imageSizeCoeff = BUTTON_MID_22_IMAGE_SIZE_COEFF;
                         }
-                        if ((key.equals(KEYS.KEY_23)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image COS à adapter
+                        if ((key.equals(KEYS.KEY_23)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SIN à adapter
                             imageSizeCoeff = BUTTON_MID_23_IMAGE_SIZE_COEFF;
                         }
-                        if ((key.equals(KEYS.KEY_24)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SIN à adapter
+                        if ((key.equals(KEYS.KEY_24)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image COS à adapter
                             imageSizeCoeff = BUTTON_MID_24_IMAGE_SIZE_COEFF;
                         }
                         if ((key.equals(KEYS.KEY_25)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image TAN à adapter
@@ -755,10 +755,17 @@ public class MainActivity extends Activity {
         };
     }
 
-    private void handleAEOp() {
-        if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
-            inOp = OPS.GSB;
-            tempProgLine.setOp(0, inOp);    //  Conversion en GSB A..E, à examiner ci-dessous
+    private void handleDirectAEOp() {
+        if (inOp == null) {
+            if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
+                inOp = OPS.GSB;
+                tempProgLine.setOp(0, inOp);    //  Conversion en GSB A..E, à examiner ci-dessous
+                if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
+                    KEYS key = alu.getKeyByOp(inOp);
+                    swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                    buttons[key.INDEX()].updateDisplay();
+                }
+            }
         }
     }
 
@@ -770,9 +777,11 @@ public class MainActivity extends Activity {
                 tempProgLine.setOp(1, inOp);   //  Garder l'opération initiale (AHYP COS , TEST n) après op0; op0 sera fixé dans handleOp()
                 tempProgLine.setOp(2, currentOp);
                 currentOp = dop;   //  l'opération est requalifiée en son équivalent direct et sera examinée plus bas
-                KEYS key = alu.getKeyByOp(inOp);
-                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
-                buttons[key.INDEX()].updateDisplay();
+                if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
+                    KEYS key = alu.getKeyByOp(inOp);
+                    swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                    buttons[key.INDEX()].updateDisplay();
+                }
                 inOp = null;
             }
         }
@@ -1086,14 +1095,18 @@ public class MainActivity extends Activity {
 
                         if ((tempProgLine.getOp(2) != null) && (!isAutoLine)) {    //  GTO CHS nnnn en mode EDIT et pas en mode de lecture automatique de lignes
                             if ((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) {
+
                                 if (tempProgLine.getOp(3) == null) {
                                     tempProgLine.setOp(3, currentOp);
+                                    mustWait = true;
                                 } else {  //  Op3 déjà occupé
                                     if (tempProgLine.getOp(4) == null) {
                                         tempProgLine.setOp(4, currentOp);
+                                        mustWait = true;
                                     } else {   //  Op4 déjà occupé
                                         if (tempProgLine.getOp(5) == null) {
                                             tempProgLine.setOp(5, currentOp);
+                                            mustWait = true;
                                         } else {   //  Op5 déjà occupé
                                             if (tempProgLine.getOp(6) == null) {   // OK nnnn
                                                 tempProgLine.setOp(6, currentOp);
@@ -1104,7 +1117,6 @@ public class MainActivity extends Activity {
                                                 if (dpln <= (alu.getProgLinesSize() - 1)) {
                                                     isComplete = true;
                                                     nextProgLineNumber = dpln;
-                                                    createNewProgLine = false;
                                                 } else {   //  Invalide
                                                     error = ERROR_GTO_GSB;
                                                 }
@@ -1166,7 +1178,8 @@ public class MainActivity extends Activity {
                             if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
                                 if (alphaToX()) {
                                     if (mode.equals(MODES.RUN)) {   //  Au retour, revenir à la ligne suivant l'actuelle
-                                        if (!alu.addStkRetProgLineNumber(nextProgLineNumber)) {   //  MAX_RETS dépassé
+                                        if (!alu.pushStkRetProgLineNumber(nextProgLineNumber)) {   //  MAX_RETS dépassé
+                                            alu.clearReturnStack();
                                             error = ERROR_RET_STACK_FULL;
                                         }
                                     }
@@ -1174,8 +1187,10 @@ public class MainActivity extends Activity {
                                         alu.rebuildlabelToprogLineNumberMap();
                                         nowmRUN = System.currentTimeMillis();
                                         mode = MODES.RUN;
-                                        createNewProgLine = false;
                                         isAutoLine = true;
+                                        KEYS key = alu.getKeyByOp(inOp);
+                                        swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                                        buttons[key.INDEX()].updateDisplay();
                                     }
                                     int dpln = alu.getDestProgLineNumber(tempProgLine);
                                     if (dpln != (-1)) {   //  OK
@@ -1292,21 +1307,26 @@ public class MainActivity extends Activity {
                     }
                 }
             }
-            KEYS key = alu.getKeyByOp(inOp);
             if ((isComplete) || (!mustWait)) {
-                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
-                buttons[key.INDEX()].updateDisplay();
+                if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
+                    KEYS key = alu.getKeyByOp(inOp);
+                    swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                    buttons[key.INDEX()].updateDisplay();
+                }
                 inOp = null;   //  Pour la condition !mustWait, il s'agit ici d'annuler cette opération foireuse (incomplet et problème de syntaxe (avec error explicite ou pas))
             }
         }
     }
 
     private void handleDigitOps() {
+        final int MAX_INPUT_LENGTH = 17;
+
         if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
                 (currentOp.equals(OPS.DOT)) || (currentOp.equals(OPS.EEX)) || (currentOp.equals(OPS.CHS))) {
 
+            String beta = alpha;
             if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.RUN))) {
-                if (alpha.equals("")) {   // Début d'entrée de nombre
+                if (beta.equals("")) {   // Début d'entrée de nombre
                     if (!currentOp.equals(OPS.CHS)) {  //  StackLift éventuel uniquement si entrée d'un nombre (ne commençant pas par "-")
                         if (stackLiftEnabled) {
                             alu.stackLift();
@@ -1314,13 +1334,13 @@ public class MainActivity extends Activity {
                     }
                 }
                 boolean acceptOp = true;
-                int indEex = alpha.indexOf(OPS.EEX.SYMBOL());
+                int indEex = beta.indexOf(OPS.EEX.SYMBOL());
                 if (indEex != (-1)) {   //  Ne plus accepter de "." ou "E" après un "E" antérieur
                     if ((currentOp.equals(OPS.DOT)) || (currentOp.equals(OPS.EEX))) {
                         acceptOp = false;
                     }
                 }
-                int indDot = alpha.indexOf(OPS.DOT.SYMBOL());
+                int indDot = beta.indexOf(OPS.DOT.SYMBOL());
                 if (indDot != (-1)) {   //  Ne plus accepter de "." après un "." antérieur
                     if (currentOp.equals(OPS.DOT)) {
                         acceptOp = false;
@@ -1328,40 +1348,40 @@ public class MainActivity extends Activity {
                 }
                 if (acceptOp) {
                     if (currentOp.equals(OPS.CHS)) {
-                        if (alpha.equals("")) {   //  Un nombre ne peut commencer par "-" => Changer le signe de X
+                        if (beta.equals("")) {   //  Un nombre ne peut commencer par "-" => Changer le signe de X
                             alu.negX();
                             stackLiftEnabled = true;
                         } else {   //  Entrée de nombre en cours
-                            int indChs1 = alpha.indexOf(currentOp.SYMBOL());   //  Un "-" existe peut-être déjà => -x ou xE-x ou -xEx ou -xE-x
+                            int indChs1 = beta.indexOf(currentOp.SYMBOL());   //  Un "-" existe peut-être déjà => -x ou xE-x ou -xEx ou -xE-x
                             int indChs2 = -1;
-                            if ((indChs1 != -1) && (indChs1 < (alpha.length() - 1))) {   //  Un 2e "-" est possible   => -xE-x
-                                indChs2 = alpha.indexOf(currentOp.SYMBOL(), indChs1 + 1);   //  après le 1er
+                            if ((indChs1 != -1) && (indChs1 < (beta.length() - 1))) {   //  Un 2e "-" est possible   => -xE-x
+                                indChs2 = beta.indexOf(currentOp.SYMBOL(), indChs1 + 1);   //  après le 1er
                             }
                             if (indChs1 != (-1)) {   //   -x ou xE-x ou -xEx ou -xE-x
                                 if (indEex != -1) {   //  xE-x ou -xEx ou -xE-x
                                     if (indChs1 < indEex) {   //  -xEx ou -xE-x
                                         if (indChs2 != -1) {   //  -xE-x
-                                            alpha = alpha.substring(0, indChs2) + alpha.substring(indChs2 + 1);   //  => -xEx
+                                            beta = beta.substring(0, indChs2) + beta.substring(indChs2 + 1);   //  => -xEx
                                         } else {   //  -xEx
-                                            alpha = alpha.substring(0, indEex + 1) + currentOp.SYMBOL() + alpha.substring(indEex + 1);   //  => -xE-x
+                                            beta = beta.substring(0, indEex + 1) + currentOp.SYMBOL() + beta.substring(indEex + 1);   //  => -xE-x
                                         }
                                     } else {   //  xE-x
-                                        alpha = alpha.substring(0, indChs1) + alpha.substring(indChs1 + 1);   //  => xEx
+                                        beta = beta.substring(0, indChs1) + beta.substring(indChs1 + 1);   //  => xEx
                                     }
                                 } else {   //  -x
-                                    alpha = alpha.substring(indChs1 + 1);   //  => x
+                                    beta = beta.substring(indChs1 + 1);   //  => x
                                 }
                             } else {   //  x ou xEx
                                 if (indEex != (-1)) {   //  xEx
-                                    alpha = alpha.substring(0, indEex + 1) + currentOp.SYMBOL() + alpha.substring(indEex + 1);   //  => xE-x
+                                    beta = beta.substring(0, indEex + 1) + currentOp.SYMBOL() + beta.substring(indEex + 1);   //  => xE-x
                                 } else {   //  x
-                                    alpha = currentOp.SYMBOL() + alpha;   //  => -x
+                                    beta = currentOp.SYMBOL() + beta;   //  => -x
                                 }
                             }
                         }
                     } else {   //  Pas CHS
                         String s = currentOp.SYMBOL();
-                        if (alpha.equals("")) {
+                        if (beta.equals("")) {
                             if (currentOp.equals(OPS.EEX)) {
                                 s = OPS.DIGIT_1.SYMBOL() + s;   //  Ajout de 1 en préfixe si commence par "E"
                             }
@@ -1369,12 +1389,15 @@ public class MainActivity extends Activity {
                                 s = OPS.DIGIT_0.SYMBOL() + s;   //  Ajout de 0 en préfixe si commence par "."
                             }
                         }
-                        alpha = alpha + s;
+                        beta = beta + s;
                     }
+                }
+                if (beta.length() <= MAX_INPUT_LENGTH) {
+                    alpha = beta;
                 }
             }
             if (mode.equals(MODES.EDIT)) {
-                if (canExecAfterHandling(tempProgLine)) {
+                if (canExecAfterHandling(tempProgLine)) {   //  Enregistrer une ligne avec le chiffre
                     //  NOP
                 }
             }
@@ -2035,14 +2058,14 @@ public class MainActivity extends Activity {
         if (currentOp.equals(OPS.CLEAR_REGS)) {   //  Neutre sur stackLift
             if (canExecAfterHandling(tempProgLine)) {
                 if (alphaToX()) {
-                    error = alu.clRegs();
+                    error = alu.clearRegs();
                 }
             }
         }
         if (currentOp.equals(OPS.CLEAR_SIGMA)) {   //  Neutre sur stackLift
             if (canExecAfterHandling(tempProgLine)) {
                 if (alphaToX()) {
-                    error = alu.clStats();
+                    error = alu.clearStats();
                     alu.clearStack();
                 }
             }
@@ -2094,14 +2117,13 @@ public class MainActivity extends Activity {
             if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
                 if (alphaToX()) {
                     if (!alu.isStkRetEmpty()) {  //  La pile d'appel n'est pas vide
-                        int dpln = alu.getLastStkRetProgLineNumber();
+                        int dpln = alu.popStkRetProgLineNumber();
                         alu.removeLastStkRetProgLineNumber();
                         nextProgLineNumber = dpln;
                     } else {   //  STOP
                         mode = MODES.NORM;
                         isAutoLine = false;
                         dotMatrixDisplayView.setInvertOn(false);
-                        createNewProgLine = true;
                     }
                 }
             }
@@ -2113,7 +2135,6 @@ public class MainActivity extends Activity {
                     sw = true;
                     if (alphaToX()) {
                         mode = MODES.EDIT;
-                        createNewProgLine = false;
                         nextProgLineNumber = currentProgLineNumber;
                     }
                 }
@@ -2122,7 +2143,6 @@ public class MainActivity extends Activity {
                 if (mode.equals(MODES.EDIT)) {   //  EDIT -> NORM
                     sw = true;
                     mode = MODES.NORM;
-                    createNewProgLine = true;
                 }
             }
         }
@@ -2133,7 +2153,6 @@ public class MainActivity extends Activity {
                     sw = true;
                     if (alphaToX()) {
                         mode = MODES.RUN;
-                        createNewProgLine = false;
                         isAutoLine = true;
                         nowmRUN = System.currentTimeMillis();
                         alu.rebuildlabelToprogLineNumberMap();   //  Réassocier les labels à leur n° de ligne, le lancement proprement sera effectué plus bas
@@ -2145,7 +2164,6 @@ public class MainActivity extends Activity {
                 if (mode.equals(MODES.RUN)) {   //  RUN -> NORM
                     if (alphaToX()) {
                         mode = MODES.NORM;
-                        createNewProgLine = true;
                         isAutoLine = false;
                         dotMatrixDisplayView.setInvertOn(false);
                     }
@@ -2158,22 +2176,18 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.SST)) {
-            if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {
+            nextProgLineNumber = incProgLineNumber(currentProgLineNumber);   //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ouEDIT
+            if (mode.equals(MODES.NORM)) {
                 if (alphaToX()) {
-                    nextProgLineNumber = incProgLineNumber(currentProgLineNumber);   //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ouEDIT
-                    if (mode.equals(MODES.NORM)) {
-                        createNewProgLine = false;
-                    }
+                    isAutoLine = true;   //  Pour exécuter
                 }
             }
         }
         if (currentOp.equals(OPS.BST)) {
-            if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {
+            nextProgLineNumber = decProgLineNumber(currentProgLineNumber);
+            if (mode.equals(MODES.NORM)) {
                 if (alphaToX()) {
-                    nextProgLineNumber = decProgLineNumber(currentProgLineNumber);   //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ouEDIT
-                    if (mode.equals(MODES.NORM)) {
-                        createNewProgLine = false;
-                    }
+                    //  NOP   Uniquement reculer, sans exécuter
                 }
             }
         }
@@ -2208,9 +2222,11 @@ public class MainActivity extends Activity {
                 (currentOp.equals(OPS.SF)) || (currentOp.equals(OPS.CF)) || (currentOp.equals(OPS.TF)) ||
                 (currentOp.equals(OPS.DSE)) || (currentOp.equals(OPS.ISG))) {
             inOp = currentOp;   //  Début d'instruction MultiOps
-            KEYS key = alu.getKeyByOp(inOp);
-            swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
-            buttons[key.INDEX()].updateDisplay();
+            if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
+                KEYS key = alu.getKeyByOp(inOp);
+                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                buttons[key.INDEX()].updateDisplay();
+            }
         }
     }
 
@@ -2225,7 +2241,7 @@ public class MainActivity extends Activity {
             indMax = Math.min(indMax, indEex);
         }
         int indMin = (alpha.substring(0, 1).equals(OPS.CHS.SYMBOL()) ? 1 : 0);   //  Tenir compte du "-" initial éventuel
-        String res = String.format(Locale.US, "%,d", Integer.parseInt(alpha.substring(indMin, indMax)));   //  Séparateur de milliers
+        String res = String.format(Locale.US, "%,d", Long.parseLong(alpha.substring(indMin, indMax)));   //  Séparateur de milliers
         if (indMin != 0) {
             res = OPS.CHS.SYMBOL() + res;   //  Ramener le "-" initial éventuel
         }
@@ -2263,20 +2279,18 @@ public class MainActivity extends Activity {
     public boolean canExecAfterHandling(ProgLine progLine) {
         boolean res = true;   //  Exécuter la ligne (NORM ou RUN)
         if (mode.equals(MODES.EDIT)) {   //  EDIT
-            if (createNewProgLine) {   //  Créer une nouvelle ligne
-                int pln = currentProgLineNumber + 1;   //  Pas incProgLineNumber(currentProgLineNumber), afin d'éviter Wrap around
-                if (alu.addProgLineAtNumber(progLine, pln)) {   //  OK nouvelle ligne en mode EDIT
-                    nextProgLineNumber = pln;
-                } else {
-                    error = ERROR_PROG_LINES_FULL;
-                }
+            int pln = currentProgLineNumber + 1;   //  Pas incProgLineNumber(currentProgLineNumber), afin d'éviter Wrap around
+            if (alu.addProgLineAtNumber(progLine, pln)) {   //  OK nouvelle ligne en mode EDIT
+                nextProgLineNumber = pln;
+            } else {
+                error = ERROR_PROG_LINES_FULL;
             }
             res = false;   //  Ne pas exécuter la ligne
         }
         return res;
     }
 
-    private int getValidProgLineOpIndex(ProgLine progLine, int fromIndex) {
+    private int getNextValidProgLineOpIndex(ProgLine progLine, int fromIndex) {
         int res = -1;
         OPS op = null;
         int n = progLine.getOpsSize();
@@ -2331,6 +2345,18 @@ public class MainActivity extends Activity {
             }
         });
         dialog.show();
+    }
+
+    private void startOrStopAutomatic() {
+        if (isAutoLine) {
+            if (!isAuto) {
+                startAutomatic();
+            }
+        } else {   //  Pas autoLine
+            if (isAuto) {
+                stopAutomatic();
+            }
+        }
     }
 
     public void startAutomatic() {

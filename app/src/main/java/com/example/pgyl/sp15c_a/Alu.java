@@ -300,7 +300,7 @@ public class Alu {
 
     public enum LABELS {   //  Registres de base (I, R0 à R9, R.0 à R.9) (avec les registres classiques de données (data) à partir de R0)
         L0("0"), L1("1"), L2("2"), L3("3"), L4("4"), L5("5"), L6("6"), L7("7"), L8("8"), L9("9"),
-        LDOTD0(".0"), LDOT1(".1"), LDOT2(".2"), LDOT3(".3"), LDOT4(".4"), LDOT5(".5"), LDOT6(".6"), LDOT7(".7"), LDOT8(".8"), LDOT9(".9"),
+        LDOT0(".0"), LDOT1(".1"), LDOT2(".2"), LDOT3(".3"), LDOT4(".4"), LDOT5(".5"), LDOT6(".6"), LDOT7(".7"), LDOT8(".8"), LDOT9(".9"),
         LA("A"), LB("B"), LC("C"), LD("D"), LE("E");
 
         private String symbol;
@@ -448,7 +448,7 @@ public class Alu {
         return res;
     }
 
-    public String clRegs() {
+    public String clearRegs() {
         String res = "";
         for (int i = 0; i <= (regs.size() - 1); i = i + 1) {   //  Tout effacer: I, R0 à R9, R.0 à R.9 et suivants
             regs.set(i, 0d);
@@ -468,7 +468,7 @@ public class Alu {
         return symbolToBaseRegMap.get(symbol).INDEX();
     }
 
-    public boolean opIsGhostKey(OPS op) {
+    public boolean isGhostKey(OPS op) {
         return (opToGhostKeyMap.get(op) != null);
     }
 
@@ -1233,7 +1233,7 @@ public class Alu {
         return error;
     }
 
-    public String clStats() {   //  LASTX non modifié
+    public String clearStats() {   //  LASTX non modifié
         String error = "";
         for (STAT_OPS stat : STAT_OPS.values()) {
             int index = stat.DATA_REG_INDEX() + BASE_REGS.R0.INDEX();
@@ -1838,7 +1838,7 @@ public class Alu {
         return res;
     }
 
-    public boolean addStkRetProgLineNumber(int progLineNumber) {   //  PUSH
+    public boolean pushStkRetProgLineNumber(int progLineNumber) {   //  PUSH
         boolean res = false;
         if (stkRet.size() < MAX_RETS) {
             stkRet.add(0, progLineNumber);
@@ -1847,7 +1847,7 @@ public class Alu {
         return res;
     }
 
-    public int getLastStkRetProgLineNumber() {   //  POP1
+    public int popStkRetProgLineNumber() {   //  POP1
         return stkRet.get(0);
     }
 
@@ -1861,6 +1861,11 @@ public class Alu {
 
     public void removeLastStkRetProgLineNumber() {   //  POP2
         stkRet.remove(0);
+    }
+
+    public void clearReturnStack() {
+        stkRet.clear();
+        stkRet.add(0, END_RETURN_STACK);
     }
 
     private void setupReturnStack() {
