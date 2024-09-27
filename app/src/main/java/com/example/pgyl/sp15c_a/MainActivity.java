@@ -601,10 +601,10 @@ public class MainActivity extends Activity {
         final float BUTTON_TOP_20_IMAGE_SIZE_COEFF = 0.8f;
         final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.55f;
+        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.58f;
         final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.62f;
-        final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.55f;
-        final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.55f;
+        final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.57f;
+        final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.58f;
         final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.3f;
         final float BUTTON_MID_31_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_32_IMAGE_SIZE_COEFF = 0.6f;
