@@ -117,6 +117,7 @@ public class MainActivity extends Activity {
     private boolean isAutoLine;
     private boolean isKeyboardInterrupt;
     private boolean inHandleCurrentOp;
+    private boolean isWrapAround;
     private OPS shiftFOp;
     private OPS currentOp;
 
@@ -176,12 +177,13 @@ public class MainActivity extends Activity {
         mode = MODES.NORM;
         error = "";
         alpha = "";
-        stackLiftEnabled = true;
+        stackLiftEnabled = false;
         inOp = null;
         isAutoLine = false;
         isAuto = false;
         readProgLineOpIndex = 0;
         lineIsGhostKey = false;
+        isWrapAround = false;
         isKeyboardInterrupt = false;
         tempProgLine = new ProgLine();
         readProgLine = new ProgLine();
@@ -360,6 +362,9 @@ public class MainActivity extends Activity {
             nextProgLineNumber = currentProgLineNumber;   //  Sauf mention contraire en mode NORM ou EDIT (SST, BST, CLEAR_PRGM, ...)
             if (mode.equals(MODES.RUN)) {
                 nextProgLineNumber = incProgLineNumber(currentProgLineNumber);   //  Sauf mention contraire en RUN (GTO, GSB, RTN, A..E, ...)
+                if (nextProgLineNumber == 0) {
+                    isWrapAround = true;
+                }
             }
             if (inOp != null) {   //  instruction MultiOps déjà engagée
                 shiftFOp = alu.getKeyByOp(currentOp).SHIFT_F_OP();   //  Pour I, (i), ou A..E;
@@ -806,7 +811,7 @@ public class MainActivity extends Activity {
                     }
                     isComplete = true;
                     tempProgLine.setOp(1, currentOp);
-                    if (canExecAfterHandling(tempProgLine)) {
+                    if (!inEditModeAfterSavingLine(tempProgLine)) {
                         if (alphaToX()) {   //  Si on tape 5 puis 6 puis FIX 4 => On doit voir 56 avec 4 décimales
                             alu.setRoundMode(inOp);
                             int n = (currentOp.equals(OPS.I) ? (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX()) : Integer.valueOf(currentOp.SYMBOL()));
@@ -840,7 +845,7 @@ public class MainActivity extends Activity {
                     if (currentOp.equals(OPS.RAND)) {   //  STO RAN # traité mais sans effet
                         isComplete = true;
                         tempProgLine.setOp(1, currentOp);
-                        if (canExecAfterHandling(tempProgLine)) {
+                        if (!inEditModeAfterSavingLine(tempProgLine)) {
                             if (alphaToX()) {
                                 // NOP
                                 stackLiftEnabled = true;
@@ -871,7 +876,7 @@ public class MainActivity extends Activity {
                         if (error.equals("")) {
                             isComplete = true;
                             tempProgLine.setOp(3, currentOp);
-                            if (canExecAfterHandling(tempProgLine)) {
+                            if (!inEditModeAfterSavingLine(tempProgLine)) {
                                 if (alphaToX()) {
                                     error = (tempProgLine.getOp(1) != null ? alu.xToRegOp(index, tempProgLine.getOp(1)) : alu.xToReg(index));
                                     if (error.equals("")) {
@@ -914,7 +919,7 @@ public class MainActivity extends Activity {
                                 isComplete = true;
                                 currentOp = OPS.INDI;
                                 tempProgLine.setOp(4, currentOp);
-                                if (canExecAfterHandling(tempProgLine)) {
+                                if (!inEditModeAfterSavingLine(tempProgLine)) {
                                     if (alphaToX()) {
                                         stackLiftIfEnabled();
                                         int n = alu.getRegsMaxIndex();
@@ -928,7 +933,7 @@ public class MainActivity extends Activity {
                     if (currentOp.equals(OPS.SIGMA_PLUS)) {   //  RCL SIGMA+
                         isComplete = true;
                         tempProgLine.setOp(4, currentOp);
-                        if (canExecAfterHandling(tempProgLine)) {
+                        if (!inEditModeAfterSavingLine(tempProgLine)) {
                             if (alphaToX()) {
                                 alu.stackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
                                 stackLiftIfEnabled();
@@ -964,7 +969,7 @@ public class MainActivity extends Activity {
                             if (error.equals("")) {
                                 isComplete = true;
                                 tempProgLine.setOp(4, currentOp);
-                                if (canExecAfterHandling(tempProgLine)) {
+                                if (!inEditModeAfterSavingLine(tempProgLine)) {
                                     if (alphaToX()) {
                                         stackLiftIfEnabled();
                                         error = (tempProgLine.getOp(1) != null ? alu.regToXOp(index, tempProgLine.getOp(1)) : alu.regToX(index));
@@ -983,7 +988,7 @@ public class MainActivity extends Activity {
                     isComplete = true;
                     currentOp = OPS.INDI;
                     tempProgLine.setOp(1, currentOp);
-                    if (canExecAfterHandling(tempProgLine)) {
+                    if (!inEditModeAfterSavingLine(tempProgLine)) {
                         if (alphaToX()) {   //  Si on tape 5 puis 6 puis DIM (i) => On doit voir 56  (dataRegIndex max)
                             int n = (int) alu.getStkRegContents(STK_REGS.X);
                             error = alu.setDataRegsSize(n + 1);   //  n=max Data Index
@@ -1031,7 +1036,7 @@ public class MainActivity extends Activity {
                         if (error.equals("")) {
                             isComplete = true;
                             tempProgLine.setOp(2, currentOp);
-                            if (canExecAfterHandling(tempProgLine)) {
+                            if (!inEditModeAfterSavingLine(tempProgLine)) {
                                 if (alphaToX()) {
                                     error = alu.xXchgReg(index);
                                     if (error.equals("")) {
@@ -1067,7 +1072,7 @@ public class MainActivity extends Activity {
                         if (error.equals("")) {
                             isComplete = true;
                             tempProgLine.setOp(2, currentOp);
-                            if (canExecAfterHandling(tempProgLine)) {    //  Neutre sur StackLift ???
+                            if (!inEditModeAfterSavingLine(tempProgLine)) {    //  Neutre sur StackLift ???
                                 if (alphaToX()) {
                                     //  NOP
                                 }
@@ -1139,7 +1144,7 @@ public class MainActivity extends Activity {
                             }
                             if (error.equals("")) {
                                 tempProgLine.setOp(2, currentOp);
-                                if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
+                                if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Neutre sur StackLift ???
                                     if (alphaToX()) {
                                         if (mode.equals(MODES.NORM)) {
                                             alu.rebuildlabelToprogLineNumberMap();
@@ -1181,7 +1186,7 @@ public class MainActivity extends Activity {
                         }
                         if (error.equals("")) {
                             tempProgLine.setOp(2, currentOp);
-                            if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
+                            if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Neutre sur StackLift ???
                                 if (alphaToX()) {
                                     if (mode.equals(MODES.RUN)) {   //  Au retour, revenir à la ligne suivant l'actuelle
                                         if (!alu.pushStkRetProgLineNumber(nextProgLineNumber)) {   //  MAX_RETS dépassé
@@ -1247,7 +1252,7 @@ public class MainActivity extends Activity {
                         if (error.equals("")) {
                             isComplete = true;
                             tempProgLine.setOp(2, currentOp);
-                            if (canExecAfterHandling(tempProgLine)) {
+                            if (!inEditModeAfterSavingLine(tempProgLine)) {
                                 if (alphaToX()) {
                                     double value = alu.getRegContentsByIndex(index);   //  value: counter(nnnnn).goal(nnn)step(nn)
                                     double v = Math.abs(value);
@@ -1294,7 +1299,7 @@ public class MainActivity extends Activity {
                     isComplete = true;
                     tempProgLine.setOp(1, currentOp);
                     int flagIndex = Integer.valueOf(currentOp.SYMBOL());
-                    if (canExecAfterHandling(tempProgLine)) {
+                    if (!inEditModeAfterSavingLine(tempProgLine)) {
                         if (alphaToX()) {
                             switch (currentOp) {
                                 case SF:
@@ -1404,7 +1409,7 @@ public class MainActivity extends Activity {
                 }
             }
             if (mode.equals(MODES.EDIT)) {
-                if (canExecAfterHandling(tempProgLine)) {   //  Enregistrer une ligne avec le chiffre
+                if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Enregistrer une ligne avec le chiffre
                     //  NOP
                 }
             }
@@ -1413,7 +1418,7 @@ public class MainActivity extends Activity {
 
     private void testAndHandleSingleOp() {
         if (currentOp.equals(OPS.PI)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     stackLiftIfEnabled();
                     error = alu.piToX();
@@ -1424,7 +1429,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.LASTX)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     stackLiftIfEnabled();
                     error = alu.lastXToX();
@@ -1435,7 +1440,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.RAND)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     stackLiftIfEnabled();
                     error = alu.randToX();
@@ -1446,7 +1451,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.SIGMA_PLUS)) {   //  Désactive stackLift
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.sigmaPlus();
                     if (error.equals("")) {
@@ -1458,7 +1463,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.SIGMA_MINUS)) {   //  Désactive stacklift
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.sigmaMinus();
                     if (error.equals("")) {
@@ -1470,7 +1475,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.MEAN)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     alu.saveStack();
                     alu.stackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
@@ -1485,7 +1490,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.STDEV)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     alu.saveStack();
                     alu.stackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
@@ -1500,7 +1505,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.LR)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     alu.saveStack();
                     alu.stackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
@@ -1515,7 +1520,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.YER)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     alu.saveStack();
                     alu.stackLift();    //  Un stacklift obligatoire
@@ -1529,7 +1534,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.SQR)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.sqrX();
                     if (error.equals("")) {
@@ -1541,7 +1546,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.SQRT)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.sqrtX();
                     if (error.equals("")) {
@@ -1553,7 +1558,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.TO_RAD)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.xToRad();
                     if (error.equals("")) {
@@ -1565,7 +1570,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.TO_DEG)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.xToDeg();
                     if (error.equals("")) {
@@ -1577,7 +1582,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.EXP)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.expX();
                     if (error.equals("")) {
@@ -1589,7 +1594,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.LN)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.lnX();
                     if (error.equals("")) {
@@ -1601,7 +1606,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.EXP10)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.exp10X();
                     if (error.equals("")) {
@@ -1613,7 +1618,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.LOG)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.logX();
                     if (error.equals("")) {
@@ -1625,7 +1630,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.POWER)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.pow();
                     if (error.equals("")) {
@@ -1638,7 +1643,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.PC)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.xPcY();   //  Pas de mergeDown
                     if (error.equals("")) {
@@ -1650,7 +1655,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.INV)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.invX();
                     if (error.equals("")) {
@@ -1662,7 +1667,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.DPC)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.xDpcY();   //  Pas de mergeDown
                     if (error.equals("")) {
@@ -1674,7 +1679,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.ABS)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.absX();
                     if (error.equals("")) {
@@ -1686,7 +1691,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.RND)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.rndX();
                     if (error.equals("")) {
@@ -1698,7 +1703,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.POL)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.xyToPol();
                     if (error.equals("")) {
@@ -1710,7 +1715,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.RECT)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.xyToRect();
                     if (error.equals("")) {
@@ -1722,7 +1727,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.HMS)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.hmsX();
                     if (error.equals("")) {
@@ -1734,7 +1739,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.H)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.hX();
                     if (error.equals("")) {
@@ -1746,7 +1751,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.COMB)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.xyToComb();
                     if (error.equals("")) {
@@ -1758,7 +1763,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.PERM)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.xyToPerm();
                     if (error.equals("")) {
@@ -1770,7 +1775,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.FRAC)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.fracX();
                     if (error.equals("")) {
@@ -1782,7 +1787,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.INT)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.intX();
                     if (error.equals("")) {
@@ -1794,7 +1799,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.SIN)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.sinX();
                     if (error.equals("")) {
@@ -1806,7 +1811,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.COS)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.cosX();
                     if (error.equals("")) {
@@ -1818,7 +1823,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.TAN)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.tanX();
                     if (error.equals("")) {
@@ -1830,7 +1835,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.ASIN)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.asinX();
                     if (error.equals("")) {
@@ -1842,7 +1847,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.ACOS)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.acosX();
                     if (error.equals("")) {
@@ -1854,7 +1859,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.ATAN)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.atanX();
                     if (error.equals("")) {
@@ -1866,7 +1871,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.SINH)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.sinhX();
                     if (error.equals("")) {
@@ -1878,7 +1883,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.COSH)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.coshX();
                     if (error.equals("")) {
@@ -1890,7 +1895,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.TANH)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.tanhX();
                     if (error.equals("")) {
@@ -1902,7 +1907,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.ASINH)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.asinhX();
                     if (error.equals("")) {
@@ -1914,7 +1919,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.ACOSH)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.acoshX();
                     if (error.equals("")) {
@@ -1926,7 +1931,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.ATANH)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.atanhX();
                     if (error.equals("")) {
@@ -1938,7 +1943,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.FACT)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.factX();
                     if (error.equals("")) {
@@ -1950,7 +1955,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.PLUS)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.yPlusX();
                     if (error.equals("")) {
@@ -1963,7 +1968,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.MINUS)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.yMinusX();
                     if (error.equals("")) {
@@ -1976,18 +1981,20 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.MULT)) {
-            if (alphaToX()) {
-                error = alu.yMultX();
-                if (error.equals("")) {
-                    alu.stackMergeDown();
-                    stackLiftEnabled = true;
-                } else {
-                    alu.lastXToX();
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
+                if (alphaToX()) {
+                    error = alu.yMultX();
+                    if (error.equals("")) {
+                        alu.stackMergeDown();
+                        stackLiftEnabled = true;
+                    } else {
+                        alu.lastXToX();
+                    }
                 }
             }
         }
         if (currentOp.equals(OPS.DIV)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.yDivX();
                     if (error.equals("")) {
@@ -2000,7 +2007,7 @@ public class MainActivity extends Activity {
             }
         }
         if ((currentOp.equals(OPS.DEG)) || (currentOp.equals(OPS.RAD)) || (currentOp.equals(OPS.GRAD))) {   //  Neutre sur stackLift
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     alu.setAngleMode(currentOp);
                 }
@@ -2011,7 +2018,7 @@ public class MainActivity extends Activity {
                 (currentOp.equals(OPS.XLE0)) || (currentOp.equals(OPS.XEY)) || (currentOp.equals(OPS.XNEY)) || (currentOp.equals(OPS.XGY)) ||
                 (currentOp.equals(OPS.XLY)) || (currentOp.equals(OPS.XGEY))) {    //  Neutre sur StackLift ???
 
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     if (alu.test(currentOp)) {
                         nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
@@ -2045,7 +2052,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.CLX)) {   // Désactive stacklift
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.clX();
                     if (error.equals("")) {
@@ -2056,21 +2063,21 @@ public class MainActivity extends Activity {
         }
 
         if (currentOp.equals(OPS.CLEAR_PREFIX)) {   //  Neutre sur stackLift
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.prefX();  //  error sera <>"" dans tous les cas (car représentera la mantisse) et sera donc traité comme une erreur
                 }
             }
         }
         if (currentOp.equals(OPS.CLEAR_REGS)) {   //  Neutre sur stackLift
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.clearRegs();
                 }
             }
         }
         if (currentOp.equals(OPS.CLEAR_SIGMA)) {   //  Neutre sur stackLift
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     error = alu.clearStats();
                     alu.clearStack();
@@ -2079,7 +2086,7 @@ public class MainActivity extends Activity {
         }
 
         if (currentOp.equals(OPS.ENTER)) {   // Désactive Stacklift
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     alu.stackLift();
                     stackLiftEnabled = false;
@@ -2087,7 +2094,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.RDN)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     alu.stackRollDown();
                     stackLiftEnabled = true;
@@ -2095,7 +2102,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.RUP)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     alu.stackRollUp();
                     stackLiftEnabled = true;
@@ -2103,7 +2110,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.XCHGXY)) {
-            if (canExecAfterHandling(tempProgLine)) {
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
                 if (alphaToX()) {
                     alu.xchgXY();
                     stackLiftEnabled = true;
@@ -2111,8 +2118,13 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.BEGIN)) {
-            if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.RUN))) {
-                currentOp = OPS.RTN;    //  Opération requalifiée et à examiner ci-dessous
+            if (!inEditModeAfterSavingLine(tempProgLine)) {
+                if (alphaToX()) {
+                    if (isWrapAround) {   //  On est passé de la fin au début => STOP
+                        isWrapAround = false;
+                        currentOp = OPS.RTN;    //  Opération requalifiée et à examiner ci-dessous}
+                    }
+                }
             }
         }
         if (currentOp.equals(OPS.USER)) {   //  Neutre sur StackLift
@@ -2121,7 +2133,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.RTN)) {
-            if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
+            if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Neutre sur StackLift ???
                 if (alphaToX()) {
                     if (!alu.isStkRetEmpty()) {  //  La pile d'appel n'est pas vide
                         int dpln = alu.popStkRetProgLineNumber();
@@ -2178,7 +2190,7 @@ public class MainActivity extends Activity {
                 }
             }
             if (mode.equals(MODES.EDIT)) {
-                if (canExecAfterHandling(tempProgLine)) {
+                if (!inEditModeAfterSavingLine(tempProgLine)) {
                     //  NOP
                 }
             }
@@ -2213,7 +2225,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.PSE)) {
-            if (canExecAfterHandling(tempProgLine)) {   //  Neutre sur StackLift ???
+            if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Neutre sur StackLift ???
                 if (alphaToX()) {
                     dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
                     dotMatrixDisplayView.updateDisplay();
@@ -2285,8 +2297,8 @@ public class MainActivity extends Activity {
         return res;
     }
 
-    public boolean canExecAfterHandling(ProgLine progLine) {
-        boolean res = true;   //  Exécuter la ligne (NORM ou RUN)
+    public boolean inEditModeAfterSavingLine(ProgLine progLine) {
+        boolean res = false;   //  Exécuter la ligne (NORM ou RUN)
         if (mode.equals(MODES.EDIT)) {   //  EDIT
             int pln = currentProgLineNumber + 1;   //  Pas incProgLineNumber(currentProgLineNumber), afin d'éviter Wrap around
             if (alu.addProgLineAtNumber(progLine, pln)) {   //  OK nouvelle ligne en mode EDIT
@@ -2294,7 +2306,7 @@ public class MainActivity extends Activity {
             } else {
                 error = ERROR_PROG_LINES_FULL;
             }
-            res = false;   //  Ne pas exécuter la ligne
+            res = true;   //  Ne pas exécuter la ligne
         }
         return res;
     }
