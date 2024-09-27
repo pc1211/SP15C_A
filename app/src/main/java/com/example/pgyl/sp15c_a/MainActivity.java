@@ -116,7 +116,7 @@ public class MainActivity extends Activity {
     private boolean isAuto;
     private boolean isAutoLine;
     private boolean isKeyboardInterrupt;
-    private boolean inHandle;
+    private boolean inHandleCurrentOp;
     private OPS shiftFOp;
     private OPS currentOp;
 
@@ -348,28 +348,28 @@ public class MainActivity extends Activity {
     }
 
     private void handleCurrentOp() {
-        inHandle = true;
+        inHandleCurrentOp = true;
         String disp;
         if (isAutoLine) {   //  Op à obtenir automatiquement (p.ex. en mode RUN)
             currentOp = readProgLine.getOp(readProgLineOpIndex);
             readProgLineOpIndex = readProgLineOpIndex + 1;
         }
         if (error.equals("")) {   //  Pas d'erreur (ou Prefix) antérieure
-            handleDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
-            handleGhostOp();   //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
-            nextProgLineNumber = currentProgLineNumber;   //  Sauf mention contraire en mode NORM ou EDIT
+            testAndHandleDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
+            testAndHandleGhostOp();   //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
+            nextProgLineNumber = currentProgLineNumber;   //  Sauf mention contraire en mode NORM ou EDIT (SST, BST, CLEAR_PRGM, ...)
             if (mode.equals(MODES.RUN)) {
-                nextProgLineNumber = incProgLineNumber(currentProgLineNumber);   //  Sauf mention contraire (GTO, GSB, RTN, A..E, ...)
+                nextProgLineNumber = incProgLineNumber(currentProgLineNumber);   //  Sauf mention contraire en RUN (GTO, GSB, RTN, A..E, ...)
             }
             if (inOp != null) {   //  instruction MultiOps déjà engagée
                 shiftFOp = alu.getKeyByOp(currentOp).SHIFT_F_OP();   //  Pour I, (i), ou A..E;
-                handleEndMultiOps();   //  Test si fin d'nstruction MultiOps (Eventuellement inOp y deviendra null si instruction MultiOps complète (=> Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Nouvelle instruction))
+                testAndHandleMultiOpsEnd();   //  Test si fin d'nstruction MultiOps (Eventuellement inOp y deviendra null si instruction MultiOps complète (=> Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Nouvelle instruction))
             } else {   //  Pas d'instruction MultiOps déjà engagée
                 tempProgLine.setOp(0, currentOp);   //  Nouvelle instruction commence
-                handleDigitOps();   //  Test si Chiffre entré (ou CHS, EEX, "."): stackLift éventuel et se met en fin du nombre en cours (Si EDIT: Nouvelle instruction avec ce chiffre)
-                handleSingleOps();   //  Test si Opération non MultiOps, normale (=> stackLift éventuel, Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Nouvelle instruction)
-                handleSpecialOps();   //  Test si Opération non MultiOps, spéciale (=> stackLift éventuel, Nbre en cours copié dans X et vidé, puis exécution éventuelle) (si EDIT: Nouvelle instruction éventuelle)
-                handleBeginMultiOps();  //  Test si début d'instruction MultiOps: inOp deviendra non null
+                testAndHandleDigitOp();   //  Test si Chiffre entré (ou CHS, EEX, "."): stackLift éventuel et se met en fin du nombre en cours (Si EDIT: Enregistrement instruction avec ce chiffre)
+                testAndHandleSingleOp();   //  Test si Opération non MultiOps, normale (=> stackLift éventuel, Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Enregistrement instruction)
+                testAndHandleSpecialOp();   //  Test si Opération non MultiOps, spéciale (=> stackLift éventuel, Nbre en cours copié dans X et vidé, puis exécution éventuelle) (si EDIT: Enregistrement instruction éventuelle)
+                testAndHandleMultiOpsBegin();  //  Test si début d'instruction MultiOps: inOp deviendra non null
             }
             if (inOp == null) {    //  Instruction terminée (déjà enregistrée dans progLines si EDIT ou RUN) ou éventuellement annulée pour problème de syntaxe mais sans erreur explicite
                 alu.clearProgLine(tempProgLine);   //  Préparer le terrain pour une nouvelle instruction
@@ -411,24 +411,29 @@ public class MainActivity extends Activity {
                 dotMatrixDisplayUpdater.displayText(disp, false);
             }
         }
-        if (!mode.equals(MODES.RUN)) {
+        if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
             dotMatrixDisplayView.updateDisplay();
             updateSideDisplay();
         }
-        if (isAutoLine) {   //  Obtenir automatiquement le prochain op pour le tour suivant
-            readProgLineOpIndex = getNextValidProgLineOpIndex(readProgLine, readProgLineOpIndex);   //  Les ops d'une progLine ne ne sont pas toujours côte à côte
-            if ((readProgLineOpIndex == -1) || ((lineIsGhostKey) && (readProgLineOpIndex > 0))) {   //  Il n'y a plus d'ops dans la progLine
-                if (mode.equals(MODES.RUN)) {
-                    readProgLine = alu.getProgLine(currentProgLineNumber);    //  Ligne suivante
-                    readProgLineOpIndex = 0;   //  Op0 toujours disponible
-                    lineIsGhostKey = alu.isGhostKey(readProgLine.getOp(readProgLineOpIndex));   //  Si Ghost key => Ne pas aller au-delà de Op0
-                } else {   //  Pas RUN
-                    isAutoLine = false;
+        if (isAutoLine) {   //  Obtenir automatiquement le prochain op de la ligne ou de la suivante
+            if (readProgLineOpIndex == 0) {   //  Op0 toujours disponible
+                readProgLine = alu.getProgLine(currentProgLineNumber);    //  Ligne suivante
+                lineIsGhostKey = alu.isGhostKey(readProgLine.getOp(0));   //  Si Ligne avec touche fantôme => Ne pas aller au-delà de Op0
+            } else {   //  Index > 0
+                readProgLineOpIndex = getValidProgLineOpIndex(readProgLine, readProgLineOpIndex);   //  Les ops d'une progLine ne ne sont pas toujours côte à côte
+                if ((readProgLineOpIndex == -1) || lineIsGhostKey) {   //  Il n'y a plus d'ops dans la progLine ou Ligne avec touche fantôme
+                    if (mode.equals(MODES.RUN)) {
+                        readProgLine = alu.getProgLine(currentProgLineNumber);    //  Ligne suivante
+                        lineIsGhostKey = alu.isGhostKey(readProgLine.getOp(0));   //  Si Ligne avec touche fantôme => Ne pas aller au-delà de Op0
+                        readProgLineOpIndex = 0;   //  Op0 toujours disponible
+                    } else {   //  Pas RUN
+                        isAutoLine = false;
+                    }
                 }
             }
         }
         startOrStopAutomatic();
-        inHandle = false;
+        inHandleCurrentOp = false;
     }
 
     private void updateSideDisplay() {
@@ -592,12 +597,12 @@ public class MainActivity extends Activity {
         final float BUTTON_TOP_IMAGE_SIZE_COEFF = 0.7f;
         final float BUTTON_MID_IMAGE_SIZE_COEFF = 0.65f;
         final float BUTTON_LOW_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_15_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_16_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_TOP_20_IMAGE_SIZE_COEFF = 0.8f;
         final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.64f;
+        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.55f;
+        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.62f;
         final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.55f;
         final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.55f;
         final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.3f;
@@ -653,8 +658,9 @@ public class MainActivity extends Activity {
                             }
                         }
                         buttons[key.INDEX()].setHeightWeight(legendPos.INDEX(), heightWeight);
-                        if ((key.equals(KEYS.KEY_15)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image CHS à adapter
-                            imageSizeCoeff = BUTTON_MID_15_IMAGE_SIZE_COEFF;
+
+                        if ((key.equals(KEYS.KEY_16)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image CHS à adapter
+                            imageSizeCoeff = BUTTON_MID_16_IMAGE_SIZE_COEFF;
                         }
                         if ((key.equals(KEYS.KEY_20)) && (legendPos.equals(LEGEND_POS.TOP))) {   //  Image INTEG à adapter
                             imageSizeCoeff = BUTTON_TOP_20_IMAGE_SIZE_COEFF;
@@ -692,7 +698,7 @@ public class MainActivity extends Activity {
                         if ((key.equals(KEYS.KEY_35)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image BACK à adapter
                             imageSizeCoeff = BUTTON_MID_35_IMAGE_SIZE_COEFF;
                         }
-                        if ((key.equals(KEYS.KEY_36)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image Enter à adapter
+                        if ((key.equals(KEYS.KEY_36)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image ENTER à adapter
                             imageSizeCoeff = BUTTON_MID_36_IMAGE_SIZE_COEFF;
                         }
                         if ((key.equals(KEYS.KEY_44)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image STO à adapter
@@ -755,7 +761,7 @@ public class MainActivity extends Activity {
         };
     }
 
-    private void handleDirectAEOp() {
+    private void testAndHandleDirectAEOp() {
         if (inOp == null) {
             if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
                 inOp = OPS.GSB;
@@ -769,7 +775,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void handleGhostOp() {
+    private void testAndHandleGhostOp() {
         if (inOp != null) {   //  Opération MultiOps déjà engagée
             OPS dop = alu.getOpByGhostKeyOps(inOp, currentOp);   //  Pas null pour opérations fantômes (cf GHOST_KEYS) : HYP, AHYP, TEST
             if (dop != null) {   // Cas particuliers: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
@@ -787,7 +793,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void handleEndMultiOps() {
+    private void testAndHandleMultiOpsEnd() {
         if (inOp != null) {
             boolean isComplete = false;
             boolean mustWait = false;
@@ -1188,6 +1194,7 @@ public class MainActivity extends Activity {
                                         nowmRUN = System.currentTimeMillis();
                                         mode = MODES.RUN;
                                         isAutoLine = true;
+                                        readProgLineOpIndex = 0;
                                         KEYS key = alu.getKeyByOp(inOp);
                                         swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
                                         buttons[key.INDEX()].updateDisplay();
@@ -1318,7 +1325,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void handleDigitOps() {
+    private void testAndHandleDigitOp() {
         final int MAX_INPUT_LENGTH = 17;
 
         if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
@@ -1404,7 +1411,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void handleSingleOps() {
+    private void testAndHandleSingleOp() {
         if (currentOp.equals(OPS.PI)) {
             if (canExecAfterHandling(tempProgLine)) {
                 if (alphaToX()) {
@@ -2014,7 +2021,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void handleSpecialOps() {
+    private void testAndHandleSpecialOp() {
         if (currentOp.equals(OPS.BACK)) {    // Désactive stacklift
             if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.RUN))) {
                 if (alpha.length() >= 2) {
@@ -2154,6 +2161,7 @@ public class MainActivity extends Activity {
                     if (alphaToX()) {
                         mode = MODES.RUN;
                         isAutoLine = true;
+                        readProgLineOpIndex = 0;
                         nowmRUN = System.currentTimeMillis();
                         alu.rebuildlabelToprogLineNumberMap();   //  Réassocier les labels à leur n° de ligne, le lancement proprement sera effectué plus bas
                     }
@@ -2180,6 +2188,7 @@ public class MainActivity extends Activity {
             if (mode.equals(MODES.NORM)) {
                 if (alphaToX()) {
                     isAutoLine = true;   //  Pour exécuter
+                    readProgLineOpIndex = 0;
                 }
             }
         }
@@ -2194,7 +2203,7 @@ public class MainActivity extends Activity {
         if (currentOp.equals(OPS.CLEAR_PRGM)) {
             if (mode.equals(MODES.NORM)) {
                 if (alphaToX()) {
-                    currentProgLineNumber = 0;
+                    nextProgLineNumber = 0;
                 }
             }
             if (mode.equals(MODES.EDIT)) {
@@ -2214,7 +2223,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void handleBeginMultiOps() {
+    private void testAndHandleMultiOpsBegin() {
         if ((currentOp.equals(OPS.FIX)) || (currentOp.equals(OPS.SCI)) || (currentOp.equals(OPS.ENG)) ||
                 (currentOp.equals(OPS.STO)) || (currentOp.equals(OPS.RCL)) || (currentOp.equals(OPS.XCHG)) ||
                 (currentOp.equals(OPS.HYP)) || (currentOp.equals(OPS.AHYP)) || (currentOp.equals(OPS.TEST)) ||
@@ -2290,17 +2299,15 @@ public class MainActivity extends Activity {
         return res;
     }
 
-    private int getNextValidProgLineOpIndex(ProgLine progLine, int fromIndex) {
+    private int getValidProgLineOpIndex(ProgLine progLine, int fromIndex) {
         int res = -1;
-        OPS op = null;
         int n = progLine.getOpsSize();
-        int i = fromIndex;
-        while ((op == null) && (i <= (n - 1))) {
-            op = progLine.getOp(i);
-            i = i + 1;
-        }
-        if (op != null) {
-            res = i - 1;
+        for (int i = fromIndex; i <= (n - 1); i = i + 1) {
+            OPS op = progLine.getOp(i);
+            if (op != null) {
+                res = i;
+                break;
+            }
         }
         return res;
     }
@@ -2372,7 +2379,7 @@ public class MainActivity extends Activity {
     private void automatic() {
         handlerTime.postDelayed(runnableTime, updateInterval);
         long nowm = System.currentTimeMillis();
-        if (!inHandle) {
+        if (!inHandleCurrentOp) {
             handleCurrentOp();
         }
         if (nowmPSE > 0) {   //  PSE en cours
