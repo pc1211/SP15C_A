@@ -183,7 +183,7 @@ public class Alu {
         KEY_38(38, OPS.DIGIT_2, OPS.HMS, OPS.H),
         KEY_39(39, OPS.DIGIT_3, OPS.TO_RAD, OPS.TO_DEG),
         KEY_30(30, OPS.MINUS, OPS.UNKNOWN, OPS.TEST),
-        KEY_41(41, OPS.ON, OPS.UNKNOWN, OPS.UNKNOWN),   //  ON inactif
+        KEY_41(41, OPS.ON, OPS.ON, OPS.ON),   //  ON inactif
         KEY_42(42, OPS.F, OPS.UNKNOWN, OPS.UNKNOWN),
         KEY_43(43, OPS.G, OPS.UNKNOWN, OPS.UNKNOWN),
         KEY_44(44, OPS.STO, OPS.FRAC, OPS.INT),

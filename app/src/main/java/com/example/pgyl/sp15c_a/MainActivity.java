@@ -592,180 +592,6 @@ public class MainActivity extends Activity {
         alu = new Alu();
     }
 
-    private void setupButtons() {
-        final String KEY_FILE_PREFIX = "k";
-        final String KEY_FILE_SUFFIX = "_";
-        final long BUTTON_MIN_CLICK_TIME_INTERVAL_MS = 500;
-        final int BUTTON_TOP_IMAGE_HEIGHT_WEIGHT = 1;
-        final int BUTTON_MID_IMAGE_HEIGHT_WEIGHT = 2;
-        final int BUTTON_LOW_IMAGE_HEIGHT_WEIGHT = 1;
-        final float BUTTON_TOP_IMAGE_SIZE_COEFF = 0.7f;
-        final float BUTTON_MID_IMAGE_SIZE_COEFF = 0.65f;
-        final float BUTTON_LOW_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_16_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_TOP_20_IMAGE_SIZE_COEFF = 0.8f;
-        final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.58f;
-        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.62f;
-        final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.57f;
-        final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.58f;
-        final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.3f;
-        final float BUTTON_MID_31_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_32_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_33_IMAGE_SIZE_COEFF = 0.55f;
-        final float BUTTON_MID_35_IMAGE_SIZE_COEFF = 0.5f;
-        final float BUTTON_MID_36_IMAGE_SIZE_COEFF = 0.85f;
-        final float BUTTON_MID_44_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_45_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_48_IMAGE_SIZE_COEFF = 0.3f;
-
-        buttons = new ImageButtonViewStack[KEYS.values().length];
-        Class rid = R.id.class;
-        for (KEYS key : KEYS.values()) {
-            try {
-                buttons[key.INDEX()] = findViewById(rid.getField(key.toString()).getInt(rid));
-                buttons[key.INDEX()].setOutlineStrokeWidthDp(2);
-                buttons[key.INDEX()].setPcBackCornerRadius(0);
-                buttons[key.INDEX()].setImageCount(LEGEND_POS.values().length);
-                for (LEGEND_POS legendPos : LEGEND_POS.values()) {
-                    if (((!key.equals(KEYS.KEY_41)) && (!key.equals(KEYS.KEY_42)) && (!key.equals(KEYS.KEY_43))) || (legendPos.equals(LEGEND_POS.MID))) {
-                        String fileName = KEY_FILE_PREFIX + key.CODE() + KEY_FILE_SUFFIX + legendPos.toString().toLowerCase();
-                        int svgResId = getResources().getIdentifier(fileName, "raw", getPackageName());
-                        buttons[key.INDEX()].setSVGImageResource(legendPos.INDEX(), svgResId);
-                        float imageSizeCoeff = 0;
-                        int heightWeight = 0;
-                        switch (legendPos) {
-                            case TOP:
-                                imageSizeCoeff = BUTTON_TOP_IMAGE_SIZE_COEFF;
-                                heightWeight = BUTTON_TOP_IMAGE_HEIGHT_WEIGHT;
-                                break;
-                            case MID:
-                                imageSizeCoeff = BUTTON_MID_IMAGE_SIZE_COEFF;
-                                heightWeight = BUTTON_MID_IMAGE_HEIGHT_WEIGHT;
-                                break;
-                            case LOW:
-                                imageSizeCoeff = BUTTON_LOW_IMAGE_SIZE_COEFF;
-                                heightWeight = BUTTON_LOW_IMAGE_HEIGHT_WEIGHT;
-                                break;
-                        }
-                        if (key.equals(KEYS.KEY_36)) {   // Cas particulier de la touche ENTER
-                            switch (legendPos) {
-                                case TOP:
-                                    heightWeight = 2;
-                                    break;
-                                case MID:
-                                    heightWeight = 14;
-                                    break;
-                                case LOW:
-                                    heightWeight = 2;
-                                    break;
-                            }
-                        }
-                        buttons[key.INDEX()].setHeightWeight(legendPos.INDEX(), heightWeight);
-
-                        if ((key.equals(KEYS.KEY_16)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image CHS à adapter
-                            imageSizeCoeff = BUTTON_MID_16_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_20)) && (legendPos.equals(LEGEND_POS.TOP))) {   //  Image INTEG à adapter
-                            imageSizeCoeff = BUTTON_TOP_20_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_21)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SST à adapter
-                            imageSizeCoeff = BUTTON_MID_21_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_22)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image GTO à adapter
-                            imageSizeCoeff = BUTTON_MID_22_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_23)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SIN à adapter
-                            imageSizeCoeff = BUTTON_MID_23_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_24)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image COS à adapter
-                            imageSizeCoeff = BUTTON_MID_24_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_25)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image TAN à adapter
-                            imageSizeCoeff = BUTTON_MID_25_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_26)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image EEX à adapter
-                            imageSizeCoeff = BUTTON_MID_26_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_30)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image Minus à adapter
-                            imageSizeCoeff = BUTTON_MID_30_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_31)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image R/S à adapter
-                            imageSizeCoeff = BUTTON_MID_31_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_32)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image GSB à adapter
-                            imageSizeCoeff = BUTTON_MID_32_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_33)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image RDN à adapter
-                            imageSizeCoeff = BUTTON_MID_33_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_35)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image BACK à adapter
-                            imageSizeCoeff = BUTTON_MID_35_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_36)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image ENTER à adapter
-                            imageSizeCoeff = BUTTON_MID_36_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_44)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image STO à adapter
-                            imageSizeCoeff = BUTTON_MID_44_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_45)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image RCL à adapter
-                            imageSizeCoeff = BUTTON_MID_45_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_48)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image Dot à adapter
-                            imageSizeCoeff = BUTTON_MID_48_IMAGE_SIZE_COEFF;
-                        }
-                        buttons[key.INDEX()].setImageSizeCoeff(legendPos.INDEX(), imageSizeCoeff);
-                        final KEYS fkey = key;
-                        buttons[key.INDEX()].setOnCustomClickListener(new ImageButtonViewStack.onCustomClickListener() {
-                            @Override
-                            public void onCustomClick() {
-                                onButtonClick(fkey);
-                            }
-                        });
-                    } else {   //  ON, f ou g => Seul le MID est visible
-                        buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);
-                    }
-                }
-            } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException ex) {
-                Logger.getLogger(MainActivity.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        //layoutButtonsOnSelection = findViewById(R.id.LAY_BUTTONS_ON_SELECTION);
-    }
-
-    private void setupDotMatrixDisplayUpdater() {
-        dotMatrixDisplayUpdater = new CalcDotMatrixDisplayUpdater(dotMatrixDisplayView);
-    }
-
-    private void setupSideDotMatrixDisplayUpdater() {
-        sideDotMatrixDisplayUpdater = new SideDotMatrixDisplayUpdater(sideDotMatrixDisplayView);
-    }
-
-    private void setupDotMatrixDisplay() {
-        dotMatrixDisplayView = findViewById(R.id.DOT_MATRIX_DISPLAY);
-        dotMatrixDisplayView.setOnCustomClickListener(new DotMatrixDisplayView.onCustomClickListener() {
-            @Override
-            public void onCustomClick() {
-                onDotMatrixDisplayViewClick();
-            }
-        });
-    }
-
-    private void setupSideDotMatrixDisplay() {
-        sideDotMatrixDisplayView = findViewById(R.id.DOT_MATRIX_DISPLAY_SIDE);
-    }
-
-    private void setupRunnableTime() {
-        handlerTime = new Handler();
-        runnableTime = new Runnable() {
-            @Override
-            public void run() {
-                automatic();
-            }
-        };
-    }
-
     private void testAndHandleDirectAEOp() {
         if (inOp == null) {
             if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
@@ -2408,6 +2234,184 @@ public class MainActivity extends Activity {
                 }
             }
         }
+    }
+
+    private void setupButtons() {
+        final String KEY_FILE_PREFIX = "k";
+        final String KEY_FILE_SUFFIX = "_";
+        final long BUTTON_MIN_CLICK_TIME_INTERVAL_MS = 500;
+        final int BUTTON_TOP_IMAGE_HEIGHT_WEIGHT = 1;
+        final int BUTTON_MID_IMAGE_HEIGHT_WEIGHT = 2;
+        final int BUTTON_LOW_IMAGE_HEIGHT_WEIGHT = 1;
+        final float BUTTON_TOP_IMAGE_SIZE_COEFF = 0.7f;
+        final float BUTTON_MID_IMAGE_SIZE_COEFF = 0.65f;
+        final float BUTTON_LOW_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_16_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_TOP_20_IMAGE_SIZE_COEFF = 0.8f;
+        final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.58f;
+        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.63f;
+        final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.57f;
+        final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.58f;
+        final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.3f;
+        final float BUTTON_MID_31_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_32_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_33_IMAGE_SIZE_COEFF = 0.55f;
+        final float BUTTON_MID_35_IMAGE_SIZE_COEFF = 0.5f;
+        final float BUTTON_MID_36_IMAGE_SIZE_COEFF = 0.85f;
+        final float BUTTON_MID_41_IMAGE_SIZE_COEFF = 0.6f;
+        final float BUTTON_MID_44_IMAGE_SIZE_COEFF = 0.57f;
+        final float BUTTON_MID_45_IMAGE_SIZE_COEFF = 0.55f;
+        final float BUTTON_MID_48_IMAGE_SIZE_COEFF = 0.3f;
+
+        buttons = new ImageButtonViewStack[KEYS.values().length];
+        Class rid = R.id.class;
+        for (KEYS key : KEYS.values()) {
+            try {
+                buttons[key.INDEX()] = findViewById(rid.getField(key.toString()).getInt(rid));
+                buttons[key.INDEX()].setOutlineStrokeWidthDp(2);
+                buttons[key.INDEX()].setPcBackCornerRadius(0);
+                buttons[key.INDEX()].setImageCount(LEGEND_POS.values().length);
+                for (LEGEND_POS legendPos : LEGEND_POS.values()) {
+                    if (((!key.equals(KEYS.KEY_41)) && (!key.equals(KEYS.KEY_42)) && (!key.equals(KEYS.KEY_43))) || (legendPos.equals(LEGEND_POS.MID))) {
+                        String fileName = KEY_FILE_PREFIX + key.CODE() + KEY_FILE_SUFFIX + legendPos.toString().toLowerCase();
+                        int svgResId = getResources().getIdentifier(fileName, "raw", getPackageName());
+                        buttons[key.INDEX()].setSVGImageResource(legendPos.INDEX(), svgResId);
+                        float imageSizeCoeff = 0;
+                        int heightWeight = 0;
+                        switch (legendPos) {
+                            case TOP:
+                                imageSizeCoeff = BUTTON_TOP_IMAGE_SIZE_COEFF;
+                                heightWeight = BUTTON_TOP_IMAGE_HEIGHT_WEIGHT;
+                                break;
+                            case MID:
+                                imageSizeCoeff = BUTTON_MID_IMAGE_SIZE_COEFF;
+                                heightWeight = BUTTON_MID_IMAGE_HEIGHT_WEIGHT;
+                                break;
+                            case LOW:
+                                imageSizeCoeff = BUTTON_LOW_IMAGE_SIZE_COEFF;
+                                heightWeight = BUTTON_LOW_IMAGE_HEIGHT_WEIGHT;
+                                break;
+                        }
+                        if (key.equals(KEYS.KEY_36)) {   // Cas particulier de la touche ENTER
+                            switch (legendPos) {
+                                case TOP:
+                                    heightWeight = 2;
+                                    break;
+                                case MID:
+                                    heightWeight = 14;
+                                    break;
+                                case LOW:
+                                    heightWeight = 2;
+                                    break;
+                            }
+                        }
+                        buttons[key.INDEX()].setHeightWeight(legendPos.INDEX(), heightWeight);
+
+                        if ((key.equals(KEYS.KEY_16)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image CHS à adapter
+                            imageSizeCoeff = BUTTON_MID_16_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_20)) && (legendPos.equals(LEGEND_POS.TOP))) {   //  Image INTEG à adapter
+                            imageSizeCoeff = BUTTON_TOP_20_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_21)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SST à adapter
+                            imageSizeCoeff = BUTTON_MID_21_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_22)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image GTO à adapter
+                            imageSizeCoeff = BUTTON_MID_22_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_23)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SIN à adapter
+                            imageSizeCoeff = BUTTON_MID_23_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_24)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image COS à adapter
+                            imageSizeCoeff = BUTTON_MID_24_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_25)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image TAN à adapter
+                            imageSizeCoeff = BUTTON_MID_25_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_26)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image EEX à adapter
+                            imageSizeCoeff = BUTTON_MID_26_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_30)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image Minus à adapter
+                            imageSizeCoeff = BUTTON_MID_30_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_31)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image R/S à adapter
+                            imageSizeCoeff = BUTTON_MID_31_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_32)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image GSB à adapter
+                            imageSizeCoeff = BUTTON_MID_32_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_33)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image RDN à adapter
+                            imageSizeCoeff = BUTTON_MID_33_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_35)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image BACK à adapter
+                            imageSizeCoeff = BUTTON_MID_35_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_36)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image ENTER à adapter
+                            imageSizeCoeff = BUTTON_MID_36_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_41)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image ON à adapter
+                            imageSizeCoeff = BUTTON_MID_41_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_44)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image STO à adapter
+                            imageSizeCoeff = BUTTON_MID_44_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_45)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image RCL à adapter
+                            imageSizeCoeff = BUTTON_MID_45_IMAGE_SIZE_COEFF;
+                        }
+                        if ((key.equals(KEYS.KEY_48)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image Dot à adapter
+                            imageSizeCoeff = BUTTON_MID_48_IMAGE_SIZE_COEFF;
+                        }
+                        buttons[key.INDEX()].setImageSizeCoeff(legendPos.INDEX(), imageSizeCoeff);
+                        final KEYS fkey = key;
+                        buttons[key.INDEX()].setOnCustomClickListener(new ImageButtonViewStack.onCustomClickListener() {
+                            @Override
+                            public void onCustomClick() {
+                                onButtonClick(fkey);
+                            }
+                        });
+                    } else {   //  ON, f ou g => Seul le MID est visible
+                        buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);
+                    }
+                }
+            } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException ex) {
+                Logger.getLogger(MainActivity.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        //layoutButtonsOnSelection = findViewById(R.id.LAY_BUTTONS_ON_SELECTION);
+    }
+
+    private void setupDotMatrixDisplayUpdater() {
+        dotMatrixDisplayUpdater = new CalcDotMatrixDisplayUpdater(dotMatrixDisplayView);
+    }
+
+    private void setupSideDotMatrixDisplayUpdater() {
+        sideDotMatrixDisplayUpdater = new SideDotMatrixDisplayUpdater(sideDotMatrixDisplayView);
+    }
+
+    private void setupDotMatrixDisplay() {
+        dotMatrixDisplayView = findViewById(R.id.DOT_MATRIX_DISPLAY);
+        dotMatrixDisplayView.setOnCustomClickListener(new DotMatrixDisplayView.onCustomClickListener() {
+            @Override
+            public void onCustomClick() {
+                onDotMatrixDisplayViewClick();
+            }
+        });
+    }
+
+    private void setupSideDotMatrixDisplay() {
+        sideDotMatrixDisplayView = findViewById(R.id.DOT_MATRIX_DISPLAY_SIDE);
+    }
+
+    private void setupRunnableTime() {
+        handlerTime = new Handler();
+        runnableTime = new Runnable() {
+            @Override
+            public void run() {
+                automatic();
+            }
+        };
     }
 
 }
