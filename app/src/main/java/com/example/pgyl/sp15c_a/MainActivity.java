@@ -1229,9 +1229,9 @@ public class MainActivity extends Activity {
                         }
                         beta = beta + s;
                     }
-                }
-                if (beta.length() <= MAX_INPUT_LENGTH) {
-                    alpha = beta;
+                    if (beta.length() <= MAX_INPUT_LENGTH) {
+                        alpha = beta;
+                    }
                 }
             }
             if (mode.equals(MODES.EDIT)) {
@@ -2107,6 +2107,10 @@ public class MainActivity extends Activity {
     private boolean alphaToX() {
         boolean res = true;
         if (!alpha.equals("")) {  //  Entrée de nombre en cours, à valider et terminer
+            int indLast = alpha.length() - 1;
+            if (alpha.substring(indLast).equals("E")) {   //  Enlever un "E" éventuel en dernière position
+                alpha = alpha.substring(0, indLast);
+            }
             if (alu.isDouble(alpha)) {
                 String error = alu.aToX(alpha);
                 if (error.equals("")) {
