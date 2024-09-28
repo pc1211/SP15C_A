@@ -1544,7 +1544,7 @@ public class Alu {
         double mant = 0;
         if (val != 0) {
             exp = (int) Math.floor(1d + Math.log10(val));
-            mant = val / Math.pow(10, exp);   //  Entre 0 et 1
+            mant = val / Math.pow(10, exp - 1) / 10d;   //  Entre 0 et 1;    exp-1 pour éviter overflow
         }
         int expr = 0;
         OPS rm = roundMode;   //  FIX, SCI, ENG
@@ -1621,9 +1621,11 @@ public class Alu {
 
     public boolean isDouble(String sNumber) {
         boolean res = true;
-        double d = 0;
         try {
-            d = Double.parseDouble(sNumber);
+            double d = Double.parseDouble(sNumber);
+            if ((Double.isNaN(d)) || (Double.isInfinite(d))) {
+                throw new IllegalArgumentException();
+            }
         } catch (IllegalArgumentException | SecurityException ex) {
             res = false;   //  Echec
         }

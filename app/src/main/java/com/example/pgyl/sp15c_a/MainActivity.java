@@ -67,7 +67,6 @@ public class MainActivity extends Activity {
     private final String ERROR_RCL = "Invalid RCL";
     private final String ERROR_INDEX = "Invalid index";
     private final String ERROR_GTO_GSB = "Invalid GTO/GSB";
-    private final String ERROR_NUMBER = "Invalid number";
     private final String ERROR_RET_STACK_FULL = "Ret stack full";
     private final String ERROR_PROG_LINES_FULL = "Prog lines full";
     private final String ERROR_KEYBOARD_INTERRUPT = "Keyboard Break";
@@ -2111,16 +2110,11 @@ public class MainActivity extends Activity {
             if (alpha.substring(indLast).equals("E")) {   //  Enlever un "E" éventuel en dernière position
                 alpha = alpha.substring(0, indLast);
             }
-            if (alu.isDouble(alpha)) {
-                String error = alu.aToX(alpha);
-                if (error.equals("")) {
-                    alpha = "";
-                    stackLiftEnabled = true;
-                } else {   //  Erreur
-                    res = false;
-                }
-            } else {
-                error = ERROR_NUMBER;
+            error = alu.aToX(alpha);
+            if (error.equals("")) {
+                alpha = "";
+                stackLiftEnabled = true;
+            } else {   //  Erreur
                 res = false;
             }
         }
