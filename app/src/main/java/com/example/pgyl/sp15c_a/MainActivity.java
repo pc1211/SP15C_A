@@ -455,7 +455,7 @@ public class MainActivity extends Activity {
     }
 
     private void updateDisplayDotMatrixColors() {
-        String[] colors = {"000000", "8F8100", "A49300"};    // ON, OFF, BACK
+        String[] colors = {"000000", "BFAF00", "D9C700"};    // ON, OFF, BACK
 
         dotMatrixDisplayUpdater.setColors(colors);
         dotMatrixDisplayUpdater.rebuildStructure();
@@ -463,7 +463,7 @@ public class MainActivity extends Activity {
     }
 
     private void updateSideDotMatrixColors() {
-        String[] colors = {"000000", "8F8100", "A49300"};    // ON, OFF, BACK
+        String[] colors = {"000000", "BFAF00", "D9C700"};    // ON, OFF, BACK
 
         sideDotMatrixDisplayUpdater.setColors(colors);
         sideDotMatrixDisplayUpdater.rebuildStructure();
@@ -1083,24 +1083,25 @@ public class MainActivity extends Activity {
                                     double v = Math.abs(value);
                                     int counter = (int) v;
                                     double g = (v - (double) counter) * 1000d;
-                                    int goal = (int) g;
-                                    double st = (g - (double) goal) * 1000d;
-                                    int step = (int) st;
-                                    if (step == 0) {
-                                        step = 1;
+                                    int goal = (int) (g + 0.5d);
+                                    double st = (g - (double) goal) * 100d;
+                                    int step = (int) (st + 0.5d);
+                                    int step2 = step;
+                                    if (step2 == 0) {
+                                        step2 = 1;
                                     }
                                     if (value < 0) {
                                         counter = -counter;
                                     }
                                     switch (inOp) {
                                         case DSE:
-                                            counter = counter - step;
+                                            counter = counter - step2;
                                             if (counter <= goal) {
                                                 nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
                                             }
                                             break;
                                         case ISG:
-                                            counter = counter + step;
+                                            counter = counter + step2;
                                             if (counter > goal) {
                                                 nextProgLineNumber = incProgLineNumber(nextProgLineNumber);
                                             }
@@ -2248,11 +2249,11 @@ public class MainActivity extends Activity {
         final float BUTTON_TOP_20_IMAGE_SIZE_COEFF = 0.8f;
         final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.59f;
-        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.63f;
+        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.54f;
+        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.64f;
         final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.57f;
         final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.58f;
-        final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.3f;
+        final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.38f;
         final float BUTTON_MID_31_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_32_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_33_IMAGE_SIZE_COEFF = 0.55f;

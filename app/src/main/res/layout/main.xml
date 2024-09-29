@@ -40,6 +40,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -47,6 +48,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -54,6 +56,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -61,6 +64,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -68,6 +72,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -75,6 +80,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -82,6 +88,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -89,6 +96,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -96,6 +104,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -103,6 +112,8 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
+            android:layout_marginRight="6dp"
             android:layout_weight="1" />
     </LinearLayout>
 
@@ -118,6 +129,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -125,6 +137,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -132,6 +145,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -139,6 +153,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -146,6 +161,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -153,6 +169,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -160,6 +177,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -167,6 +185,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -174,6 +193,7 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
             android:layout_weight="1" />
 
         <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -181,6 +201,8 @@
             layout="@layout/key"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_marginLeft="6dp"
+            android:layout_marginRight="6dp"
             android:layout_weight="1" />
     </LinearLayout>
 
@@ -202,6 +224,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_weight="1" />
 
             <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -209,6 +232,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_marginTop="4dp"
                 android:layout_weight="1" />
         </LinearLayout>
@@ -224,6 +248,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_weight="1" />
 
             <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -231,6 +256,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_marginTop="4dp"
                 android:layout_weight="1" />
         </LinearLayout>
@@ -246,6 +272,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_weight="1" />
 
             <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -253,6 +280,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_marginTop="4dp"
                 android:layout_weight="1" />
         </LinearLayout>
@@ -268,6 +296,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_weight="1" />
 
             <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -275,6 +304,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_marginTop="4dp"
                 android:layout_weight="1" />
         </LinearLayout>
@@ -290,6 +320,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_weight="1" />
 
             <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -297,6 +328,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_marginTop="4dp"
                 android:layout_weight="1" />
         </LinearLayout>
@@ -312,6 +344,8 @@
                 layout="@layout/key36"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
+                android:layout_marginRight="2dp"
                 android:layout_weight="1" />
         </LinearLayout>
 
@@ -326,6 +360,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="3dp"
                 android:layout_weight="1" />
 
             <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -333,6 +368,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="3dp"
                 android:layout_marginTop="4dp"
                 android:layout_weight="1" />
         </LinearLayout>
@@ -348,6 +384,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_weight="1" />
 
             <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -355,6 +392,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_marginTop="4dp"
                 android:layout_weight="1" />
 
@@ -371,6 +409,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_weight="1" />
 
             <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -378,6 +417,7 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
                 android:layout_marginTop="4dp"
                 android:layout_weight="1" />
         </LinearLayout>
@@ -393,6 +433,8 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
+                android:layout_marginLeft="6dp"
+                android:layout_marginRight="6dp"
                 android:layout_weight="1" />
 
             <com.example.pgyl.sp15c_a.ImageButtonViewStack
@@ -400,7 +442,9 @@
                 layout="@layout/key"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_marginTop="4dp"
+                android:layout_marginLeft="4dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginRight="6dp"
                 android:layout_weight="1" />
         </LinearLayout>
     </LinearLayout>
