@@ -23,6 +23,7 @@ import com.example.pgyl.pekislib_a.StringDB;
 import com.example.pgyl.sp15c_a.Alu.BASE_REGS;
 import com.example.pgyl.sp15c_a.Alu.KEYS;
 import com.example.pgyl.sp15c_a.Alu.OPS;
+import com.example.pgyl.sp15c_a.Alu.STK_REGS;
 import com.example.pgyl.sp15c_a.ProgLine.LINE_OPS;
 
 import java.util.Locale;
@@ -180,7 +181,7 @@ public class MainActivity extends Activity {
         inOp = null;
         isAutoLine = false;
         isAuto = false;
-        readProgLineOpIndex = 0;
+        readProgLineOpIndex = LINE_OPS.BASE.INDEX();
         lineIsGhostKey = false;
         isKeyboardInterrupt = false;
         tempProgLine = new ProgLine();
@@ -355,7 +356,7 @@ public class MainActivity extends Activity {
             currentOp = readProgLine.ops[readProgLineOpIndex];
             readProgLineOpIndex = readProgLineOpIndex + 1;
         }
-        if (error.equals("")) {   //  Pas d'erreur (ou Prefix) antérieure
+        if (error.length() == 0) {   //  Pas d'erreur (ou Prefix) antérieure
             testAndHandleDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
             testAndHandleGhostOp();   //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
             nextProgLineNumber = currentProgLineNumber;    //  Sauf mention contraire en mode NORM ou EDIT (SST, BST, CLEAR_PRGM, ...)
@@ -377,7 +378,7 @@ public class MainActivity extends Activity {
             }
             if (inOp == null) {    //  Instruction terminée (déjà enregistrée dans progLines si EDIT ou RUN) ou éventuellement annulée pour problème de syntaxe mais sans erreur explicite
                 alu.clearProgLine(tempProgLine);   //  Préparer le terrain pour une nouvelle instruction
-                if (error.equals("")) {   //  Pas d'erreur nouvelle
+                if (error.length() == 0) {   //  Pas d'erreur nouvelle
                     if (mode.equals(MODES.NORM)) {    //  A voir selon alpha si entrée de nombre en cours ou pas
                         disp = (alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber());   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
                         dotMatrixDisplayUpdater.displayText(disp, true);
@@ -392,7 +393,7 @@ public class MainActivity extends Activity {
                         error = ERROR_KEYBOARD_INTERRUPT;
                     }
                 }
-                if (!error.equals("")) {    //  Erreur (ou Prefix) nouvelle
+                if (error.length() != 0) {    //  Erreur (ou Prefix) nouvelle
                     if (mode.equals(MODES.RUN)) {   //  STOP
                         mode = MODES.NORM;
                         dotMatrixDisplayView.setInvertOn(false);
@@ -420,7 +421,7 @@ public class MainActivity extends Activity {
             updateSideDisplay();
         }
         if (isAutoLine) {   //  Obtenir automatiquement le prochain op de la ligne ou de la suivante
-            if (readProgLineOpIndex == 0) {   //  Op0 toujours disponible
+            if (readProgLineOpIndex == LINE_OPS.BASE.INDEX()) {   //  Op0 toujours disponible
                 readProgLine = alu.getProgLine(currentProgLineNumber);    //  Ligne suivante
                 lineIsGhostKey = alu.isGhostKey(readProgLine.ops[LINE_OPS.BASE.INDEX()]);   //  Si Ligne avec touche fantôme => Ne pas aller au-delà de Op0
             } else {   //  Index > 0
@@ -429,7 +430,7 @@ public class MainActivity extends Activity {
                     if (mode.equals(MODES.RUN)) {
                         readProgLine = alu.getProgLine(currentProgLineNumber);    //  Ligne suivante
                         lineIsGhostKey = alu.isGhostKey(readProgLine.ops[LINE_OPS.BASE.INDEX()]);   //  Si Ligne avec touche fantôme => Ne pas aller au-delà de Op0
-                        readProgLineOpIndex = 0;   //  Op0 toujours disponible
+                        readProgLineOpIndex = LINE_OPS.BASE.INDEX();   //  Op0 toujours disponible
                     } else {   //  Pas RUN
                         isAutoLine = false;
                     }
@@ -682,27 +683,25 @@ public class MainActivity extends Activity {
                     } else {   //  Pas GTO CHS nnnn en mode EDIT
                         isComplete = true;
                         if (!inEditModeAfterSavingLine(tempProgLine)) {
-                            if (alphaToX()) {
-                                if (mode.equals(MODES.NORM)) {
-                                    alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                                    alu.linkGTOGSBToProgLineNumbers();
-                                }
-                                error = exec(tempProgLine);
+                            if (mode.equals(MODES.NORM)) {
+                                alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
+                                alu.linkGTOGSBToProgLineNumbers();
+                            }
+                            error = exec(tempProgLine);
 
-                                if (mode.equals(MODES.NORM)) {
-                                    if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GTO I), donc pas dans tempProgLien en mode NORM si pas GTO I!
-                                        int dpln = alu.getDestProgLineNumber(tempProgLine);
-                                        if (dpln != (-1)) {   //  OK
-                                            nextProgLineNumber = dpln;
-                                            tempProgLine.ref = dpln;
-                                        } else {   //  Invalide
-                                            error = ERROR_GTO_GSB;
-                                        }
+                            if (mode.equals(MODES.NORM)) {
+                                if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GTO I), donc pas dans tempProgLien en mode NORM si pas GTO I!
+                                    int dpln = alu.getGTODestProgLineNumber(tempProgLine);
+                                    if (dpln != (-1)) {   //  OK
+                                        nextProgLineNumber = dpln;
+                                        tempProgLine.ref = dpln;
+                                    } else {   //  Invalide
+                                        error = ERROR_GTO_GSB;
                                     }
-                                    KEYS key = alu.getKeyByOp(inOp);
-                                    swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
-                                    buttons[key.INDEX()].updateDisplay();
                                 }
+                                KEYS key = alu.getKeyByOp(inOp);
+                                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                                buttons[key.INDEX()].updateDisplay();
                             }
                         }
                     }
@@ -713,33 +712,31 @@ public class MainActivity extends Activity {
 
                     isComplete = true;
                     if (!inEditModeAfterSavingLine(tempProgLine)) {
-                        if (alphaToX()) {
-                            if (mode.equals(MODES.NORM)) {
-                                alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                                alu.linkGTOGSBToProgLineNumbers();
-                            }
-                            error = exec(tempProgLine);
+                        if (mode.equals(MODES.NORM)) {
+                            alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
+                            alu.linkGTOGSBToProgLineNumbers();
+                        }
+                        error = exec(tempProgLine);
 
-                            if (mode.equals(MODES.NORM)) {
-                                if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GSB I), donc pas dans tempProgLien en mode NORM si pas GSB I!
-                                    int dpln = alu.getDestProgLineNumber(tempProgLine);
-                                    if (dpln != (-1)) {   //  OK
-                                        nextProgLineNumber = dpln;
-                                        tempProgLine.ref = dpln;
-                                    } else {   //  Invalide
-                                        error = ERROR_GTO_GSB;
-                                    }
+                        if (mode.equals(MODES.NORM)) {
+                            if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GSB I), donc pas dans tempProgLien en mode NORM si pas GSB I!
+                                int dpln = alu.getGSBDestProgLineNumber(tempProgLine);
+                                if (dpln != (-1)) {   //  OK
+                                    nextProgLineNumber = dpln;
+                                    tempProgLine.ref = dpln;
+                                } else {   //  Invalide
+                                    error = ERROR_GTO_GSB;
                                 }
-                                if (error.equals("")) {
-                                    nowmRUN = System.currentTimeMillis();
-                                    mode = MODES.RUN;   //   Exécuter un GSB, c'est se mettre en mode RUN car plusieurs lignes à exécuter
-                                    isAutoLine = true;
-                                    readProgLineOpIndex = 0;
-                                }
-                                KEYS key = alu.getKeyByOp(inOp);
-                                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
-                                buttons[key.INDEX()].updateDisplay();
                             }
+                            if (error.length() == 0) {
+                                nowmRUN = System.currentTimeMillis();
+                                mode = MODES.RUN;   //   Exécuter un GSB, c'est se mettre en mode RUN car plusieurs lignes à exécuter
+                                isAutoLine = true;
+                                readProgLineOpIndex = LINE_OPS.BASE.INDEX();
+                            }
+                            KEYS key = alu.getKeyByOp(inOp);
+                            swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                            buttons[key.INDEX()].updateDisplay();
                         }
                     }
                 }
@@ -791,9 +788,7 @@ public class MainActivity extends Activity {
             if (common) {
                 isComplete = true;
                 if (!inEditModeAfterSavingLine(tempProgLine)) {
-                    if (alphaToX()) {   //  Si on tape 5 puis 6 puis FIX 4 => On doit voir 56 avec 4 décimales   ;
-                        error = exec(tempProgLine);
-                    }
+                    error = exec(tempProgLine);
                 }
             }
 
@@ -889,9 +884,7 @@ public class MainActivity extends Activity {
             case XLY:
             case XGEY:
                 if (!inEditModeAfterSavingLine(tempProgLine)) {
-                    if (alphaToX()) {
-                        error = exec(tempProgLine);
-                    }
+                    error = exec(tempProgLine);
                 }
                 break;
             default:
@@ -911,9 +904,7 @@ public class MainActivity extends Activity {
             case XCHGXY:
             case RTN:
                 if (!inEditModeAfterSavingLine(tempProgLine)) {
-                    if (alphaToX()) {
-                        error = exec(tempProgLine);
-                    }
+                    error = exec(tempProgLine);
                 }
                 break;
             default:
@@ -937,9 +928,7 @@ public class MainActivity extends Activity {
             }
         }
         if (currentOp.equals(OPS.BEGIN)) {   //  Neutre sur StackLift
-            if (alphaToX()) {
-                error = exec(tempProgLine);   //  Pour tenir compte de l'éventuel wrap around
-            }
+            error = exec(tempProgLine);   //  Pour tenir compte de l'éventuel wrap around
         }
         if (currentOp.equals(OPS.PR)) {
             boolean sw = false;
@@ -967,7 +956,7 @@ public class MainActivity extends Activity {
                     if (alphaToX()) {
                         mode = MODES.RUN;
                         isAutoLine = true;
-                        readProgLineOpIndex = 0;
+                        readProgLineOpIndex = LINE_OPS.BASE.INDEX();
                         nowmRUN = System.currentTimeMillis();
                         alu.rebuildlabelToProgLineNumberMap();   //  Réassocier les labels à leur n° de ligne, le lancement proprement sera effectué plus bas
                     }
@@ -977,7 +966,6 @@ public class MainActivity extends Activity {
                 sw = true;
                 if (mode.equals(MODES.RUN)) {   //  RUN -> NORM
                     if (alphaToX()) {
-                        //error = exec.invokeFunction(tempProgLine);   //  NOP
                         mode = MODES.NORM;
                         isAutoLine = false;
                         dotMatrixDisplayView.setInvertOn(false);
@@ -995,7 +983,7 @@ public class MainActivity extends Activity {
             if (mode.equals(MODES.NORM)) {
                 if (alphaToX()) {
                     isAutoLine = true;   //  Pour exécuter
-                    readProgLineOpIndex = 0;
+                    readProgLineOpIndex = LINE_OPS.BASE.INDEX();
                 }
             }
         }
@@ -1069,17 +1057,21 @@ public class MainActivity extends Activity {
 
     private boolean alphaToX() {
         boolean res = true;
-        if (!alpha.equals("")) {  //  Entrée de nombre en cours, à valider et terminer
+        if (alpha.length() != 0) {
             int indLast = alpha.length() - 1;
             if (alpha.substring(indLast).equals("E")) {   //  Enlever un "E" éventuel en dernière position
                 alpha = alpha.substring(0, indLast);
             }
-            error = alu.aToX(alpha);
-            if (error.equals("")) {
-                alpha = "";
+            try {
+                double d = Double.parseDouble(alpha);
+                if ((Double.isNaN(d)) || (Double.isInfinite(d))) {
+                    throw new IllegalArgumentException();
+                }
+                alu.setStkRegContent(STK_REGS.X.INDEX(), d);
                 alu.setStackLiftEnabled(true);
-            } else {   //  Erreur
-                res = false;
+                alpha = "";
+            } catch (IllegalArgumentException | SecurityException ex) {
+                res = false;   //  Echec
             }
         }
         return res;
@@ -1206,38 +1198,15 @@ public class MainActivity extends Activity {
             case FIX:
             case SCI:
             case ENG:
-                alu.setRoundMode(progLine.ops[LINE_OPS.BASE.INDEX()]);
-                int n = (progLine.ops[LINE_OPS.I.INDEX()] != null ? (int) alu.getRegContentsByIndex(progLine.ref) : Integer.valueOf(progLine.symbol));
-                alu.setRoundParam(n);
+                if (alphaToX()) {
+                    alu.setRoundMode(progLine.ops[LINE_OPS.BASE.INDEX()]);
+                    int n = (progLine.ops[LINE_OPS.I.INDEX()] != null ? (int) alu.getRegContentsByIndex(progLine.ref) : Integer.valueOf(progLine.symbol));
+                    alu.setRoundParam(n);
+                }
                 break;
             case STO:
-                if (progLine.ops[LINE_OPS.RAND.INDEX()] == null) {   //  STO RAN# traité mais sans effet
-                    int regIndex = progLine.ref;
-                    if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
-                        int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
-                        regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
-                        if ((regIndex < 0) || (regIndex > alu.getRegsMaxIndex())) {
-                            error = ERROR_INDEX;
-                        }
-                    }
-                    if (error.equals("")) {
-                        error = (progLine.ops[LINE_OPS.A4OP.INDEX()] != null ? alu.xToReg4Op(regIndex, progLine.ops[LINE_OPS.A4OP.INDEX()]) : alu.xToReg(regIndex));
-                    }
-                }
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(true);
-                }
-                break;
-            case RCL:
-                alu.stackLiftIfEnabled();
-                if (progLine.ops[LINE_OPS.DIM.INDEX()] != null) {   //  RCL DIM (i)
-                    n = alu.getRegsMaxIndex();
-                    alu.setStkRegContent(Alu.STK_REGS.X, alu.getDataRegIndexByIndex(n));
-                } else {   //  Pas RCL DIM (i)
-                    if (progLine.ops[LINE_OPS.SIGMA_PLUS.INDEX()] != null) {   //  RCL SIGMA_PLUS
-                        alu.stackLift();    //  Un stacklift obligatoire + un deuxième (cf supra) si stackLift activé
-                        error = alu.sumXYToXY();
-                    } else {   //  Pas RCL SIGMA_PLUS
+                if (alphaToX()) {
+                    if (progLine.ops[LINE_OPS.RAND.INDEX()] == null) {   //  STO RAN# sans effet
                         int regIndex = progLine.ref;
                         if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
                             int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
@@ -1246,131 +1215,173 @@ public class MainActivity extends Activity {
                                 error = ERROR_INDEX;
                             }
                         }
-                        if (error.equals("")) {
-                            error = (progLine.ops[LINE_OPS.A4OP.INDEX()] != null ? alu.regToX4Op(regIndex, progLine.ops[LINE_OPS.A4OP.INDEX()]) : alu.regToX(regIndex));
+                        if (error.length() == 0) {
+                            error = (progLine.ops[LINE_OPS.A4OP.INDEX()] != null ? alu.xToReg4Op(regIndex, progLine.ops[LINE_OPS.A4OP.INDEX()]) : alu.xToReg(regIndex));
                         }
                     }
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(true);
+                    }
                 }
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(true);
+                break;
+            case RCL:
+                if (alphaToX()) {
+                    alu.doStackLiftIfEnabled();
+                    if (progLine.ops[LINE_OPS.DIM.INDEX()] != null) {   //  RCL DIM (i)
+                        int n = alu.getRegsMaxIndex();
+                        alu.setStkRegContent(STK_REGS.X.INDEX(), alu.getDataRegIndexByIndex(n));
+                    } else {   //  Pas RCL DIM (i)
+                        if (progLine.ops[LINE_OPS.SIGMA_PLUS.INDEX()] != null) {   //  RCL SIGMA_PLUS
+                            alu.doStackLift();    //  Un stacklift obligatoire + un deuxième (cf supra) si stackLift activé
+                            error = alu.sumXYToXY();
+                        } else {   //  Pas RCL SIGMA_PLUS
+                            int regIndex = progLine.ref;
+                            if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
+                                int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
+                                regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
+                                if ((regIndex < 0) || (regIndex > alu.getRegsMaxIndex())) {
+                                    error = ERROR_INDEX;
+                                }
+                            }
+                            if (error.length() == 0) {
+                                error = (progLine.ops[LINE_OPS.A4OP.INDEX()] != null ? alu.regToX4Op(regIndex, progLine.ops[LINE_OPS.A4OP.INDEX()]) : alu.regToX(regIndex));
+                            }
+                        }
+                    }
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(true);
+                    }
                 }
                 break;
             case DIM:
-                n = (int) alu.getStkRegContents(Alu.STK_REGS.X);
-                error = alu.setMaxDataRegIndex(n);
-                if (error.equals("")) {
-                    if (error.equals("")) {
+                if (alphaToX()) {
+                    int n = (int) alu.getStkRegContents(Alu.STK_REGS.X);
+                    error = alu.setMaxDataRegIndex(n);
+                    if (error.length() == 0) {
                         alu.setStackLiftEnabled(true);
                     }
                 }
                 break;
             case XCHG:
-                int regIndex = progLine.ref;
-                if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
-                    int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
-                    regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
-                    if ((regIndex < 0) || (regIndex > alu.getRegsMaxIndex())) {
-                        error = ERROR_INDEX;
+                if (alphaToX()) {
+                    int regIndex = progLine.ref;
+                    if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
+                        int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
+                        regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
+                        if ((regIndex < 0) || (regIndex > alu.getRegsMaxIndex())) {
+                            error = ERROR_INDEX;
+                        }
                     }
-                }
-                if (error.equals("")) {
-                    error = alu.xXchgReg(regIndex);
-                    if (error.equals("")) {
-                        alu.setStackLiftEnabled(true);
+                    if (error.length() == 0) {
+                        error = alu.xXchgReg(regIndex);
+                        if (error.length() == 0) {
+                            alu.setStackLiftEnabled(true);
+                        }
                     }
                 }
                 break;
             case LBL:   //  Neutre sur StackLift ???
-                break;   //  NOP
-            case GTO:   //  Neutre sur StackLift ???
-                if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GTO I => recalculer selon I
-                    int dpln = alu.getDestProgLineNumber(progLine);
-                    if (dpln != (-1)) {   //  OK
-                        nextProgLineNumber = dpln;
-                    } else {   //  Invalide
-                        error = ERROR_GTO_GSB;
-                    }
-                } else {   //  Pas GTO I
-                    nextProgLineNumber = progLine.ref;
+                if (alphaToX()) {
+                    //  NOP
                 }
                 break;
-            case GSB:    //  Neutre sur StackLift ???
-                if (!alu.pushStkRetProgLineNumber(nextProgLineNumber)) {   //  Si False => MAX_RETS dépassé
-                    alu.clearReturnStack();
-                    error = ERROR_RET_STACK_FULL;
-                } else {   //  OK Push
-                    if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GSB I => recalculer selon I
-                        int dpln = alu.getDestProgLineNumber(progLine);
+            case GTO:   //  Neutre sur StackLift ???
+                if (alphaToX()) {
+                    if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GTO I => recalculer selon I
+                        int dpln = alu.getGTODestProgLineNumber(progLine);
                         if (dpln != (-1)) {   //  OK
                             nextProgLineNumber = dpln;
-                            progLine.ref = dpln;
                         } else {   //  Invalide
                             error = ERROR_GTO_GSB;
                         }
-                    } else {   //  Pas GSB I
+                    } else {   //  Pas GTO I
                         nextProgLineNumber = progLine.ref;
+                    }
+                }
+                break;
+            case GSB:    //  Neutre sur StackLift ???
+                if (alphaToX()) {
+                    if (!alu.pushStkRetProgLineNumber(nextProgLineNumber)) {   //  Si False => MAX_RETS dépassé
+                        alu.clearReturnStack();
+                        error = ERROR_RET_STACK_FULL;
+                    } else {   //  OK Push
+                        if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GSB I => recalculer selon I
+                            int dpln = alu.getGSBDestProgLineNumber(progLine);
+                            if (dpln != (-1)) {   //  OK
+                                nextProgLineNumber = dpln;
+                                progLine.ref = dpln;
+                            } else {   //  Invalide
+                                error = ERROR_GTO_GSB;
+                            }
+                        } else {   //  Pas GSB I
+                            nextProgLineNumber = progLine.ref;
+                        }
                     }
                 }
                 break;
             case DSE:
             case ISG:
-                regIndex = progLine.ref;
-                if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
-                    int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
-                    regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
-                    if ((regIndex < 0) || (regIndex > alu.getRegsMaxIndex())) {
-                        error = ERROR_INDEX;
+                if (alphaToX()) {
+                    int regIndex = progLine.ref;
+                    if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
+                        int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
+                        regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
+                        if ((regIndex < 0) || (regIndex > alu.getRegsMaxIndex())) {
+                            error = ERROR_INDEX;
+                        }
                     }
-                }
-                double value = alu.getRegContentsByIndex(regIndex);   //  value: counter(nnnnn).goal(nnn)step(nn)
-                double v = Math.abs(value);
-                int counter = (int) v;
-                double g = (v - (double) counter) * 1000d;
-                int goal = (int) (g + 0.5d);
-                double st = (g - (double) goal) * 100d;
-                int step = (int) (st + 0.5d);
-                int step2 = step;
-                if (step2 == 0) {
-                    step2 = 1;
-                }
-                if (value < 0) {
-                    counter = -counter;
-                }
-                if (opBase.equals(OPS.DSE)) {
-                    counter = counter - step2;
-                    if (counter <= goal) {
-                        nextProgLineNumber = inc(nextProgLineNumber);
+                    double value = alu.getRegContentsByIndex(regIndex);   //  value: counter(nnnnn).goal(nnn)step(nn)
+                    double v = Math.abs(value);
+                    int counter = (int) v;
+                    double g = (v - (double) counter) * 1000d;
+                    int goal = (int) (g + 0.5d);
+                    double st = (g - (double) goal) * 100d;
+                    int step = (int) (st + 0.5d);
+                    int step2 = step;
+                    if (step2 == 0) {
+                        step2 = 1;
                     }
-                }
-                if (opBase.equals(OPS.ISG)) {
-                    counter = counter + step2;
-                    if (counter > goal) {
-                        nextProgLineNumber = inc(nextProgLineNumber);
+                    if (value < 0) {
+                        counter = -counter;
                     }
+                    if (opBase.equals(OPS.DSE)) {
+                        counter = counter - step2;
+                        if (counter <= goal) {
+                            nextProgLineNumber = inc(nextProgLineNumber);
+                        }
+                    }
+                    if (opBase.equals(OPS.ISG)) {
+                        counter = counter + step2;
+                        if (counter > goal) {
+                            nextProgLineNumber = inc(nextProgLineNumber);
+                        }
+                    }
+                    value = Math.abs((double) counter) + ((double) goal + (double) step / 100d) / 1000d;
+                    if (counter < 0) {
+                        value = -value;
+                    }
+                    alu.setRegContentsByIndex(regIndex, value);   //  Update register
+                    alu.setStackLiftEnabled(true);
                 }
-                value = Math.abs((double) counter) + ((double) goal + (double) step / 100d) / 1000d;
-                if (counter < 0) {
-                    value = -value;
-                }
-                alu.setRegContentsByIndex(regIndex, value);   //  Update register
-                alu.setStackLiftEnabled(true);
                 break;
             case SF:
             case CF:
             case TF:
-                int flagIndex = Integer.valueOf(progLine.ops[LINE_OPS.A09.INDEX()].SYMBOL());
-                if (opBase.equals(OPS.SF)) {
-                    alu.setFlag(flagIndex);
-                }
-                if (opBase.equals(OPS.CF)) {
-                    alu.clearFlag(flagIndex);
-                }
-                if (opBase.equals(OPS.TF)) {
-                    if (!alu.testFlag(flagIndex)) {   //  Skip next line if flag cleared
-                        nextProgLineNumber = inc(nextProgLineNumber);
+                if (alphaToX()) {
+                    int flagIndex = Integer.valueOf(progLine.ops[LINE_OPS.A09.INDEX()].SYMBOL());
+                    if (opBase.equals(OPS.SF)) {
+                        alu.setFlag(flagIndex);
                     }
+                    if (opBase.equals(OPS.CF)) {
+                        alu.clearFlag(flagIndex);
+                    }
+                    if (opBase.equals(OPS.TF)) {
+                        if (!alu.testFlag(flagIndex)) {   //  Skip next line if flag cleared
+                            nextProgLineNumber = inc(nextProgLineNumber);
+                        }
+                    }
+                    alu.setStackLiftEnabled(true);
                 }
-                alu.setStackLiftEnabled(true);
                 break;
             case DIGIT_0:
             case DIGIT_1:
@@ -1390,7 +1401,7 @@ public class MainActivity extends Activity {
                 String beta = alpha;
                 if (beta.equals("")) {   // Début d'entrée de nombre
                     if (!opBase.equals(OPS.CHS)) {  //  StackLift éventuel uniquement si entrée d'un nombre (ne commençant pas par "-")
-                        alu.stackLiftIfEnabled();
+                        alu.doStackLiftIfEnabled();
                     }
                 }
                 boolean acceptOp = true;
@@ -1457,271 +1468,369 @@ public class MainActivity extends Activity {
                 }
                 break;
             case PI:
-                alu.stackLiftIfEnabled();
-                error = alu.piToX();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(true);
+                if (alphaToX()) {
+                    alu.doStackLiftIfEnabled();
+                    error = alu.piToX();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(true);
+                    }
                 }
                 break;
             case LASTX:
-                alu.stackLiftIfEnabled();
-                error = alu.lastXToX();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(true);
+                if (alphaToX()) {
+                    alu.doStackLiftIfEnabled();
+                    error = alu.lastXToX();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(true);
+                    }
                 }
                 break;
             case RAND:
-                alu.stackLiftIfEnabled();
-                error = alu.randToX();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(true);
+                if (alphaToX()) {
+                    alu.doStackLiftIfEnabled();
+                    error = alu.randToX();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(true);
+                    }
                 }
                 break;
             case SIGMA_PLUS:   //  Désactive stackLift
-                error = alu.sigmaPlus();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(false);
-                } else {
-                    alu.lastXToX();
+                if (alphaToX()) {
+                    error = alu.sigmaPlus();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(false);
+                    } else {
+                        alu.lastXToX();
+                    }
                 }
                 break;
             case SIGMA_MINUS:   //  Désactive stackLift
-                error = alu.sigmaMinus();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(false);
-                } else {
-                    alu.lastXToX();
+                if (alphaToX()) {
+                    error = alu.sigmaMinus();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(false);
+                    } else {
+                        alu.lastXToX();
+                    }
                 }
                 break;
             case MEAN:   //  Désactive stackLift
-                alu.saveStack();
-                alu.stackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
-                alu.stackLiftIfEnabled();
-                error = alu.mean();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(true);
-                } else {
-                    alu.restoreStack();
+                if (alphaToX()) {
+                    alu.saveStack();
+                    alu.doStackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
+                    alu.doStackLiftIfEnabled();
+                    error = alu.mean();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(true);
+                    } else {
+                        alu.restoreStack();
+                    }
                 }
                 break;
             case STDEV:
-                alu.saveStack();
-                alu.stackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
-                alu.stackLiftIfEnabled();
-                error = alu.stDev();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(true);
-                } else {
-                    alu.restoreStack();
+                if (alphaToX()) {
+                    alu.saveStack();
+                    alu.doStackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
+                    alu.doStackLiftIfEnabled();
+                    error = alu.stDev();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(true);
+                    } else {
+                        alu.restoreStack();
+                    }
                 }
                 break;
             case LR:
-                alu.saveStack();
-                alu.stackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
-                alu.stackLiftIfEnabled();
-                error = alu.lr();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(true);
-                } else {
-                    alu.restoreStack();
+                if (alphaToX()) {
+                    alu.saveStack();
+                    alu.doStackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
+                    alu.doStackLiftIfEnabled();
+                    error = alu.lr();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(true);
+                    } else {
+                        alu.restoreStack();
+                    }
                 }
                 break;
             case YER:
-                alu.saveStack();
-                alu.stackLift();    //  Un stacklift obligatoire
-                error = alu.yer();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(true);
-                } else {
-                    alu.restoreStack();
+                if (alphaToX()) {
+                    alu.saveStack();
+                    alu.doStackLift();    //  Un stacklift obligatoire
+                    error = alu.yer();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(true);
+                    } else {
+                        alu.restoreStack();
+                    }
                 }
                 break;
             case SQR:
-                error = alu.sqrX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.sqrX();
+                    common = true;
+                }
                 break;
             case SQRT:
-                error = alu.sqrtX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.sqrtX();
+                    common = true;
+                }
                 break;
             case TO_RAD:
-                error = alu.xToRad();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.xToRad();
+                    common = true;
+                }
                 break;
             case TO_DEG:
-                error = alu.xToDeg();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.xToDeg();
+                    common = true;
+                }
                 break;
             case EXP:
-                error = alu.expX();
-                common = true;
-                break;
+                if (alphaToX()) {
+                    error = alu.expX();
+                    common = true;
+                    break;
+                }
             case LN:
-                error = alu.lnX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.lnX();
+                    common = true;
+                }
                 break;
             case EXP10:
-                error = alu.exp10X();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.exp10X();
+                    common = true;
+                }
                 break;
             case LOG:
-                error = alu.logX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.logX();
+                    common = true;
+                }
                 break;
             case POWER:
-                error = alu.pow();
-                if (error.equals("")) {
-                    alu.stackMergeDown();
-                    alu.setStackLiftEnabled(true);
-                } else {
-                    alu.lastXToX();
+                if (alphaToX()) {
+                    error = alu.pow();
+                    if (error.length() == 0) {
+                        alu.stackMergeDown();
+                        alu.setStackLiftEnabled(true);
+                    } else {
+                        alu.lastXToX();
+                    }
                 }
                 break;
             case PC:
-                error = alu.xPcY();   //  Pas de mergeDown
-                common = true;
+                if (alphaToX()) {
+                    error = alu.xPcY();   //  Pas de mergeDown
+                    common = true;
+                }
                 break;
             case INV:
-                error = alu.invX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.invX();
+                    common = true;
+                }
                 break;
             case DPC:
-                error = alu.xDpcY();   //  Pas de mergeDown
-                common = true;
+                if (alphaToX()) {
+                    error = alu.xDpcY();   //  Pas de mergeDown
+                    common = true;
+                }
                 break;
             case ABS:
-                error = alu.absX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.absX();
+                    common = true;
+                }
                 break;
             case RND:
-                error = alu.rndX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.rndX();
+                    common = true;
+                }
                 break;
             case POL:
-                error = alu.xyToPol();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.xyToPol();
+                    common = true;
+                }
                 break;
             case RECT:
-                error = alu.xyToRect();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.xyToRect();
+                    common = true;
+                }
                 break;
             case HMS:
-                error = alu.hmsX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.hmsX();
+                    common = true;
+                }
                 break;
             case H:
-                error = alu.hX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.hX();
+                    common = true;
+                }
                 break;
             case COMB:
-                error = alu.xyToComb();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.xyToComb();
+                    common = true;
+                }
                 break;
             case PERM:
-                error = alu.xyToPerm();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.xyToPerm();
+                    common = true;
+                }
                 break;
             case FRAC:
-                error = alu.fracX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.fracX();
+                    common = true;
+                }
                 break;
             case INTEGER:
-                error = alu.integerX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.integerX();
+                    common = true;
+                }
                 break;
             case SIN:
-                error = alu.sinX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.sinX();
+                    common = true;
+                }
                 break;
             case COS:
-                error = alu.cosX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.cosX();
+                    common = true;
+                }
                 break;
             case TAN:
-                error = alu.tanX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.tanX();
+                    common = true;
+                }
                 break;
             case ASIN:
-                error = alu.asinX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.asinX();
+                    common = true;
+                }
                 break;
             case ACOS:
-                error = alu.acosX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.acosX();
+                    common = true;
+                }
                 break;
             case ATAN:
-                error = alu.atanX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.atanX();
+                    common = true;
+                }
                 break;
             case SINH:
-                error = alu.sinhX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.sinhX();
+                    common = true;
+                }
                 break;
             case COSH:
-                error = alu.coshX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.coshX();
+                    common = true;
+                }
                 break;
             case TANH:
-                error = alu.tanhX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.tanhX();
+                    common = true;
+                }
                 break;
             case ASINH:
-                error = alu.asinhX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.asinhX();
+                    common = true;
+                }
                 break;
             case ACOSH:
-                error = alu.acoshX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.acoshX();
+                    common = true;
+                }
                 break;
             case ATANH:
-                error = alu.atanhX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.atanhX();
+                    common = true;
+                }
                 break;
             case FACT:
-                error = alu.factX();
-                common = true;
+                if (alphaToX()) {
+                    error = alu.factX();
+                    common = true;
+                }
                 break;
             case PLUS:
-                error = alu.yPlusX();
-                if (error.equals("")) {
-                    alu.stackMergeDown();
-                    alu.setStackLiftEnabled(true);
-                } else {
-                    alu.lastXToX();
+                if (alphaToX()) {
+                    error = alu.yPlusX();
+                    if (error.length() == 0) {
+                        alu.stackMergeDown();
+                        alu.setStackLiftEnabled(true);
+                    } else {
+                        alu.lastXToX();
+                    }
                 }
                 break;
             case MINUS:
-                error = alu.yMinusX();
-                if (error.equals("")) {
-                    alu.stackMergeDown();
-                    alu.setStackLiftEnabled(true);
-                } else {
-                    alu.lastXToX();
+                if (alphaToX()) {
+                    error = alu.yMinusX();
+                    if (error.length() == 0) {
+                        alu.stackMergeDown();
+                        alu.setStackLiftEnabled(true);
+                    } else {
+                        alu.lastXToX();
+                    }
                 }
                 break;
             case MULT:
-                error = alu.yMultX();
-                if (error.equals("")) {
-                    alu.stackMergeDown();
-                    alu.setStackLiftEnabled(true);
-                } else {
-                    alu.lastXToX();
+                if (alphaToX()) {
+                    error = alu.yMultX();
+                    if (error.length() == 0) {
+                        alu.stackMergeDown();
+                        alu.setStackLiftEnabled(true);
+                    } else {
+                        alu.lastXToX();
+                    }
                 }
                 break;
             case DIV:
-                error = alu.yDivX();
-                if (error.equals("")) {
-                    alu.stackMergeDown();
-                    alu.setStackLiftEnabled(true);
-                } else {
-                    alu.lastXToX();
+                if (alphaToX()) {
+                    error = alu.yDivX();
+                    if (error.length() == 0) {
+                        alu.stackMergeDown();
+                        alu.setStackLiftEnabled(true);
+                    } else {
+                        alu.lastXToX();
+                    }
                 }
                 break;
             case DEG:
             case RAD:
             case GRAD:   //  Neutre sur stackLift
-                OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];
-                alu.setAngleMode(op);
+                if (alphaToX()) {
+                    OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];
+                    alu.setAngleMode(op);
+                }
                 break;
             case XE0:
             case XLEY:
@@ -1735,8 +1844,10 @@ public class MainActivity extends Activity {
             case XGY:
             case XLY:
             case XGEY:
-                if (alu.test(opBase)) {
-                    nextProgLineNumber = inc(nextProgLineNumber);
+                if (alphaToX()) {
+                    if (alu.test(opBase)) {
+                        nextProgLineNumber = inc(nextProgLineNumber);
+                    }
                 }
                 break;
             case BACK:
@@ -1749,53 +1860,73 @@ public class MainActivity extends Activity {
                     }
                 } else {   //  alpha a 0 ou 1 caractères
                     alu.clX();
-                    alu.setStackLiftEnabled(false);
+                    alu.setStackLiftEnabled(false);     // Désactive stacklift
                     alpha = "";
                 }
                 break;
             case CLX:    // Désactive stacklift
-                error = alu.clX();
-                if (error.equals("")) {
-                    alu.setStackLiftEnabled(false);
+                if (alphaToX()) {
+                    error = alu.clX();
+                    if (error.length() == 0) {
+                        alu.setStackLiftEnabled(false);
+                    }
                 }
                 break;
             case CLEAR_PREFIX:    //  Neutre sur StackLift
-                error = alu.prefX();  //  error sera <>"" dans tous les cas (car représentera la mantisse) et sera donc traité comme une erreur
+                if (alphaToX()) {
+                    error = alu.prefX();
+                }  //  error sera <>"" dans tous les cas (car représentera la mantisse) et sera donc traité comme une erreur
                 break;
             case CLEAR_REGS:   //  Neutre sur StackLift
-                error = alu.clearRegs();
+                if (alphaToX()) {
+                    error = alu.clearRegs();
+                }
                 break;
             case CLEAR_SIGMA:   //  Neutre sur StackLift
-                error = alu.clearStats();
-                alu.clearStack();
+                if (alphaToX()) {
+                    error = alu.clearStats();
+                    alu.clearStack();
+                }
                 break;
             case ENTER:   // Désactive Stacklift
-                alu.stackLift();
-                alu.setStackLiftEnabled(false);
+                if (alphaToX()) {
+                    alu.doStackLift();
+                    alu.setStackLiftEnabled(false);
+                }
                 break;
             case RDN:
-                alu.stackRollDown();
-                alu.setStackLiftEnabled(true);
+                if (alphaToX()) {
+                    alu.stackRollDown();
+                    alu.setStackLiftEnabled(true);
+                }
                 break;
             case RUP:
-                alu.stackRollUp();
-                alu.setStackLiftEnabled(true);
+                if (alphaToX()) {
+                    alu.stackRollUp();
+                    alu.setStackLiftEnabled(true);
+                }
                 break;
             case XCHGXY:
-                alu.xchgXY();
-                alu.setStackLiftEnabled(true);
+                if (alphaToX()) {
+                    alu.xchgXY();
+                    alu.setStackLiftEnabled(true);
+                }
                 break;
             case BEGIN:
-                if (isWrapAround) {   //  On est passé de la fin au début => STOP
-                    isWrapAround = false;
-                    ProgLine progLine1 = new ProgLine();
-                    progLine1.ops[LINE_OPS.BASE.INDEX()] = OPS.RTN;   //  Opération requalifiée et à examiner ci-dessous
-                    error = rtn(progLine1);
-                    progLine1 = null;
+                if (alphaToX()) {
+                    if (isWrapAround) {   //  On est passé de la fin au début => STOP
+                        isWrapAround = false;
+                        ProgLine progLine1 = new ProgLine();
+                        progLine1.ops[LINE_OPS.BASE.INDEX()] = OPS.RTN;   //  Opération requalifiée et à examiner ci-dessous
+                        error = rtn(progLine1);
+                        progLine1 = null;
+                    }
                 }
                 break;
             case RTN:
-                error = rtn(progLine);
+                if (alphaToX()) {
+                    error = rtn(progLine);
+                }
                 break;
             case HYP:   //  Ghost => NOP
             case AHYP:
@@ -1806,10 +1937,13 @@ public class MainActivity extends Activity {
             case SST:
             case BST:
             case CLEAR_PRGM:
+                if (alphaToX()) {
+                    //  NOP
+                }
                 break;
         }
         if (common) {
-            if (error.equals("")) {
+            if (error.length() == 0) {
                 alu.setStackLiftEnabled(true);
             } else {
                 alu.lastXToX();
@@ -1831,7 +1965,6 @@ public class MainActivity extends Activity {
         }
         return error;
     }
-
 
     private void setupButtons() {
         final String KEY_FILE_PREFIX = "k";

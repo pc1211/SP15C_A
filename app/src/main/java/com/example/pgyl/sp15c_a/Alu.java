@@ -348,12 +348,10 @@ public class Alu {
     final String ERROR_OVERFLOW = "Overflow";
     final String ERROR_LOG = "Log(Neg or 0)";
     final String ERROR_DIV_BY_0 = "Div By 0";
-    final String ERROR_NUMBER = "Invalid number";
     final String ERROR_SQRT_NEG = "Sqrt(Neg)";
     final String ERROR_STAT_0 = "Stat n <= 0";
     final String ERROR_STAT_1 = "Stat n <= 1";
     final String ERROR_PERM_COMB = "Invalid Perm/Comb";
-    final String ERROR_GTO_GSB = "Invalid GTO/GSB";
 
     final int END_RETURN_STACK = -1;
     final int UNSHIFTED_KEY_CODE = 0;
@@ -533,8 +531,8 @@ public class Alu {
         return stkRegs[stkReg.INDEX()];
     }
 
-    public void setStkRegContent(STK_REGS stkReg, double value) {
-        stkRegs[stkReg.INDEX()] = value;
+    public void setStkRegContent(int stkRegIndex, double value) {
+        stkRegs[stkRegIndex] = value;
     }
 
     public String getRoundXForDisplay() {
@@ -1508,7 +1506,7 @@ public class Alu {
         stkRegs[STK_REGS.X.INDEX()] = temp;
     }
 
-    public void stackLift() {   //  T,Z,Y,X -> Z,Y,X,X
+    public void doStackLift() {   //  T,Z,Y,X -> Z,Y,X,X
         stkRegs[STK_REGS.T.INDEX()] = stkRegs[STK_REGS.Z.INDEX()];
         stkRegs[STK_REGS.Z.INDEX()] = stkRegs[STK_REGS.Y.INDEX()];
         stkRegs[STK_REGS.Y.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
@@ -1531,16 +1529,6 @@ public class Alu {
         stkRegs[STK_REGS.Y.INDEX()] = stkRegs[STK_REGS.LY.INDEX()];
         stkRegs[STK_REGS.Z.INDEX()] = stkRegs[STK_REGS.LZ.INDEX()];
         stkRegs[STK_REGS.T.INDEX()] = stkRegs[STK_REGS.LT.INDEX()];
-    }
-
-    public String aToX(String alpha) {
-        String error = "";
-        if (isDouble(alpha)) {
-            stkRegs[STK_REGS.X.INDEX()] = Double.parseDouble(alpha);
-        } else {
-            error = ERROR_NUMBER;   //  Echec
-        }
-        return error;
     }
 
     public String roundForDisplay(double value) {
@@ -1625,9 +1613,9 @@ public class Alu {
         return res;
     }
 
-    public void stackLiftIfEnabled() {
+    public void doStackLiftIfEnabled() {
         if (stackLiftEnabled) {
-            stackLift();
+            doStackLift();
         }
     }
 
@@ -1637,19 +1625,6 @@ public class Alu {
 
     public boolean getStackLiftEnabled() {
         return stackLiftEnabled;
-    }
-
-    public boolean isDouble(String sNumber) {
-        boolean res = true;
-        try {
-            double d = Double.parseDouble(sNumber);
-            if ((Double.isNaN(d)) || (Double.isInfinite(d))) {
-                throw new IllegalArgumentException();
-            }
-        } catch (IllegalArgumentException | SecurityException ex) {
-            res = false;   //  Echec
-        }
-        return res;
     }
 
     private double round(double value, int n) {
@@ -1816,50 +1791,54 @@ public class Alu {
         }
     }
 
-    public int getDestProgLineNumber(ProgLine progLine) {
+    public int getGTODestProgLineNumber(ProgLine progLine) {
         int res = -1;
         Integer pln = null;
-        OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];   //  GTO, GSB
-        if (op.equals(OPS.GTO)) {
-            if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GTO I
-                int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
-                if (n >= 0) {   //  GTO I positif => GTO label   (n=labelIndex)
-                    if (n <= LABELS.values().length - 1) {
-                        LABELS lbl = labelIndexToLabelMap.get(n);
-                        if (lbl != null) {
-                            pln = labelToprogLineNumberMap.get(lbl);
-                        }
-                    }
-                } else {   //  n<0 cad GTO I négatif => GTO ProgLineNumber  (-n=ProgLine number)
-                    if ((-n) <= (proglines.size() - 1)) {
-                        pln = -n;
+        if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GTO I
+            int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
+            if (n >= 0) {   //  GTO I positif => GTO label   (n=labelIndex)
+                if (n <= LABELS.values().length - 1) {
+                    LABELS lbl = labelIndexToLabelMap.get(n);
+                    if (lbl != null) {
+                        pln = labelToprogLineNumberMap.get(lbl);
                     }
                 }
-            } else {   //  Pas GTO I => GTO [.]0..9 ou A-E
-                LABELS lbl = symbolToLabelMap.get(progLine.symbol);
-                if (lbl != null) {
-                    pln = labelToprogLineNumberMap.get(lbl);
+            } else {   //  n<0 cad GTO I négatif => GTO ProgLineNumber  (-n=ProgLine number)
+                if ((-n) <= (proglines.size() - 1)) {
+                    pln = -n;
                 }
             }
+        } else {   //  Pas GTO I => GTO [.]0..9 ou A-E
+            LABELS lbl = symbolToLabelMap.get(progLine.symbol);
+            if (lbl != null) {
+                pln = labelToprogLineNumberMap.get(lbl);
+            }
         }
-        if (op.equals(OPS.GSB)) {
-            if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GSB I
-                int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
-                if (n >= 0) {   //  GSB I positif => GSB label   (n=labelIndex)
-                    if (n <= LABELS.values().length - 1) {
-                        LABELS lbl = labelIndexToLabelMap.get(n);
-                        if (lbl != null) {
-                            pln = labelToprogLineNumberMap.get(lbl);
-                        }
+        if (pln != null) {
+            res = pln;
+        }
+        return res;
+    }
+
+    public int getGSBDestProgLineNumber(ProgLine progLine) {
+        int res = -1;
+        Integer pln = null;
+        if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GSB I
+            int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
+            if (n >= 0) {   //  GSB I positif => GSB label   (n=labelIndex)
+                if (n <= LABELS.values().length - 1) {
+                    LABELS lbl = labelIndexToLabelMap.get(n);
+                    if (lbl != null) {
+                        pln = labelToprogLineNumberMap.get(lbl);
                     }
-                } else {   //  n<0 cad GSB I négatif, non prévu par la HP-15C
-                    //  NOP
                 }
-            } else {   //  Pas GSB I => GSB [.]0..9 ou A-E
-                LABELS lbl = symbolToLabelMap.get(progLine.symbol);
-                if (lbl != null) {
-                    pln = labelToprogLineNumberMap.get(lbl);
-                }
+            } else {   //  n<0 cad GSB I négatif, non prévu par la HP-15C
+                //  NOP
+            }
+        } else {   //  Pas GSB I => GSB [.]0..9 ou A-E
+            LABELS lbl = symbolToLabelMap.get(progLine.symbol);
+            if (lbl != null) {
+                pln = labelToprogLineNumberMap.get(lbl);
             }
         }
         if (pln != null) {
