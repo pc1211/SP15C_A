@@ -1,33 +1,34 @@
 package com.example.pgyl.sp15c_a;
 
-import static com.example.pgyl.sp15c_a.Alu.OPS;
+import com.example.pgyl.sp15c_a.Alu.OPS;
 
 public class ProgLine {
 
-    private final int MAX_OPS = 7;   //  7 nécessaire pour GTO CHS nnnn
+    public enum LINE_OPS {   //  A laisser dans cet ordre (naturel): cf progLineToString()
+        BASE, A4OP, DOT, A09, AE, I, DIM, INDI, RAND, SIGMA_PLUS, CHS, GHOST1, GHOST2;   //  (Sauf A4OP, A09, AE, GHOST1, GHOST2) Doivent porter le même nom que les OPS auxquels ils font référence (cf Main prepareMultiOpsProgLine())
 
-    private OPS[] ops;
-
-    public ProgLine() {
-        ops = new OPS[MAX_OPS];
-        for (int i = 0; i <= (ops.length - 1); i = i + 1) {
-            ops[i] = null;
+        public int INDEX() {
+            return ordinal();
         }
     }
 
-    public OPS[] getOps() {
-        return ops;
+    public static LINE_OPS getLineOpByOp(OPS op) {
+        LINE_OPS res = null;
+        try {
+            res = LINE_OPS.valueOf(op.toString());
+        } catch (IllegalArgumentException iae) {
+            //  NOP
+        }
+        return res;
     }
 
-    public int getOpsSize() {
-        return ops.length;
-    }
+    public OPS[] ops;
+    public int ref;
+    public String symbol;
 
-    public void setOp(int index, OPS op) {
-        ops[index] = op;
-    }
-
-    public OPS getOp(int index) {
-        return ops[index];
+    public ProgLine() {
+        ops = new OPS[LINE_OPS.values().length];
+        ref = 0;
+        symbol = "";
     }
 }

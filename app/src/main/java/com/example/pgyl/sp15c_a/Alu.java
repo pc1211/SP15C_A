@@ -1,5 +1,7 @@
 package com.example.pgyl.sp15c_a;
 
+import com.example.pgyl.sp15c_a.ProgLine.LINE_OPS;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
@@ -116,7 +118,7 @@ public class Alu {
         COMB("CY,X"),
         PERM("PY,X"),
         FRAC("FRAC"),
-        INT("INT"),
+        INTEGER("INT"),
         FACT("FACT"),
         STO("STO"),
         RCL("RCL"),
@@ -186,7 +188,7 @@ public class Alu {
         KEY_41(41, OPS.ON, OPS.ON, OPS.ON),   //  ON inactif
         KEY_42(42, OPS.F, OPS.UNKNOWN, OPS.UNKNOWN),
         KEY_43(43, OPS.G, OPS.UNKNOWN, OPS.UNKNOWN),
-        KEY_44(44, OPS.STO, OPS.FRAC, OPS.INT),
+        KEY_44(44, OPS.STO, OPS.FRAC, OPS.INTEGER),
         KEY_45(45, OPS.RCL, OPS.USER, OPS.MEM),    //  MEM inactif
         KEY_47(47, OPS.DIGIT_0, OPS.FACT, OPS.MEAN),
         KEY_48(48, OPS.DOT, OPS.YER, OPS.STDEV),
@@ -245,25 +247,25 @@ public class Alu {
         GHOST_KEY_16(OPS.XGEY, OPS.TEST, OPS.DIGIT_9);
 
         private OPS op;
-        private OPS prefixOp;
-        private OPS lastOp;
+        private OPS ghostOp1;
+        private OPS ghostOp2;
 
-        GHOST_KEYS(OPS Op, OPS prefixOp, OPS lastOp) {
+        GHOST_KEYS(OPS Op, OPS ghostOp1, OPS ghostOp2) {
             this.op = Op;
-            this.prefixOp = prefixOp;
-            this.lastOp = lastOp;
+            this.ghostOp1 = ghostOp1;
+            this.ghostOp2 = ghostOp2;
         }
 
         public OPS OP() {
             return op;
         }
 
-        public OPS PREFIX_OP() {
-            return prefixOp;
+        public OPS GHOST_OP1() {
+            return ghostOp1;
         }
 
-        public OPS LAST_OP() {
-            return lastOp;
+        public OPS GHOST_OP2() {
+            return ghostOp2;
         }
 
         public int INDEX() {
@@ -351,6 +353,7 @@ public class Alu {
     final String ERROR_STAT_0 = "Stat n <= 0";
     final String ERROR_STAT_1 = "Stat n <= 1";
     final String ERROR_PERM_COMB = "Invalid Perm/Comb";
+    final String ERROR_GTO_GSB = "Invalid GTO/GSB";
 
     final int END_RETURN_STACK = -1;
     final int UNSHIFTED_KEY_CODE = 0;
@@ -363,13 +366,14 @@ public class Alu {
     private OPS roundMode;
     private int roundParam;
     private OPS angleMode;
+    private boolean stackLiftEnabled;
     private HashMap<String, BASE_REGS> symbolToBaseRegMap;
     private HashMap<OPS, KEYS> opToKeyMap;
     private HashMap<OPS, Integer> opToShiftKeyCodeMap;
     private HashMap<OPS, GHOST_KEYS> opToGhostKeyMap;
     private HashMap<PairOp, OPS> ghostOpsToOpMap;
     private HashMap<String, LABELS> symbolToLabelMap;
-    private HashMap<Integer, LABELS> indexToLabelMap;
+    private HashMap<Integer, LABELS> labelIndexToLabelMap;
     private HashMap<LABELS, Integer> labelToprogLineNumberMap;
     private ArrayList<ProgLine> proglines;
     private ArrayList<Integer> stkRet;
@@ -394,6 +398,7 @@ public class Alu {
         angleMode = OPS.RAD;
         roundMode = OPS.FIX;
         roundParam = 4;
+        stackLiftEnabled = false;
     }
 
     public void close() {
@@ -417,32 +422,33 @@ public class Alu {
         ghostOpsToOpMap = null;
         symbolToLabelMap.clear();
         symbolToLabelMap = null;
-        indexToLabelMap.clear();
-        indexToLabelMap = null;
+        labelIndexToLabelMap.clear();
+        labelIndexToLabelMap = null;
         labelToprogLineNumberMap.clear();
         labelToprogLineNumberMap = null;
     }
 
-    public String setDataRegsSize(int dataRegsSize) {   //  les registres de données classiques (data) commencent à partir de R0
+    public String setMaxDataRegIndex(int newMaxDataRegIndex) {   //  les registres de données classiques (data) commencent à partir de R0
         String res = "";
-        int oldSize = regs.size();
-        int newSize = dataRegsSize + BASE_REGS.R0.INDEX();
-        int n = newSize - oldSize;
+        final String RANGE_ERROR = "Out of " + (BASE_REGS.values().length - BASE_REGS.R0.INDEX()) + "-" + (MAX_REGS - 1 - BASE_REGS.R0.INDEX());
+
+        int oldMaxDataRegIndex = regs.size() - 1 - BASE_REGS.R0.INDEX();
+        int n = newMaxDataRegIndex - oldMaxDataRegIndex;
         if (n > 0) {   //  Ajouter n registres
-            if (newSize <= MAX_REGS) {   //  Respecte Max
+            if (newMaxDataRegIndex <= (MAX_REGS - 1 - BASE_REGS.R0.INDEX())) {   //  Respecte Max
                 for (int i = 0; i <= (n - 1); i = i + 1) {
                     regs.add(0d);
                 }
-            } else {  //  > > Max
-                res = "Max 0-" + (MAX_REGS - 1 - BASE_REGS.R0.INDEX());
+            } else {  //  > Max
+                res = RANGE_ERROR;
             }
         } else {   //  Retirer n registres, en commençant par les derniers de la liste
-            if (newSize >= BASE_REGS.values().length) {   //   Respecte Min
+            if (newMaxDataRegIndex >= (BASE_REGS.values().length - BASE_REGS.R0.INDEX())) {   //   Respecte Min
                 for (int i = 0; i <= (n - 1); i = i + 1) {
-                    regs.subList(newSize, oldSize).clear();
+                    regs.subList(newMaxDataRegIndex + BASE_REGS.R0.INDEX(), oldMaxDataRegIndex + BASE_REGS.R0.INDEX()).clear();
                 }
             } else {   //  < Min
-                res = "Max 0-" + (MAX_REGS - 1 - BASE_REGS.R0.INDEX());
+                res = RANGE_ERROR;
             }
         }
         return res;
@@ -456,7 +462,7 @@ public class Alu {
         return res;
     }
 
-    public int getRegIndexByDataIndex(int index) {
+    public int getRegIndexByDataRegIndex(int index) {
         return BASE_REGS.R0.INDEX() + index;
     }   //  les registres de données classiques (data) commencent à partir de R0
 
@@ -563,7 +569,7 @@ public class Alu {
         return error;
     }
 
-    public String xToRegOp(int index, OPS op) {   //  STO+-*/ R
+    public String xToReg4Op(int index, OPS op) {   //  STO+-*/  Reg
         String error1 = "";
         String error2 = "";
         try {
@@ -595,7 +601,7 @@ public class Alu {
         return error2;
     }
 
-    public String regToXOp(int index, OPS op) {   //   RCL+-*/ R
+    public String regToX4Op(int index, OPS op) {   //   RCL+-*/ Reg
         String error1 = "";
         String error2 = "";
         try {
@@ -1001,7 +1007,7 @@ public class Alu {
         return error;
     }
 
-    public String intX() {
+    public String integerX() {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         double val = (int) Math.abs(stkRegs[STK_REGS.X.INDEX()]);
@@ -1250,27 +1256,27 @@ public class Alu {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         try {
-            int index = getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX());
+            int index = getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX());
             int nMod = (int) getRegContentsByIndex(index) + 1;
             setRegContentsByIndex(index, nMod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX());
             double sumXMod = getRegContentsByIndex(index) + stkRegs[STK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumXMod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX());
             double sumX2Mod = getRegContentsByIndex(index) + stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumX2Mod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX());
             double sumYMod = getRegContentsByIndex(index) + stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumYMod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX());
             double sumY2Mod = getRegContentsByIndex(index) + stkRegs[STK_REGS.Y.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumY2Mod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX());
             double sumXYMod = getRegContentsByIndex(index) + stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumXYMod);
 
@@ -1302,27 +1308,27 @@ public class Alu {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         try {
-            int index = getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX());
+            int index = getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX());
             int nMod = (int) getRegContentsByIndex(index) - 1;
             setRegContentsByIndex(index, nMod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX());
             double sumXMod = getRegContentsByIndex(index) - stkRegs[STK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumXMod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX());
             double sumX2Mod = getRegContentsByIndex(index) - stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumX2Mod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX());
             double sumYMod = getRegContentsByIndex(index) - stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumYMod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX());
             double sumY2Mod = getRegContentsByIndex(index) - stkRegs[STK_REGS.Y.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumY2Mod);
 
-            index = getRegIndexByDataIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX());
+            index = getRegIndexByDataRegIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX());
             double sumXYMod = getRegContentsByIndex(index) - stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumXYMod);
 
@@ -1352,10 +1358,10 @@ public class Alu {
 
     public String mean() {   //  LASTX non modifié
         String error = "";
-        double n = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX()));
+        double n = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX()));
         if (n > 0) {
-            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
-            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
+            double sumX = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+            double sumY = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
             double meanX = sumX / n;
             double meanY = sumY / n;
             stkRegs[STK_REGS.X.INDEX()] = meanX;
@@ -1368,12 +1374,12 @@ public class Alu {
 
     public String stDev() {   //  LASTX non modifié
         String error = "";
-        double n = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX()));
+        double n = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX()));
         if (n > 1) {
-            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
-            double sumX2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX()));
-            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
-            double sumY2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX()));
+            double sumX = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+            double sumX2 = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX()));
+            double sumY = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
+            double sumY2 = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX()));
             double mv = n * sumX2 - sumX * sumX;
             double nv = n * sumY2 - sumY * sumY;
             double stDevX = Math.sqrt(mv / (n * (n - 1)));
@@ -1388,13 +1394,13 @@ public class Alu {
 
     public String lr() {   //  LASTX non modifié
         String error = "";
-        double n = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX()));
+        double n = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX()));
         if (n > 1) {
-            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
-            double sumX2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX()));
-            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
-            double sumY2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX()));
-            double sumXY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX()));
+            double sumX = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+            double sumX2 = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX()));
+            double sumY = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
+            double sumY2 = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX()));
+            double sumXY = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX()));
             double mv = n * sumX2 - sumX * sumX;
             double nv = n * sumY2 - sumY * sumY;
             double p = n * sumXY - sumX * sumY;
@@ -1411,13 +1417,13 @@ public class Alu {
     public String yer() {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        double n = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.N.DATA_REG_INDEX()));
+        double n = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX()));
         if (n > 1) {
-            double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
-            double sumX2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX()));
-            double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
-            double sumY2 = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX()));
-            double sumXY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX()));
+            double sumX = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+            double sumX2 = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX()));
+            double sumY = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
+            double sumY2 = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX()));
+            double sumXY = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX()));
             double mv = n * sumX2 - sumX * sumX;
             double nv = n * sumY2 - sumY * sumY;
             double p = n * sumXY - sumX * sumY;
@@ -1434,8 +1440,8 @@ public class Alu {
 
     public String sumXYToXY() {
         String error = "";
-        double sumX = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
-        double sumY = getRegContentsByIndex(getRegIndexByDataIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
+        double sumX = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
+        double sumY = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
         stkRegs[STK_REGS.X.INDEX()] = sumX;
         stkRegs[STK_REGS.Y.INDEX()] = sumY;
         return error;
@@ -1619,6 +1625,20 @@ public class Alu {
         return res;
     }
 
+    public void stackLiftIfEnabled() {
+        if (stackLiftEnabled) {
+            stackLift();
+        }
+    }
+
+    public void setStackLiftEnabled(boolean enabled) {
+        stackLiftEnabled = enabled;
+    }
+
+    public boolean getStackLiftEnabled() {
+        return stackLiftEnabled;
+    }
+
     public boolean isDouble(String sNumber) {
         boolean res = true;
         try {
@@ -1666,12 +1686,14 @@ public class Alu {
 
     public boolean addProgLineAtNumber(ProgLine progLine, int progLineNumber) {
         boolean res = false;
-        int n = progLine.getOpsSize();
-        if ((n + 1) <= MAX_PROG_LINES) {   //  Il y a encore assez de lignes dispponibles
+        if (proglines.size() < MAX_PROG_LINES) {   //  Il y a encore assez de lignes dispponibles
             ProgLine newProgLine = new ProgLine();
+            int n = progLine.ops.length;
             for (int i = 0; i <= (n - 1); i = i + 1) {   //  Copier dans la nouvelle ligne
-                newProgLine.setOp(i, progLine.getOp(i));
+                newProgLine.ops[i] = progLine.ops[i];
             }
+            newProgLine.ref = progLine.ref;
+            newProgLine.symbol = progLine.symbol;
             proglines.add(progLineNumber, newProgLine);
             res = true;
         }
@@ -1683,23 +1705,25 @@ public class Alu {
     }
 
     public void clearProgLine(ProgLine progLine) {
-        int n = progLine.getOpsSize();
+        int n = progLine.ops.length;
         for (int i = 0; i <= (n - 1); i = i + 1) {
-            progLine.setOp(i, null);
+            progLine.ops[i] = null;
         }
+        progLine.ref = 0;
+        progLine.symbol = "";
     }
 
     public void clearProgLines() {
         proglines.clear();
         ProgLine progLine = new ProgLine();
-        progLine.setOp(0, OPS.BEGIN);
+        progLine.ops[LINE_OPS.BASE.INDEX()] = OPS.BEGIN;
         proglines.add(progLine);    // A l'index 0, proglines contient au moins BEGIN
     }
 
     private void setupProgLines() {
         proglines = new ArrayList<ProgLine>();
         ProgLine progLine = new ProgLine();
-        progLine.setOp(0, OPS.BEGIN);
+        progLine.ops[LINE_OPS.BASE.INDEX()] = OPS.BEGIN;
         proglines.add(progLine);   // A l'index 0, proglines contient au moins BEGIN
     }
 
@@ -1708,62 +1732,54 @@ public class Alu {
         String res = "";
         String s = "";
         if (progLineNumber != 0) {
-            ProgLine progLine = proglines.get(progLineNumber);   //  Cas particulier: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
-            // Suite: Ce qui implique que si Affichage symboles: Afficher uniquement op0, Si Affichage Codes: Afficher à partir de op1
-            OPS[] ops = progLine.getOps();
-            boolean isGhost = (opToGhostKeyMap.get(ops[0]) != null);
-            for (int i = 0; i <= (ops.length - 1); i = i + 1) {
-                if (ops[i] != null) {
+            ProgLine progLine = proglines.get(progLineNumber);
+            OPS opBase = progLine.ops[LINE_OPS.BASE.INDEX()];   //  LINE_OPS: BASE, A4OP, DOT, A09, AE, I, DIM, INDI, RAND, SIGMA_PLUS, CHS, GHOST1, GHOST2
+            boolean isGhost = (opToGhostKeyMap.get(opBase) != null);
+            int iMin = ((isGhost && !displaySymbol) ? LINE_OPS.GHOST1.INDEX() : LINE_OPS.BASE.INDEX());
+            int iMax = ((isGhost && !displaySymbol) ? LINE_OPS.GHOST2.INDEX() : LINE_OPS.SIGMA_PLUS.INDEX());   //  On ne prend pas le CHS car n'a été utilisé que pour le GTO CHS nnnnn en mode EDIT
+            int i = iMin;
+            do {
+                if (progLine.ops[i] != null) {
                     String sep = SEP;
                     if (!displaySymbol) {   //  Codes
-                        if ((i > 0) || !isGhost) {   //  Cf Cas particuliers
-                            KEYS key = opToKeyMap.get(ops[i]);
-                            s = String.valueOf(key.CODE());
-                            if (ops[i].equals(OPS.DOT)) {   //  Si "" est suivi par un chiffre n => afficher .n
-                                if (i < (ops.length - 1)) {
-                                    if (ops[i + 1] != null) {
-                                        OPS nextOp = ops[i + 1];
-                                        if (((nextOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (nextOp.INDEX() <= OPS.DIGIT_9.INDEX()))) {
-                                            s = OPS.DOT.SYMBOL();
-                                        }
-                                    }
-                                }
-                            } else {   //  Pas "."
-                                OPS unshiftedOp = key.UNSHIFTED_OP();   //  Opération sans aucune touche Shift
-                                if (((unshiftedOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (unshiftedOp.INDEX() <= OPS.DIGIT_9.INDEX()))) {   //  Afficher chiffre (même si operation n'est pas chiffre)
-                                    s = unshiftedOp.SYMBOL();
-                                }
+                        KEYS key = opToKeyMap.get(progLine.ops[i]);
+                        s = String.valueOf(key.CODE());
+                        OPS unshiftedOp = key.UNSHIFTED_OP();   //  Opération sans aucune touche Shift
+                        if (((unshiftedOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (unshiftedOp.INDEX() <= OPS.DIGIT_9.INDEX()))) {   //  Afficher chiffre (même si operation n'est pas chiffre)
+                            s = unshiftedOp.SYMBOL();
+                        }
+                        if (i == LINE_OPS.DOT.INDEX()) {
+                            if (progLine.ops[LINE_OPS.A09.INDEX()] != null) {
+                                s = OPS.DOT.SYMBOL();
                             }
-                            if (res.equals("")) {   //  l'op à considérer n'est pas toujours à i=0 (ex. pour ATANH: 0:ATANH, 1:AHYP, 2:TAN)
-                                int shiftKeyCode = opToShiftKeyCodeMap.get(ops[i]);   //  Préfixer de l'éventuelle touche shift F ou G
-                                if (shiftKeyCode != UNSHIFTED_KEY_CODE) {
-                                    s = shiftKeyCode + sep + s;
-                                }
+                        }
+                        if (res.equals("")) {
+                            int shiftKeyCode = opToShiftKeyCodeMap.get(progLine.ops[i]);   //  Préfixer de l'éventuelle touche shift F ou G
+                            if (shiftKeyCode != UNSHIFTED_KEY_CODE) {
+                                s = shiftKeyCode + sep + s;
                             }
-                            res = res + (!res.equals("") ? sep : "") + s;
                         }
                     } else {   //  Symboles
-                        if ((i == 0) || !isGhost) {   //  Cf Cas particuliers
-                            if ((ops[i].equals(OPS.EEX)) || (ops[i].equals(OPS.CHS))) {
-                                s = ops[i].toString();
-                            } else {   //  Pas EEX ni CHS
-                                s = ops[i].SYMBOL();
+                        if ((progLine.ops[i].equals(OPS.EEX)) || (progLine.ops[i].equals(OPS.CHS))) {
+                            s = progLine.ops[i].toString();
+                        } else {   //  Pas EEX ni CHS
+                            s = progLine.ops[i].SYMBOL();
+                        }
+                        if ((opBase.equals(OPS.STO)) || (opBase.equals(OPS.RCL))) {
+                            if (i == LINE_OPS.A4OP.INDEX()) {
+                                sep = "";   //  Pour avoir +-*/ juste à côté de l'op: STO+ ... RCL* ..., et non STO + ... RCL * ...
                             }
-                            if (i == 1) {
-                                if ((ops[i - 1].equals(OPS.STO)) || (ops[i - 1].equals(OPS.RCL))) {
-                                    if ((ops[i].equals(OPS.PLUS)) || (ops[i].equals(OPS.MINUS)) || (ops[i].equals(OPS.MULT)) || (ops[i].equals(OPS.DIV))) {
-                                        sep = "";   //  Pour avoir +-*/ juste à côté de l'op: STO+ ... RCL* ..., et non STO + ... RCL * ...
-                                    }
-                                }
-                                if (ops[i].equals(OPS.XCHG)) {
-                                    sep = "";   //  Pour avoir X<>1  X<>(i) ...
-                                }
+                        }
+                        if (opBase.equals(OPS.XCHG)) {
+                            if (i != LINE_OPS.BASE.INDEX()) {
+                                sep = "";   //  Pour avoir X<>1  X<>(i) ...
                             }
-                            res = res + (!res.equals("") ? sep : "") + s;
                         }
                     }
+                    res = res + (!res.equals("") ? sep : "") + s;
                 }
-            }
+                i = i + 1;
+            } while (i <= iMax);
         } else {   //  Ligne 0
             if (!displaySymbol) {   //  Codes
                 res = "00";
@@ -1775,17 +1791,27 @@ public class Alu {
         return res;
     }
 
-    public void rebuildlabelToprogLineNumberMap() {
+    public void rebuildlabelToProgLineNumberMap() {
         labelToprogLineNumberMap = new HashMap<LABELS, Integer>();
         int n = proglines.size();
         for (int i = 0; i <= (n - 1); i = i + 1) {
             ProgLine progLine = proglines.get(i);
-            OPS op = progLine.getOp(0);
+            OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];
             if (op.equals(OPS.LBL)) {
-                OPS op1 = progLine.getOp(1);   //  "."
-                OPS op2 = progLine.getOp(2);   //  n ou A..E
-                String s = (op1 != null ? op1.SYMBOL() : "") + op2.SYMBOL();
-                labelToprogLineNumberMap.put(symbolToLabelMap.get(s), i);
+                labelToprogLineNumberMap.put(symbolToLabelMap.get(progLine.symbol), i);
+            }
+        }
+    }
+
+    public void linkGTOGSBToProgLineNumbers() {
+        int n = proglines.size();
+        for (int i = 0; i <= (n - 1); i = i + 1) {
+            ProgLine progLine = proglines.get(i);
+            OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];
+            if ((op.equals(OPS.GTO)) || (op.equals(OPS.GSB))) {
+                LABELS lbl = symbolToLabelMap.get(progLine.symbol);
+                int pln = labelToprogLineNumberMap.get(lbl);
+                progLine.ref = pln;
             }
         }
     }
@@ -1793,46 +1819,48 @@ public class Alu {
     public int getDestProgLineNumber(ProgLine progLine) {
         int res = -1;
         Integer pln = null;
-        OPS op = progLine.getOp(0);   //  GTO, GSB ou A..E
-        switch (op) {
-            case GTO:
-                OPS op1 = progLine.getOp(1);   //  "." éventuel (si GTO ou GSB)
-                String s = (op1 != null ? op1.SYMBOL() : "");
-                s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
-                if (s.equals(OPS.I.SYMBOL())) {   //  GTO I
-                    int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
-                    if (n >= 0) {   //  GTO I positif => GTO LBL
-                        if (n <= LABELS.values().length - 1) {
-                            LABELS lbl = indexToLabelMap.get(n);
+        OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];   //  GTO, GSB
+        if (op.equals(OPS.GTO)) {
+            if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GTO I
+                int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
+                if (n >= 0) {   //  GTO I positif => GTO label   (n=labelIndex)
+                    if (n <= LABELS.values().length - 1) {
+                        LABELS lbl = labelIndexToLabelMap.get(n);
+                        if (lbl != null) {
                             pln = labelToprogLineNumberMap.get(lbl);
                         }
-                    } else {   //  GTO I négatif => Goto ProgLineNumber
-                        res = -n;
                     }
-                } else {   //  GTO [.]n ou A-E
-                    LABELS lbl = symbolToLabelMap.get(s);
+                } else {   //  n<0 cad GTO I négatif => GTO ProgLineNumber  (-n=ProgLine number)
+                    if ((-n) <= (proglines.size() - 1)) {
+                        pln = -n;
+                    }
+                }
+            } else {   //  Pas GTO I => GTO [.]0..9 ou A-E
+                LABELS lbl = symbolToLabelMap.get(progLine.symbol);
+                if (lbl != null) {
                     pln = labelToprogLineNumberMap.get(lbl);
                 }
-                break;
-            case GSB:
-                op1 = progLine.getOp(1);   //  "." éventuel (si GTO ou GSB)
-                s = (op1 != null ? op1.SYMBOL() : "");
-                s = s + progLine.getOp(2).SYMBOL();   //  [.]n ou A-E ou I
-                if (s.equals(OPS.I.SYMBOL())) {   //  GSB I
-                    int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
-                    if (n >= 0) {   //  GSB I positif => GSB LBL
-                        if (n <= LABELS.values().length - 1) {
-                            LABELS lbl = indexToLabelMap.get(n);
+            }
+        }
+        if (op.equals(OPS.GSB)) {
+            if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GSB I
+                int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
+                if (n >= 0) {   //  GSB I positif => GSB label   (n=labelIndex)
+                    if (n <= LABELS.values().length - 1) {
+                        LABELS lbl = labelIndexToLabelMap.get(n);
+                        if (lbl != null) {
                             pln = labelToprogLineNumberMap.get(lbl);
                         }
-                    } else {   //  GSB I négatif => NOP
-                        //  NOP
                     }
-                } else {   //  GSB [.]n ou A-E
-                    LABELS lbl = symbolToLabelMap.get(s);
+                } else {   //  n<0 cad GSB I négatif, non prévu par la HP-15C
+                    //  NOP
+                }
+            } else {   //  Pas GSB I => GSB [.]0..9 ou A-E
+                LABELS lbl = symbolToLabelMap.get(progLine.symbol);
+                if (lbl != null) {
                     pln = labelToprogLineNumberMap.get(lbl);
                 }
-                break;
+            }
         }
         if (pln != null) {
             res = pln;
@@ -1901,8 +1929,8 @@ public class Alu {
         opToGhostKeyMap = new HashMap<OPS, GHOST_KEYS>();
         for (GHOST_KEYS ghostKey : GHOST_KEYS.values()) {
             OPS op = ghostKey.OP();
-            OPS prefixOp = ghostKey.PREFIX_OP();
-            OPS lastOp = ghostKey.LAST_OP();
+            OPS prefixOp = ghostKey.GHOST_OP1();
+            OPS lastOp = ghostKey.GHOST_OP2();
             opToGhostKeyMap.put(op, ghostKey);
             PairOp pairOp = new PairOp(prefixOp, lastOp);
             ghostOpsToOpMap.put(pairOp, op);
@@ -1920,9 +1948,9 @@ public class Alu {
             }
         }
         symbolToLabelMap = new HashMap<String, LABELS>();
-        indexToLabelMap = new HashMap<Integer, LABELS>();
+        labelIndexToLabelMap = new HashMap<Integer, LABELS>();
         for (LABELS lbl : LABELS.values()) {
-            indexToLabelMap.put(lbl.INDEX(), lbl);
+            labelIndexToLabelMap.put(lbl.INDEX(), lbl);
             symbolToLabelMap.put(lbl.SYMBOL(), lbl);
         }
         symbolToBaseRegMap = new HashMap<String, BASE_REGS>();
