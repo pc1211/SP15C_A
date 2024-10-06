@@ -366,8 +366,8 @@ public class MainActivity extends Activity {
             readProgLineOpIndex = readProgLineOpIndex + 1;
         }
         if (error.length() == 0) {   //  Pas d'erreur (ou Prefix) antérieure
-            testAndHandleDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
-            testAndHandleGhostOp();   //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
+            interpretDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
+            interpretGhostOp();      //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
             nextProgLineNumber = currentProgLineNumber;    //  Sauf mention contraire en mode NORM ou EDIT (SST, BST, CLEAR_PRGM, ...)
             if (mode.equals(MODES.RUN)) {
                 nextProgLineNumber = inc(currentProgLineNumber);    //  Sauf mention contraire en RUN (GTO, GSB, RTN, A..E, ...)
@@ -377,13 +377,13 @@ public class MainActivity extends Activity {
             }
             if (inOp != null) {   //  instruction MultiOps déjà engagée
                 prepareMultiOpsProgLine();
-                testAndHandleMultiOpsEnd();   //  Test si fin d'nstruction MultiOps (Eventuellement inOp y deviendra null si instruction MultiOps complète (=> Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Nouvelle instruction))
+                interpretMultiOpsEnd();   //  Test si fin d'nstruction MultiOps (Eventuellement inOp y deviendra null si instruction MultiOps complète (=> Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Nouvelle instruction))
             } else {   //  Pas d'instruction MultiOps déjà engagée
                 tempProgLine.ops[LINE_OPS.BASE.INDEX()] = currentOp;   //  Nouvelle instruction commence
-                testAndHandleDigitOp();   //  Test si Chiffre entré (ou CHS, EEX, "."): stackLift éventuel et se met en fin du nombre en cours (Si EDIT: Enregistrement instruction avec ce chiffre)
-                testAndHandleSingleOp();   //  Test si Opération non MultiOps, normale (=> stackLift éventuel, Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Enregistrement instruction)
-                testAndHandleSpecialOp();   //  Test si Opération non MultiOps, spéciale (=> stackLift éventuel, Nbre en cours copié dans X et vidé, puis exécution éventuelle) (si EDIT: Enregistrement instruction éventuelle)
-                testAndHandleMultiOpsBegin();  //  Test si début d'instruction MultiOps: inOp deviendra non null
+                interpretDigitOp();   //  Test si Chiffre entré (ou CHS, EEX, "."): stackLift éventuel et se met en fin du nombre en cours (Si EDIT: Enregistrement instruction avec ce chiffre)
+                interpretSingleOp();   //  Test si Opération non MultiOps, normale (=> stackLift éventuel, Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Enregistrement instruction)
+                interpretSpecialOp();   //  Test si Opération non MultiOps, spéciale (=> stackLift éventuel, Nbre en cours copié dans X et vidé, puis exécution éventuelle) (si EDIT: Enregistrement instruction éventuelle)
+                interpretMultiOpsBegin();  //  Test si début d'instruction MultiOps: inOp deviendra non null
             }
             if (inOp == null) {    //  Instruction terminée (déjà enregistrée dans progLines si EDIT ou RUN) ou éventuellement annulée pour problème de syntaxe mais sans erreur explicite
                 alu.clearProgLine(tempProgLine);   //  Préparer le terrain pour une nouvelle instruction
@@ -608,7 +608,7 @@ public class MainActivity extends Activity {
         alu = new Alu();
     }
 
-    private void testAndHandleDirectAEOp() {
+    private void interpretDirectAEOp() {
         if (inOp == null) {
             if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
                 inOp = OPS.GSB;
@@ -622,7 +622,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void testAndHandleGhostOp() {
+    private void interpretGhostOp() {
         if (inOp != null) {   //  Opération MultiOps déjà engagée
             OPS dop = alu.getOpByGhostKeyOps(inOp, currentOp);   //  Pas null pour opérations fantômes (cf GHOST_KEYS) : HYP, AHYP, TEST
             if (dop != null) {   // Cas particuliers: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
@@ -671,7 +671,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void testAndHandleMultiOpsEnd() {
+    private void interpretMultiOpsEnd() {
         if (inOp != null) {
             boolean isComplete = false;
             boolean common = false;
@@ -683,7 +683,7 @@ public class MainActivity extends Activity {
                     if ((mode.equals(MODES.EDIT)) && (tempProgLine.ops[LINE_OPS.CHS.INDEX()] != null) && (!isAutoOp)) {   //  GTO CHS nnnnn en mode EDIT et pas en mode de lecture automatique de lignes
                         if (tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) {
                             if (tempProgLine.ref == 0) {
-                                tempProgLine.ref = 1;   //  cf ci-dessous, permet de multiplier par 10 puis d'ajouter un n (de nnnn), le 1 deviendr 10000 après entrée de nnnn
+                                tempProgLine.ref = 1;   //  cf ci-dessous, permet de multiplier par 10 puis d'ajouter un n (de nnnn), le 1 deviendra 10000 après entrée de nnnn
                             }
                             tempProgLine.ref = 10 * tempProgLine.ref + Integer.valueOf(tempProgLine.ops[LINE_OPS.A09.INDEX()].SYMBOL());
                             if (tempProgLine.ref > 10000) {   //  OK 4 chiffres obligatoires (nnnn)
@@ -819,7 +819,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void testAndHandleDigitOp() {
+    private void interpretDigitOp() {
         if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
                 (currentOp.equals(OPS.DOT)) || (currentOp.equals(OPS.EEX)) || (currentOp.equals(OPS.CHS))) {
 
@@ -834,7 +834,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void testAndHandleSingleOp() {
+    private void interpretSingleOp() {
         switch (currentOp) {
             case PI:
             case LASTX:
@@ -908,7 +908,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void testAndHandleSpecialOp() {
+    private void interpretSpecialOp() {
         switch (currentOp) {
             case CLX:
             case CLEAR_PREFIX:
@@ -1034,26 +1034,45 @@ public class MainActivity extends Activity {
         }
         if (currentOp.equals(OPS.PSE)) {
             if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Neutre sur StackLift ???
-                if (mode.equals(MODES.RUN)) {   //  Inactif en mode NORM
+                if (mode.equals(MODES.NORM)) {
+                    if (alphaToX()) {
+                        //   NOP
+                    }
+                }
+                if (mode.equals(MODES.RUN)) {
                     error = exec(tempProgLine);
                 }
             }
         }
     }
 
-    private void testAndHandleMultiOpsBegin() {
-        if ((currentOp.equals(OPS.FIX)) || (currentOp.equals(OPS.SCI)) || (currentOp.equals(OPS.ENG)) ||
-                (currentOp.equals(OPS.STO)) || (currentOp.equals(OPS.RCL)) || (currentOp.equals(OPS.XCHG)) ||
-                (currentOp.equals(OPS.HYP)) || (currentOp.equals(OPS.AHYP)) || (currentOp.equals(OPS.TEST)) ||
-                (currentOp.equals(OPS.DIM)) || (currentOp.equals(OPS.GTO)) || (currentOp.equals(OPS.GSB)) || (currentOp.equals(OPS.LBL)) ||
-                (currentOp.equals(OPS.SF)) || (currentOp.equals(OPS.CF)) || (currentOp.equals(OPS.TF)) ||
-                (currentOp.equals(OPS.DSE)) || (currentOp.equals(OPS.ISG))) {
-            inOp = currentOp;   //  Début d'instruction MultiOps
-            if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
-                KEYS key = alu.getKeyByOp(inOp);
-                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
-                buttons[key.INDEX()].updateDisplay();
-            }
+    private void interpretMultiOpsBegin() {
+        switch (currentOp) {
+            case FIX:
+            case SCI:
+            case ENG:
+            case STO:
+            case RCL:
+            case XCHG:
+            case HYP:
+            case AHYP:
+            case TEST:
+            case DIM:
+            case GTO:
+            case GSB:
+            case LBL:
+            case SF:
+            case CF:
+            case TF:
+            case DSE:
+            case ISG:
+                inOp = currentOp;   //  Début d'instruction MultiOps
+                if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
+                    KEYS key = alu.getKeyByOp(inOp);
+                    swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                    buttons[key.INDEX()].updateDisplay();
+                }
+                break;
         }
     }
 
@@ -2011,7 +2030,7 @@ public class MainActivity extends Activity {
         final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.59f;
         final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
         final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.57f;
-        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.64f;
+        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.63f;
         final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.57f;
         final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.58f;
         final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.38f;
