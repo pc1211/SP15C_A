@@ -1023,6 +1023,7 @@ public class MainActivity extends Activity {
             if (mode.equals(MODES.NORM)) {
                 if (alphaToX()) {
                     nextProgLineNumber = 0;
+                    alu.clearReturnStack();
                 }
             }
             if (mode.equals(MODES.EDIT)) {
@@ -1033,7 +1034,9 @@ public class MainActivity extends Activity {
         }
         if (currentOp.equals(OPS.PSE)) {
             if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Neutre sur StackLift ???
-                error = exec(tempProgLine);
+                if (mode.equals(MODES.RUN)) {   //  Inactif en mode NORM
+                    error = exec(tempProgLine);
+                }
             }
         }
     }
@@ -1218,7 +1221,7 @@ public class MainActivity extends Activity {
         OPS opBase = progLine.ops[LINE_OPS.BASE.INDEX()];
         boolean common = false;   //  Sortie classique de fonction: stackLiftEnabled=true, lastx si erreur
 
-        switch (opBase) {   //  The GIANT
+        switch (opBase) {   //  Le GIANT
             case FIX:
             case SCI:
             case ENG:
@@ -2007,7 +2010,7 @@ public class MainActivity extends Activity {
         final float BUTTON_TOP_20_IMAGE_SIZE_COEFF = 0.8f;
         final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.59f;
         final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.53f;
+        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.55f;
         final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.64f;
         final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.57f;
         final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.58f;
