@@ -35,7 +35,25 @@ public final class ImageButtonViewStack extends TextView {
         mOnCustomClickListener = listener;
     }
 
+    public interface onCustomClickDownListener {
+        void onCustomClickDown();
+    }
+
+    public void setOnCustomClickDownListener(onCustomClickDownListener listener) {
+        mOnCustomClickDownListener = listener;
+    }
+
+    public interface onCustomClickLeaveListener {
+        void onCustomClickLeave();
+    }
+
+    public void setOnCustomClickLeaveListener(onCustomClickLeaveListener listener) {
+        mOnCustomClickLeaveListener = listener;
+    }
+
     private onCustomClickListener mOnCustomClickListener;
+    private onCustomClickDownListener mOnCustomClickDownListener;
+    private onCustomClickLeaveListener mOnCustomClickLeaveListener;
     //region Variables
     private int imageCount;
     private long minClickTimeInterval;
@@ -268,6 +286,9 @@ public final class ImageButtonViewStack extends TextView {
         if (action == MotionEvent.ACTION_DOWN) {
             clickDownInButtonZone = true;
             buttonState = BUTTON_STATES.PRESSED;
+            if (mOnCustomClickDownListener != null) {
+                mOnCustomClickDownListener.onCustomClickDown();
+            }
             v.getParent().requestDisallowInterceptTouchEvent(true);   //  Une listView éventuelle (qui contient des items avec ce contrôle et voudrait scroller) ne pourra voler l'événement ACTION_MOVE de ce contrôle
             invalidate();
             return true;
@@ -288,9 +309,12 @@ public final class ImageButtonViewStack extends TextView {
                             clickDownInButtonZone = false;
                         }
                     }
-                } else {
+                } else {   //  Hors de la zone
                     clickDownInButtonZone = false;
                     buttonState = BUTTON_STATES.UNPRESSED;
+                    if (mOnCustomClickLeaveListener != null) {
+                        mOnCustomClickLeaveListener.onCustomClickLeave();
+                    }
                     invalidate();
                 }
             }

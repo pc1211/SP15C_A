@@ -270,7 +270,22 @@ public class MainActivity extends Activity {
             String disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
             dotMatrixDisplayUpdater.displayText(disp, false);
             dotMatrixDisplayView.updateDisplay();
-            updateSideDisplay();
+        }
+    }
+
+    private void onSSTClickDown() {   //  Click Down sur SST => Afficher ProgLine courante
+        if ((mode.equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
+            String disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
+            dotMatrixDisplayUpdater.displayText(disp, false);
+            dotMatrixDisplayView.updateDisplay();
+        }
+    }
+
+    private void onSSTClickLeave() {   //  Quitter SST sans cliquer => Affichage normal
+        if ((mode.equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
+            String disp = (alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber());   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+            dotMatrixDisplayUpdater.displayText(disp, true);
+            dotMatrixDisplayView.updateDisplay();
         }
     }
 
@@ -676,128 +691,133 @@ public class MainActivity extends Activity {
             boolean isComplete = false;
             boolean common = false;
 
-            if (inOp.equals(OPS.GTO)) {
-                if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null) ||
-                        (tempProgLine.ops[LINE_OPS.CHS.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
+            if (currentOp.equals(OPS.BACK)) {   //  On annule l'opération MultiOps en cours avec la flèche gauche
+                currentOp = OPS.UNKNOWN;
+                isComplete = true;
+            } else {   //  Pas BACK après début d'une opération MultiOps
+                switch (inOp) {
+                    case GTO:
+                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null) ||
+                                (tempProgLine.ops[LINE_OPS.CHS.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
 
-                    if ((mode.equals(MODES.EDIT)) && (tempProgLine.ops[LINE_OPS.CHS.INDEX()] != null) && (!isAutoOp)) {   //  GTO CHS nnnnn en mode EDIT et pas en mode de lecture automatique de lignes
-                        if (tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) {
-                            if (tempProgLine.ref == 0) {
-                                tempProgLine.ref = 1;   //  cf ci-dessous, permet de multiplier par 10 puis d'ajouter un n (de nnnn), le 1 deviendra 10000 après entrée de nnnn
-                            }
-                            tempProgLine.ref = 10 * tempProgLine.ref + Integer.valueOf(tempProgLine.ops[LINE_OPS.A09.INDEX()].SYMBOL());
-                            if (tempProgLine.ref > 10000) {   //  OK 4 chiffres obligatoires (nnnn)
-                                isComplete = true;
-                                int dpln = tempProgLine.ref - 10000;   //  nnnn
-                                tempProgLine.ref = 0;
-                                nextProgLineNumber = dpln;
-                                if (dpln > (alu.getProgLinesSize() - 1)) {
-                                    error = ERROR_LINE_NUMBER;
-                                }
-                            }
-                        }
-                    } else {   //  Pas GTO CHS nnnn en mode EDIT
-                        isComplete = true;
-                        if (!inEditModeAfterSavingLine(tempProgLine)) {
-                            if (mode.equals(MODES.NORM)) {
-                                alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                                alu.linkGTOGSBToProgLineNumbers();
-                            }
-                            error = exec(tempProgLine);
-
-                            if (mode.equals(MODES.NORM)) {
-                                if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GTO I), donc pas dans tempProgLien en mode NORM si pas GTO I!
-                                    int dpln = alu.getGTODestProgLineNumber(tempProgLine);
-                                    if (dpln != (-1)) {   //  OK
+                            if ((mode.equals(MODES.EDIT)) && (tempProgLine.ops[LINE_OPS.CHS.INDEX()] != null) && (!isAutoOp)) {   //  GTO CHS nnnnn en mode EDIT et pas en mode de lecture automatique de lignes
+                                if (tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) {
+                                    if (tempProgLine.ref == 0) {
+                                        tempProgLine.ref = 1;   //  cf ci-dessous, permet de multiplier par 10 puis d'ajouter un n (de nnnn), le 1 deviendra 10000 après entrée de nnnn
+                                    }
+                                    tempProgLine.ref = 10 * tempProgLine.ref + Integer.valueOf(tempProgLine.ops[LINE_OPS.A09.INDEX()].SYMBOL());
+                                    if (tempProgLine.ref > 10000) {   //  OK 4 chiffres obligatoires (nnnn)
+                                        isComplete = true;
+                                        int dpln = tempProgLine.ref - 10000;   //  nnnn
+                                        tempProgLine.ref = 0;
                                         nextProgLineNumber = dpln;
-                                        tempProgLine.ref = dpln;
-                                    } else {   //  Invalide
-                                        error = ERROR_GTO_GSB;
+                                        if (dpln > (alu.getProgLinesSize() - 1)) {
+                                            error = ERROR_LINE_NUMBER;
+                                        }
                                     }
                                 }
-                                KEYS key = alu.getKeyByOp(inOp);
-                                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
-                                buttons[key.INDEX()].updateDisplay();
-                            }
-                        }
-                    }
-                }
-            }
-            if (inOp.equals(OPS.GSB)) {
-                if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
+                            } else {   //  Pas GTO CHS nnnn en mode EDIT
+                                isComplete = true;
+                                if (!inEditModeAfterSavingLine(tempProgLine)) {
+                                    if (mode.equals(MODES.NORM)) {
+                                        alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
+                                        alu.linkGTOGSBToProgLineNumbers();
+                                    }
+                                    error = exec(tempProgLine);
 
-                    isComplete = true;
-                    if (!inEditModeAfterSavingLine(tempProgLine)) {
-                        if (mode.equals(MODES.NORM)) {
-                            alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                            alu.linkGTOGSBToProgLineNumbers();
-                        }
-                        error = exec(tempProgLine);
-
-                        if (mode.equals(MODES.NORM)) {
-                            if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GSB I), donc pas dans tempProgLien en mode NORM si pas GSB I!
-                                int dpln = alu.getGSBDestProgLineNumber(tempProgLine);
-                                if (dpln != (-1)) {   //  OK
-                                    nextProgLineNumber = dpln;
-                                    tempProgLine.ref = dpln;
-                                } else {   //  Invalide
-                                    error = ERROR_GTO_GSB;
+                                    if (mode.equals(MODES.NORM)) {
+                                        if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GTO I), donc pas dans tempProgLien en mode NORM si pas GTO I!
+                                            int dpln = alu.getGTODestProgLineNumber(tempProgLine);
+                                            if (dpln != (-1)) {   //  OK
+                                                nextProgLineNumber = dpln;
+                                                tempProgLine.ref = dpln;
+                                            } else {   //  Invalide
+                                                error = ERROR_GTO_GSB;
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                            if (error.length() == 0) {
-                                nowmRUN = System.currentTimeMillis();
-                                mode = MODES.RUN;   //   Exécuter un GSB, c'est se mettre en mode RUN car plusieurs lignes à exécuter
-                                isAutoOp = true;
-                                readProgLineOpIndex = LINE_OPS.BASE.INDEX();
-                            }
-                            KEYS key = alu.getKeyByOp(inOp);
-                            swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
-                            buttons[key.INDEX()].updateDisplay();
                         }
-                    }
-                }
-            }
+                        break;
+                    case GSB:
+                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
 
-            if ((inOp.equals(OPS.FIX)) || (inOp.equals(OPS.SCI)) || (inOp.equals(OPS.ENG))) {
-                if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null)) {
-                    common = true;
-                }
-            }
-            if (inOp.equals(OPS.STO)) {
-                if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null) ||
-                        (tempProgLine.ops[LINE_OPS.RAND.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
-                    common = true;
-                }
-            }
-            if (inOp.equals(OPS.RCL)) {
-                if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null) ||
-                        (tempProgLine.ops[LINE_OPS.SIGMA_PLUS.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
-                    common = true;
-                }
-            }
-            if (inOp.equals(OPS.DIM)) {   //  DIM (i)
-                if (tempProgLine.ops[LINE_OPS.INDI.INDEX()].equals(OPS.INDI)) {   //  COS: (i) était attendu après DIM
-                    common = true;
-                }
-            }
-            if (inOp.equals(OPS.XCHG)) {
-                if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
-                    common = true;
-                }
-            }
-            if (inOp.equals(OPS.LBL)) {
-                if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
-                    common = true;
-                }
-            }
-            if ((inOp.equals(OPS.DSE)) || (inOp.equals(OPS.ISG))) {
-                if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
-                    common = true;
-                }
-            }
-            if ((inOp.equals(OPS.SF)) || (inOp.equals(OPS.CF)) || (inOp.equals(OPS.TF))) {
-                if (tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) {
-                    common = true;
+                            isComplete = true;
+                            if (!inEditModeAfterSavingLine(tempProgLine)) {
+                                if (mode.equals(MODES.NORM)) {
+                                    alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
+                                    alu.linkGTOGSBToProgLineNumbers();
+                                }
+                                error = exec(tempProgLine);
+
+                                if (mode.equals(MODES.NORM)) {
+                                    if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GSB I), donc pas dans tempProgLien en mode NORM si pas GSB I!
+                                        int dpln = alu.getGSBDestProgLineNumber(tempProgLine);
+                                        if (dpln != (-1)) {   //  OK
+                                            nextProgLineNumber = dpln;
+                                            tempProgLine.ref = dpln;
+                                        } else {   //  Invalide
+                                            error = ERROR_GTO_GSB;
+                                        }
+                                    }
+                                    if (error.length() == 0) {
+                                        nowmRUN = System.currentTimeMillis();
+                                        mode = MODES.RUN;   //   Exécuter un GSB, c'est se mettre en mode RUN car plusieurs lignes à exécuter
+                                        isAutoOp = true;
+                                        readProgLineOpIndex = LINE_OPS.BASE.INDEX();
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    case FIX:
+                    case SCI:
+                    case ENG:
+                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null)) {
+                            common = true;
+                        }
+                        break;
+                    case STO:
+                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null) ||
+                                (tempProgLine.ops[LINE_OPS.RAND.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
+                            common = true;
+                        }
+                        break;
+                    case RCL:
+                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null) ||
+                                (tempProgLine.ops[LINE_OPS.SIGMA_PLUS.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
+                            common = true;
+                        }
+                        break;
+                    case DIM:   //  DIM (i)
+                        if (tempProgLine.ops[LINE_OPS.INDI.INDEX()].equals(OPS.INDI)) {   //  COS: (i) était attendu après DIM
+                            common = true;
+                        }
+                        break;
+                    case XCHG:
+                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
+                            common = true;
+                        }
+                        break;
+                    case LBL:
+                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
+                            common = true;
+                        }
+                        break;
+                    case DSE:
+                    case ISG:
+                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
+                            common = true;
+                        }
+                        break;
+                    case SF:
+                    case CF:
+                    case TF:
+                        if (tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) {
+                            common = true;
+                        }
+                        break;
                 }
             }
 
@@ -807,7 +827,6 @@ public class MainActivity extends Activity {
                     error = exec(tempProgLine);
                 }
             }
-
             if (isComplete) {
                 if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
                     KEYS key = alu.getKeyByOp(inOp);
@@ -2150,6 +2169,20 @@ public class MainActivity extends Activity {
                                 onButtonClick(fkey);
                             }
                         });
+                        if (key.equals(KEYS.KEY_21)) {   //  Click Down sur SST => Afficher ProgLine courante
+                            buttons[key.INDEX()].setOnCustomClickDownListener(new ImageButtonViewStack.onCustomClickDownListener() {
+                                @Override
+                                public void onCustomClickDown() {
+                                    onSSTClickDown();
+                                }
+                            });
+                            buttons[key.INDEX()].setOnCustomClickLeaveListener(new ImageButtonViewStack.onCustomClickLeaveListener() {
+                                @Override
+                                public void onCustomClickLeave() {   //  Quitter SST sans cliquer => Affichage normal
+                                    onSSTClickLeave();
+                                }
+                            });
+                        }
                     } else {   //  ON, f ou g => Seul le MID est visible
                         buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);
                     }
