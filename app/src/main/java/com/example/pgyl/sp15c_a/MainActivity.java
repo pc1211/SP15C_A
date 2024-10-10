@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
     private final String ERROR_GTO_GSB = "Invalid GTO/GSB";
     private final String ERROR_LINE_NUMBER = "Invalid Line num";
     private final String ERROR_RET_STACK_FULL = "Ret stack full";
+    private final String ERROR_RET_STACK_EMPTY = "Ret stack empty";
     private final String ERROR_PROG_LINES_FULL = "Prog lines full";
     private final String ERROR_KEYBOARD_INTERRUPT = "Keyboard Break";
     private final long PSE_MS = MILLISECONDS_PER_SECOND;   //  1 seconde
@@ -106,12 +107,17 @@ public class MainActivity extends Activity {
     private long nowmRUN;
     private int readProgLineOpIndex;
     private boolean lineIsGhostKey;
-    private Handler handlerTime;
-    private Runnable runnableTime;
-    private boolean isAuto;
+    private Handler handlerTimeLine;
+    private Runnable runnableTimeLine;
+    private Handler handlerTimeOp;
+    private Runnable runnableTimeOp;
+    private boolean isAutoO;
+    private boolean isAutoL;
     private boolean isAutoOp;
+    private boolean isAutoLine;
     private boolean isKeyboardInterrupt;
     private boolean inInterpretOp;
+    private boolean inExecCurrentProgLine;
     private boolean inPSE;
     private OPS shiftFOp;
     private OPS currentOp;
@@ -183,7 +189,9 @@ public class MainActivity extends Activity {
         alpha = "";
         inOp = null;
         isAutoOp = false;
-        isAuto = false;
+        isAutoO = false;
+        isAutoLine = false;
+        isAutoL = false;
         inPSE = false;
         readProgLineOpIndex = LINE_OPS.BASE.INDEX();
         lineIsGhostKey = false;
@@ -208,7 +216,8 @@ public class MainActivity extends Activity {
         setupSideDotMatrixDisplayUpdater();
         updateSideDotMatrixColors();
         updateSideDisplay();
-        setupRunnableTime();
+        setupRunnableTimeOp();
+        setupRunnableTimeLine();
         //setupShowExpirationTime();
         //setupSetClockAppAlarmOnStartTimer();
         //setupAddNewChronoTimerToList();
@@ -267,16 +276,14 @@ public class MainActivity extends Activity {
     private void onDotMatrixDisplayViewClick() {
         if (mode.equals(MODES.EDIT)) {
             displaySymbol = !displaySymbol;
-            String disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
-            dotMatrixDisplayUpdater.displayText(disp, false);
+            dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
             dotMatrixDisplayView.updateDisplay();
         }
     }
 
     private void onSSTClickDown() {   //  Click Down sur SST => Afficher ProgLine courante
         if ((mode.equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
-            String disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
-            dotMatrixDisplayUpdater.displayText(disp, false);
+            dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
             dotMatrixDisplayView.updateDisplay();
         }
     }
@@ -362,7 +369,7 @@ public class MainActivity extends Activity {
                 if (currentOp.equals(OPS.UNKNOWN)) {    //  Fonction non encore implémentée
                     msgBox("Function not implemented yet", this);
                 } else {   //  Fonction déjà implémentée
-                    interpretOp();
+                    interpretAndEditExecOp();
                 }
             }
         } else {   //  RUN
@@ -370,7 +377,43 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void interpretOp() {
+    private void execCurrentProgLine() {
+        inExecCurrentProgLine = true;
+        readProgLine = alu.getProgLine(currentProgLineNumber);    //  Charger la ligne actuelle
+        nextProgLineNumber = inc(currentProgLineNumber);    //  Sauf mention contraire (GTO, GSB, RTN, ...)
+        if (nextProgLineNumber == 0) {
+            isWrapAround = true;  //  Wrap Around => RTN
+        }
+        error = exec(readProgLine);
+        if (error.length() == 0) {   //  Pas d'erreur nouvelle
+            currentProgLineNumber = nextProgLineNumber;
+            if (currentProgLineNumber == SSTStopProgLineNumber) {   //  STOP après SST
+                SSTStopProgLineNumber = -1;
+                mode = MODES.NORM;
+                dotMatrixDisplayView.setInvertOn(false);
+                dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
+                isAutoLine = false;
+            }
+        } else {    //  Erreur nouvelle
+            mode = MODES.NORM;
+            isAutoLine = false;
+            dotMatrixDisplayView.setInvertOn(false);
+            if (error.equals(ERROR_RET_STACK_EMPTY)) {   //  Pas une vraie erreur
+                dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
+            } else {   //  Pas Erreur ERROR_RET_STACK_EMPTY
+                dotMatrixDisplayUpdater.displayText(error, false);
+            }
+            error = "";
+        }
+        startOrStopAutomaticLine();
+        if (!isAutoLine) {
+            dotMatrixDisplayView.updateDisplay();
+            updateSideDisplay();
+        }
+        inExecCurrentProgLine = false;
+    }
+
+    private void interpretAndEditExecOp() {
         inInterpretOp = true;
         String disp;
         if (isAutoOp) {   //  Op à obtenir automatiquement (p.ex. en mode RUN)
@@ -384,12 +427,6 @@ public class MainActivity extends Activity {
             interpretDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
             interpretGhostOp();      //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
             nextProgLineNumber = currentProgLineNumber;    //  Sauf mention contraire en mode NORM ou EDIT (SST, BST, CLEAR_PRGM, ...)
-            if (mode.equals(MODES.RUN)) {
-                nextProgLineNumber = inc(currentProgLineNumber);    //  Sauf mention contraire en RUN (GTO, GSB, RTN, A..E, ...)
-                if (nextProgLineNumber == 0) {
-                    isWrapAround = true;   //  Wrap Around => RTN
-                }
-            }
             if (inOp != null) {   //  instruction MultiOps déjà engagée
                 prepareMultiOpsProgLine();
                 interpretMultiOpsEnd();   //  Test si fin d'nstruction MultiOps (Eventuellement inOp y deviendra null si instruction MultiOps complète (=> Nbre en cours copié dans X et vidé, puis exécution)(si EDIT: Nouvelle instruction))
@@ -404,20 +441,12 @@ public class MainActivity extends Activity {
                 alu.clearProgLine(tempProgLine);   //  Préparer le terrain pour une nouvelle instruction
                 if (error.length() == 0) {   //  Pas d'erreur nouvelle
                     currentProgLineNumber = nextProgLineNumber;
-                    if (currentProgLineNumber == SSTStopProgLineNumber) {   //  STOP après SST
-                        SSTStopProgLineNumber = -1;
-                        mode = MODES.NORM;
-                        dotMatrixDisplayView.setInvertOn(false);
-                        isAutoOp = false;
-                        inOp = null;
-                    }
                     if (mode.equals(MODES.NORM)) {    //  A voir selon alpha si entrée de nombre en cours ou pas
                         disp = (alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber());   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
                         dotMatrixDisplayUpdater.displayText(disp, true);
                     }
                     if (mode.equals(MODES.EDIT)) {
-                        disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
-                        dotMatrixDisplayUpdater.displayText(disp, false);
+                        dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
                     }
                     if (isKeyboardInterrupt) {
                         isKeyboardInterrupt = false;
@@ -425,13 +454,11 @@ public class MainActivity extends Activity {
                     }
                 }
                 if (error.length() != 0) {    //  Erreur (ou Prefix) nouvelle
-                    if (mode.equals(MODES.RUN)) {   //  STOP
-                        mode = MODES.NORM;
-                        dotMatrixDisplayView.setInvertOn(false);
-                        isAutoOp = false;
-                        inOp = null;
+                    if (error.equals(ERROR_RET_STACK_EMPTY)) {   //  Pas une vraie erreur
+                        dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
+                    } else {   //  Pas Erreur ERROR_RET_STACK_EMPTY
+                        dotMatrixDisplayUpdater.displayText(error, false);
                     }
-                    dotMatrixDisplayUpdater.displayText(error, false);
                     alpha = "";
                 }
             }
@@ -439,18 +466,14 @@ public class MainActivity extends Activity {
             error = "";
             inOp = null;
             if (mode.equals(MODES.NORM)) {
-                disp = alu.getRoundXForDisplay();
-                dotMatrixDisplayUpdater.displayText(disp, true);
+                dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
             }
             if (mode.equals(MODES.EDIT)) {
-                disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
-                dotMatrixDisplayUpdater.displayText(disp, false);
+                dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
             }
         }
-        if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
-            dotMatrixDisplayView.updateDisplay();
-            updateSideDisplay();
-        }
+        dotMatrixDisplayView.updateDisplay();
+        updateSideDisplay();
         if (isAutoOp) {   //  Obtenir automatiquement le prochain op de la ligne ou de la suivante
             if (readProgLineOpIndex == LINE_OPS.BASE.INDEX()) {   //  Op0 toujours disponible
                 readProgLine = alu.getProgLine(currentProgLineNumber);    //  Ligne suivante
@@ -458,17 +481,12 @@ public class MainActivity extends Activity {
             } else {   //  Index > 0
                 readProgLineOpIndex = getValidProgLineOpIndex(readProgLine, readProgLineOpIndex);   //  Les ops d'une progLine ne ne sont pas toujours côte à côte
                 if ((readProgLineOpIndex == -1) || lineIsGhostKey) {   //  Il n'y a plus d'ops dans la progLine ou Ligne avec touche fantôme
-                    if (mode.equals(MODES.RUN)) {
-                        readProgLine = alu.getProgLine(currentProgLineNumber);    //  Ligne suivante
-                        lineIsGhostKey = alu.isGhostKey(readProgLine.ops[LINE_OPS.BASE.INDEX()]);   //  Si Ligne avec touche fantôme => Ne pas aller au-delà de Op0
-                        readProgLineOpIndex = LINE_OPS.BASE.INDEX();   //  Op0 toujours disponible
-                    } else {   //  Pas RUN
-                        isAutoOp = false;
-                    }
+                    isAutoOp = false;
                 }
             }
         }
-        startOrStopAutomatic();
+        startOrStopAutomaticOp();
+        startOrStopAutomaticLine();
         inInterpretOp = false;
     }
 
@@ -628,7 +646,7 @@ public class MainActivity extends Activity {
             if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
                 inOp = OPS.GSB;
                 tempProgLine.ops[LINE_OPS.BASE.INDEX()] = inOp;    //  Conversion en GSB A..E, à examiner ci-dessous
-                if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
+                if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {
                     KEYS key = alu.getKeyByOp(inOp);
                     swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
                     buttons[key.INDEX()].updateDisplay();
@@ -645,7 +663,7 @@ public class MainActivity extends Activity {
                 tempProgLine.ops[LINE_OPS.GHOST1.INDEX()] = inOp;   //  Garder l'opération initiale (AHYP COS , TEST n) après op0; op0 sera fixé dans handleOp()
                 tempProgLine.ops[LINE_OPS.GHOST2.INDEX()] = currentOp;
                 currentOp = dop;   //  l'opération est requalifiée en son équivalent direct et sera examinée plus bas
-                if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
+                if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {
                     KEYS key = alu.getKeyByOp(inOp);
                     swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
                     buttons[key.INDEX()].updateDisplay();
@@ -764,8 +782,7 @@ public class MainActivity extends Activity {
                                     if (error.length() == 0) {
                                         nowmRUN = System.currentTimeMillis();
                                         mode = MODES.RUN;   //   Exécuter un GSB, c'est se mettre en mode RUN car plusieurs lignes à exécuter
-                                        isAutoOp = true;
-                                        readProgLineOpIndex = LINE_OPS.BASE.INDEX();
+                                        isAutoLine = true;
                                     }
                                 }
                             }
@@ -828,12 +845,10 @@ public class MainActivity extends Activity {
                 }
             }
             if (isComplete) {
-                if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
-                    KEYS key = alu.getKeyByOp(inOp);
-                    swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
-                    buttons[key.INDEX()].updateDisplay();
-                }
-                inOp = null;   //  Pour la condition !mustWait, il s'agit ici d'annuler cette opération foireuse (incomplet et problème de syntaxe (avec error explicite ou pas))
+                KEYS key = alu.getKeyByOp(inOp);
+                swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
+                buttons[key.INDEX()].updateDisplay();
+                inOp = null;
             }
         }
     }
@@ -842,7 +857,7 @@ public class MainActivity extends Activity {
         if (((currentOp.INDEX() >= OPS.DIGIT_0.INDEX()) && (currentOp.INDEX() <= OPS.DIGIT_9.INDEX())) ||
                 (currentOp.equals(OPS.DOT)) || (currentOp.equals(OPS.EEX)) || (currentOp.equals(OPS.CHS))) {
 
-            if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.RUN))) {
+            if (mode.equals(MODES.NORM)) {
                 error = exec(tempProgLine);
             }
             if (mode.equals(MODES.EDIT)) {
@@ -922,8 +937,6 @@ public class MainActivity extends Activity {
                     error = exec(tempProgLine);
                 }
                 break;
-            default:
-                break;
         }
     }
 
@@ -942,126 +955,118 @@ public class MainActivity extends Activity {
                     error = exec(tempProgLine);
                 }
                 break;
-            default:
-                break;
-        }
-
-        if (currentOp.equals(OPS.BACK)) {    // Désactive stacklift
-            if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.RUN))) {
-                error = exec(tempProgLine);
-            }
-            if (mode.equals(MODES.EDIT)) {
-                if (currentProgLineNumber != 0) {   //  Interdiction d'effacer BEGIN
-                    alu.removeProgLineAtNumber(currentProgLineNumber);
-                    nextProgLineNumber = dec(currentProgLineNumber);
+            case BACK:
+                if (mode.equals(MODES.NORM)) {
+                    error = exec(tempProgLine);
                 }
-            }
-        }
-        if (currentOp.equals(OPS.USER)) {   //  Neutre sur StackLift
-            if (alphaToX()) {
-                user = !user;
-            }
-        }
-        if (currentOp.equals(OPS.BEGIN)) {   //  Neutre sur StackLift
-            error = exec(tempProgLine);   //  Pour tenir compte de l'éventuel wrap around
-        }
-        if (currentOp.equals(OPS.PR)) {
-            boolean sw = false;
-            if (!sw) {
-                if (mode.equals(MODES.NORM)) {   //  NORM -> EDIT
-                    sw = true;
-                    if (alphaToX()) {
-                        mode = MODES.EDIT;
-                        nextProgLineNumber = currentProgLineNumber;
+                if (mode.equals(MODES.EDIT)) {
+                    if (currentProgLineNumber != 0) {   //  Interdiction d'effacer BEGIN
+                        alu.removeProgLineAtNumber(currentProgLineNumber);
+                        nextProgLineNumber = dec(currentProgLineNumber);
                     }
                 }
-            }
-            if (!sw) {   //  On ne vient pas de passer de NORM à EDIT juste avant
-                if (mode.equals(MODES.EDIT)) {   //  EDIT -> NORM
-                    sw = true;
-                    mode = MODES.NORM;
+                break;
+            case USER:
+                if (alphaToX()) {
+                    user = !user;
                 }
-            }
-        }
-        if (currentOp.equals(OPS.RS)) {
-            boolean sw = false;
-            if (!sw) {
-                if (mode.equals(MODES.NORM)) {   //  NORM -> RUN
+                break;
+            case BEGIN:   //  Neutre sur StackLift
+                error = exec(tempProgLine);   //  Pour tenir compte de l'éventuel wrap around
+                break;
+            case PR:
+                boolean sw = false;
+                if (!sw) {
+                    if (mode.equals(MODES.NORM)) {   //  NORM -> EDIT
+                        sw = true;
+                        if (alphaToX()) {
+                            mode = MODES.EDIT;
+                            nextProgLineNumber = currentProgLineNumber;
+                        }
+                    }
+                }
+                if (!sw) {   //  On ne vient pas de passer de NORM à EDIT juste avant
+                    if (mode.equals(MODES.EDIT)) {   //  EDIT -> NORM
+                        sw = true;
+                        mode = MODES.NORM;
+                    }
+                }
+                break;
+            case RS:
+                sw = false;
+                if (!sw) {
+                    if (mode.equals(MODES.NORM)) {   //  NORM -> RUN
+                        sw = true;
+                        if (alphaToX()) {
+                            mode = MODES.RUN;
+                            isAutoLine = true;
+                            nowmRUN = System.currentTimeMillis();
+                            alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
+                            alu.linkGTOGSBToProgLineNumbers();
+                        }
+                    }
+                }
+                if (!sw) {   //  On ne vient pas de passer de NORM à RUN juste avant
                     sw = true;
+                    if (mode.equals(MODES.RUN)) {   //  RUN -> NORM
+                        if (alphaToX()) {
+                            mode = MODES.NORM;
+                            isAutoLine = false;
+                            dotMatrixDisplayView.setInvertOn(false);
+                        }
+                    }
+                }
+                if (mode.equals(MODES.EDIT)) {
+                    if (!inEditModeAfterSavingLine(tempProgLine)) {
+                        //  NOP
+                    }
+                }
+                break;
+            case SST:
+                if (mode.equals(MODES.NORM)) {
                     if (alphaToX()) {
                         mode = MODES.RUN;
-                        isAutoOp = true;
-                        readProgLineOpIndex = LINE_OPS.BASE.INDEX();
+                        SSTStopProgLineNumber = inc(currentProgLineNumber);    //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ou EDIT
                         nowmRUN = System.currentTimeMillis();
+                        isAutoLine = true;   //  Pour exécuter
                         alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
                         alu.linkGTOGSBToProgLineNumbers();
                     }
                 }
-            }
-            if (!sw) {   //  On ne vient pas de passer de NORM à RUN juste avant
-                sw = true;
-                if (mode.equals(MODES.RUN)) {   //  RUN -> NORM
-                    if (alphaToX()) {
-                        mode = MODES.NORM;
-                        isAutoOp = false;
-                        dotMatrixDisplayView.setInvertOn(false);
-                    }
+                if (mode.equals(MODES.EDIT)) {
+                    nextProgLineNumber = inc(currentProgLineNumber);    //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ou EDIT
                 }
-            }
-            if (mode.equals(MODES.EDIT)) {
-                if (!inEditModeAfterSavingLine(tempProgLine)) {
-                    //  NOP
-                }
-            }
-        }
-        if (currentOp.equals(OPS.SST)) {
-            if (mode.equals(MODES.NORM)) {
-                if (alphaToX()) {
-                    mode = MODES.RUN;
-                    SSTStopProgLineNumber = inc(currentProgLineNumber);    //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ou EDIT
-                    nowmRUN = System.currentTimeMillis();
-                    isAutoOp = true;   //  Pour exécuter
-                    readProgLineOpIndex = LINE_OPS.BASE.INDEX();
-                    alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                    alu.linkGTOGSBToProgLineNumbers();
-                }
-            }
-            if (mode.equals(MODES.EDIT)) {
-                nextProgLineNumber = inc(currentProgLineNumber);    //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ou EDIT
-            }
-        }
-        if (currentOp.equals(OPS.BST)) {
-            nextProgLineNumber = dec(currentProgLineNumber);
-            if (mode.equals(MODES.NORM)) {
-                if (alphaToX()) {
-                    //  NOP   Uniquement reculer, sans exécuter
-                }
-            }
-        }
-        if (currentOp.equals(OPS.CLEAR_PRGM)) {
-            if (mode.equals(MODES.NORM)) {
-                if (alphaToX()) {
-                    nextProgLineNumber = 0;
-                    alu.clearReturnStack();
-                }
-            }
-            if (mode.equals(MODES.EDIT)) {
-                if (alphaToX()) {
-                    askAndDeletePrograms();   //  Remet aussi currentProgLineNumber à 0
-                }
-            }
-        }
-        if (currentOp.equals(OPS.PSE)) {
-            if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Neutre sur StackLift ???
+                break;
+            case BST:
+                nextProgLineNumber = dec(currentProgLineNumber);
                 if (mode.equals(MODES.NORM)) {
                     if (alphaToX()) {
-                        //   NOP
+                        //  NOP   Uniquement reculer, sans exécuter
                     }
                 }
-                if (mode.equals(MODES.RUN)) {
-                    error = exec(tempProgLine);
+                break;
+            case CLEAR_PRGM:
+                if (mode.equals(MODES.NORM)) {
+                    if (alphaToX()) {
+                        nextProgLineNumber = 0;
+                        alu.clearReturnStack();
+                    }
                 }
-            }
+                if (mode.equals(MODES.EDIT)) {
+                    if (alphaToX()) {
+                        askAndDeletePrograms();   //  Remet aussi currentProgLineNumber à 0
+                    }
+                }
+                break;
+            case PSE:
+                if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Neutre sur StackLift ???
+                    if (mode.equals(MODES.NORM)) {
+                        if (alphaToX()) {
+                            //   NOP
+                        }
+                    }
+                }
+                break;
         }
     }
 
@@ -1086,7 +1091,7 @@ public class MainActivity extends Activity {
             case DSE:
             case ISG:
                 inOp = currentOp;   //  Début d'instruction MultiOps
-                if (!mode.equals(MODES.RUN)) {   //  NORM ou EDIT
+                if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {   //  NORM ou EDIT
                     KEYS key = alu.getKeyByOp(inOp);
                     swapColorBoxColors(buttons[key.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());   //  Touche inOp revient à la normale
                     buttons[key.INDEX()].updateDisplay();
@@ -1190,7 +1195,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(DialogInterface dialogInterface, int id) {
                 alu.clearProgLines();
-                nextProgLineNumber = 0;    //  Cf onDismiss pour le reste
+                currentProgLineNumber = 0;    //  Cf onDismiss pour le reste
             }
         });
         builder.setNegativeButton("No", null);
@@ -1198,8 +1203,7 @@ public class MainActivity extends Activity {
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface dialogInterface) {    // OK pour modifier UI sous-jacente à la boîte de dialogue
-                String disp = alu.progLineToString(currentProgLineNumber, displaySymbol);
-                dotMatrixDisplayUpdater.displayText(disp, false);
+                dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
                 dotMatrixDisplayView.updateDisplay();
                 updateSideDisplay();
             }
@@ -1207,33 +1211,33 @@ public class MainActivity extends Activity {
         dialog.show();
     }
 
-    private void startOrStopAutomatic() {
-        if (isAutoOp) {
-            if (!isAuto) {
-                startAutomatic();
+    private void startOrStopAutomaticLine() {
+        if (isAutoLine) {
+            if (!isAutoL) {
+                startAutomaticLine();
             }
-        } else {   //  Pas autoOp
-            if (isAuto) {
-                stopAutomatic();
+        } else {   //  Pas isAutoLine
+            if (isAutoL) {
+                stopAutomaticLine();
             }
         }
     }
 
-    public void startAutomatic() {
-        isAuto = true;
-        handlerTime.postDelayed(runnableTime, updateInterval);
+    public void startAutomaticLine() {
+        isAutoL = true;
+        handlerTimeLine.postDelayed(runnableTimeLine, updateInterval);
     }
 
-    public void stopAutomatic() {
-        handlerTime.removeCallbacks(runnableTime);
-        isAuto = false;
+    public void stopAutomaticLine() {
+        handlerTimeLine.removeCallbacks(runnableTimeLine);
+        isAutoL = false;
     }
 
-    private void automatic() {
-        handlerTime.postDelayed(runnableTime, updateInterval);
+    private void automaticLine() {
+        handlerTimeLine.postDelayed(runnableTimeLine, updateInterval);
         long nowm = System.currentTimeMillis();
-        if (!inInterpretOp) {
-            interpretOp();
+        if (!inExecCurrentProgLine) {
+            execCurrentProgLine();
         }
         if ((inPSE) && (nowmPSE == 0)) {   //  Nouvelle instruction PSE et Pas d'affichage de X en cours suite à instruction PSE antérieure
             inPSE = false;
@@ -1252,6 +1256,35 @@ public class MainActivity extends Activity {
                 dotMatrixDisplayUpdater.displayText("RUNNING...", false);
                 dotMatrixDisplayView.updateDisplay();
             }
+        }
+    }
+
+    private void startOrStopAutomaticOp() {
+        if (isAutoOp) {
+            if (!isAutoO) {
+                startAutomaticOp();
+            }
+        } else {   //  Pas autoOp
+            if (isAutoO) {
+                stopAutomaticOp();
+            }
+        }
+    }
+
+    public void startAutomaticOp() {
+        isAutoO = true;
+        handlerTimeOp.postDelayed(runnableTimeOp, updateInterval);
+    }
+
+    public void stopAutomaticOp() {
+        handlerTimeOp.removeCallbacks(runnableTimeOp);
+        isAutoO = false;
+    }
+
+    private void automaticOp() {
+        handlerTimeOp.postDelayed(runnableTimeOp, updateInterval);
+        if (!inInterpretOp) {
+            interpretAndEditExecOp();
         }
     }
 
@@ -1366,10 +1399,13 @@ public class MainActivity extends Activity {
                 break;
             case GSB:    //  Neutre sur StackLift ???
                 if (alphaToX()) {
-                    if (!alu.pushStkRetProgLineNumber(nextProgLineNumber)) {   //  Si False => MAX_RETS dépassé
-                        alu.clearReturnStack();
-                        error = ERROR_RET_STACK_FULL;
-                    } else {   //  OK Push
+                    if (mode.equals(MODES.RUN)) {   //  => En mode NORM: ne pas faire de push, la pile vide générera un STOP
+                        if (!alu.pushStkRetProgLineNumber(nextProgLineNumber)) {   //  Si False => MAX_RETS dépassé
+                            alu.clearReturnStack();
+                            error = ERROR_RET_STACK_FULL;
+                        }
+                    }
+                    if (error.length() == 0) {   //  OK Push
                         if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GSB I => recalculer selon I
                             int dpln = alu.getGSBDestProgLineNumber(progLine);
                             if (dpln != (-1)) {   //  OK
@@ -2026,10 +2062,7 @@ public class MainActivity extends Activity {
             alu.removeLastStkRetProgLineNumber();
             nextProgLineNumber = dpln;
         } else {   //  Pile d'appels vide => STOP
-            error = "";
-            mode = MODES.NORM;
-            isAutoOp = false;
-            dotMatrixDisplayView.setInvertOn(false);
+            error = ERROR_RET_STACK_EMPTY;
         }
         return error;
     }
@@ -2216,12 +2249,22 @@ public class MainActivity extends Activity {
         sideDotMatrixDisplayView = findViewById(R.id.DOT_MATRIX_DISPLAY_SIDE);
     }
 
-    private void setupRunnableTime() {
-        handlerTime = new Handler();
-        runnableTime = new Runnable() {
+    private void setupRunnableTimeLine() {
+        handlerTimeLine = new Handler();
+        runnableTimeLine = new Runnable() {
             @Override
             public void run() {
-                automatic();
+                automaticLine();
+            }
+        };
+    }
+
+    private void setupRunnableTimeOp() {
+        handlerTimeOp = new Handler();
+        runnableTimeOp = new Runnable() {
+            @Override
+            public void run() {
+                automaticOp();
             }
         };
     }
