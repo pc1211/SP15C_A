@@ -123,7 +123,7 @@ public class MainActivity extends Activity {
     private OPS currentOp;
     int nextProgLineNumber;
     int currentProgLineNumber;
-    int SSTStopProgLineNumber;
+    boolean inSST;
     private boolean isWrapAround;
     String alpha = "";
 
@@ -185,7 +185,7 @@ public class MainActivity extends Activity {
         isWrapAround = false;
         currentProgLineNumber = 0;
         nextProgLineNumber = 0;
-        SSTStopProgLineNumber = -1;
+        inSST = false;
         alpha = "";
         inOp = null;
         isAutoOp = false;
@@ -290,8 +290,7 @@ public class MainActivity extends Activity {
 
     private void onSSTClickLeave() {   //  Quitter SST sans cliquer => Affichage normal
         if ((mode.equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
-            String disp = (alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber());   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
-            dotMatrixDisplayUpdater.displayText(disp, true);
+            dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
             dotMatrixDisplayView.updateDisplay();
         }
     }
@@ -387,26 +386,27 @@ public class MainActivity extends Activity {
         error = exec(readProgLine);
         if (error.length() == 0) {   //  Pas d'erreur nouvelle
             currentProgLineNumber = nextProgLineNumber;
-            if (currentProgLineNumber == SSTStopProgLineNumber) {   //  STOP après SST
-                SSTStopProgLineNumber = -1;
-                mode = MODES.NORM;
-                dotMatrixDisplayView.setInvertOn(false);
-                dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
+            if (inSST) {   //  STOP après SST
+                inSST = false;
                 isAutoLine = false;
             }
         } else {    //  Erreur nouvelle
-            mode = MODES.NORM;
             isAutoLine = false;
-            dotMatrixDisplayView.setInvertOn(false);
-            if (error.equals(ERROR_RET_STACK_EMPTY)) {   //  Pas une vraie erreur
-                dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
-            } else {   //  Pas Erreur ERROR_RET_STACK_EMPTY
-                dotMatrixDisplayUpdater.displayText(error, false);
-            }
-            error = "";
+        }
+        if (isKeyboardInterrupt) {
+            isKeyboardInterrupt = false;
+            isAutoLine = false;
+            error = ERROR_KEYBOARD_INTERRUPT;
         }
         startOrStopAutomaticLine();
         if (!isAutoLine) {
+            mode = MODES.NORM;
+            dotMatrixDisplayView.setInvertOn(false);
+            if (error.length() == 0) {   //  Pas d'erreur nouvelle
+                dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+            } else {   //  Erreur nouvelle
+                dotMatrixDisplayUpdater.displayText(error, false);
+            }
             dotMatrixDisplayView.updateDisplay();
             updateSideDisplay();
         }
@@ -415,7 +415,6 @@ public class MainActivity extends Activity {
 
     private void interpretAndEditExecOp() {
         inInterpretOp = true;
-        String disp;
         if (isAutoOp) {   //  Op à obtenir automatiquement (p.ex. en mode RUN)
             currentOp = readProgLine.ops[readProgLineOpIndex];
             if (readProgLineOpIndex == LINE_OPS.BASE.INDEX()) {
@@ -442,24 +441,14 @@ public class MainActivity extends Activity {
                 if (error.length() == 0) {   //  Pas d'erreur nouvelle
                     currentProgLineNumber = nextProgLineNumber;
                     if (mode.equals(MODES.NORM)) {    //  A voir selon alpha si entrée de nombre en cours ou pas
-                        disp = (alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber());   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
-                        dotMatrixDisplayUpdater.displayText(disp, true);
+                        dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);    //  formatAlphaNumber pour faire apparaître le séparateur de milliers
                     }
                     if (mode.equals(MODES.EDIT)) {
                         dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
                     }
-                    if (isKeyboardInterrupt) {
-                        isKeyboardInterrupt = false;
-                        error = ERROR_KEYBOARD_INTERRUPT;
-                    }
                 }
                 if (error.length() != 0) {    //  Erreur (ou Prefix) nouvelle
-                    if (error.equals(ERROR_RET_STACK_EMPTY)) {   //  Pas une vraie erreur
-                        dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
-                    } else {   //  Pas Erreur ERROR_RET_STACK_EMPTY
-                        dotMatrixDisplayUpdater.displayText(error, false);
-                    }
-                    alpha = "";
+                    dotMatrixDisplayUpdater.displayText(error, false);
                 }
             }
         } else {   //  Erreur (ou Prefix) antérieure
@@ -993,27 +982,14 @@ public class MainActivity extends Activity {
                 }
                 break;
             case RS:
-                sw = false;
-                if (!sw) {
-                    if (mode.equals(MODES.NORM)) {   //  NORM -> RUN
-                        sw = true;
-                        if (alphaToX()) {
-                            mode = MODES.RUN;
-                            isAutoLine = true;
-                            nowmRUN = System.currentTimeMillis();
-                            alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                            alu.linkGTOGSBToProgLineNumbers();
-                        }
-                    }
-                }
-                if (!sw) {   //  On ne vient pas de passer de NORM à RUN juste avant
+                if (mode.equals(MODES.NORM)) {   //  NORM -> RUN
                     sw = true;
-                    if (mode.equals(MODES.RUN)) {   //  RUN -> NORM
-                        if (alphaToX()) {
-                            mode = MODES.NORM;
-                            isAutoLine = false;
-                            dotMatrixDisplayView.setInvertOn(false);
-                        }
+                    if (alphaToX()) {
+                        mode = MODES.RUN;
+                        isAutoLine = true;
+                        nowmRUN = System.currentTimeMillis();
+                        alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
+                        alu.linkGTOGSBToProgLineNumbers();
                     }
                 }
                 if (mode.equals(MODES.EDIT)) {
@@ -1026,9 +1002,9 @@ public class MainActivity extends Activity {
                 if (mode.equals(MODES.NORM)) {
                     if (alphaToX()) {
                         mode = MODES.RUN;
-                        SSTStopProgLineNumber = inc(currentProgLineNumber);    //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ou EDIT
-                        nowmRUN = System.currentTimeMillis();
                         isAutoLine = true;   //  Pour exécuter
+                        inSST = true;
+                        nowmRUN = System.currentTimeMillis();
                         alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
                         alu.linkGTOGSBToProgLineNumbers();
                     }
@@ -2029,10 +2005,15 @@ public class MainActivity extends Activity {
                     error = rtn(progLine);
                 }
                 break;
+            case RS:
+                if (alphaToX()) {
+                    mode = MODES.NORM;
+                    isAutoLine = false;
+                }
+                break;
             case HYP:   //  Ghost => NOP
             case AHYP:
             case TEST:
-            case RS:   //  Déjà réglé dans MainActivity()
             case PR:   //  Non programmable
             case SST:
             case BST:
@@ -2061,8 +2042,9 @@ public class MainActivity extends Activity {
             int dpln = alu.popStkRetProgLineNumber();
             alu.removeLastStkRetProgLineNumber();
             nextProgLineNumber = dpln;
-        } else {   //  Pile d'appels vide => STOP
-            error = ERROR_RET_STACK_EMPTY;
+        } else {   //  Pile d'appels vide => STOP sans erreur
+            mode = MODES.RUN;
+            isAutoLine = false;
         }
         return error;
     }
