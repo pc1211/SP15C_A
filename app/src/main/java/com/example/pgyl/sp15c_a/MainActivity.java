@@ -71,9 +71,12 @@ public class MainActivity extends Activity {
     private final String ERROR_RET_STACK_EMPTY = "Ret stack empty";
     private final String ERROR_PROG_LINES_FULL = "Prog lines full";
     private final String ERROR_KEYBOARD_INTERRUPT = "Keyboard Break";
+    private final String ERROR_NESTED_SOLVE_INTEG = "Nested SOLVE/INTEG";
     private final long PSE_MS = MILLISECONDS_PER_SECOND;   //  1 seconde
     private final long FLASH_RUN_MS = MILLISECONDS_PER_SECOND / 2;   //  1/2 seconde
     private final long AUTO_UPDATE_INTERVAL_MS = MILLISECONDS_PER_SECOND / 50;   //  20 ms
+    private final int SOLVE_RETURN_CODE = 100000;
+    private final int INTEG_RETURN_CODE = 200000;
 
     public enum SWTIMER_SHP_KEY_NAMES {SHOW_EXPIRATION_TIME, ADD_NEW_CHRONOTIMER_TO_LIST, SET_CLOCK_APP_ALARM_ON_START_TIMER, KEEP_SCREEN, REQUESTED_CLOCK_APP_ALARM_DISMISSES}
     //endregion
@@ -119,10 +122,18 @@ public class MainActivity extends Activity {
     private boolean inInterpretOp;
     private boolean inExecCurrentProgLine;
     private boolean inPSE;
+    private boolean inSolve;
+    private boolean inInteg;
+    private SolveParamSet solveParamSet;
+    private IntegParamSet integParamSet;
     private OPS shiftFOp;
     private OPS currentOp;
     int nextProgLineNumber;
     int currentProgLineNumber;
+    int integOldNextProgLineNumber;
+    int integUserFxLineNumber;
+    int solveOldNextProgLineNumber;
+    int solveUserFxLineNumber;
     boolean inSST;
     private boolean isWrapAround;
     String alpha = "";
@@ -368,7 +379,7 @@ public class MainActivity extends Activity {
                 if (currentOp.equals(OPS.UNKNOWN)) {    //  Fonction non encore implémentée
                     msgBox("Function not implemented yet", this);
                 } else {   //  Fonction déjà implémentée
-                    interpretAndEditExecOp();
+                    interpretAndSaveOrExecOp();
                 }
             }
         } else {   //  RUN
@@ -413,7 +424,7 @@ public class MainActivity extends Activity {
         inExecCurrentProgLine = false;
     }
 
-    private void interpretAndEditExecOp() {
+    private void interpretAndSaveOrExecOp() {
         inInterpretOp = true;
         if (isAutoOp) {   //  Op à obtenir automatiquement (p.ex. en mode RUN)
             currentOp = readProgLine.ops[readProgLineOpIndex];
@@ -725,56 +736,21 @@ public class MainActivity extends Activity {
                                 }
                             } else {   //  Pas GTO CHS nnnn en mode EDIT
                                 isComplete = true;
-                                if (!inEditModeAfterSavingLine(tempProgLine)) {
-                                    if (mode.equals(MODES.NORM)) {
-                                        alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                                        alu.linkGTOGSBToProgLineNumbers();
-                                    }
-                                    error = exec(tempProgLine);
-
-                                    if (mode.equals(MODES.NORM)) {
-                                        if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GTO I), donc pas dans tempProgLien en mode NORM si pas GTO I!
-                                            int dpln = alu.getGTODestProgLineNumber(tempProgLine);
-                                            if (dpln != (-1)) {   //  OK
-                                                nextProgLineNumber = dpln;
-                                                tempProgLine.ref = dpln;
-                                            } else {   //  Invalide
-                                                error = ERROR_GTO_GSB;
-                                            }
-                                        }
-                                    }
-                                }
+                                saveOrExecLineWithLabel(false);
                             }
                         }
                         break;
                     case GSB:
                         if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
-
                             isComplete = true;
-                            if (!inEditModeAfterSavingLine(tempProgLine)) {
-                                if (mode.equals(MODES.NORM)) {
-                                    alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                                    alu.linkGTOGSBToProgLineNumbers();
-                                }
-                                error = exec(tempProgLine);
-
-                                if (mode.equals(MODES.NORM)) {
-                                    if (nextProgLineNumber == 0) {   //  L'exec() utilise le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GSB I), donc pas dans tempProgLien en mode NORM si pas GSB I!
-                                        int dpln = alu.getGSBDestProgLineNumber(tempProgLine);
-                                        if (dpln != (-1)) {   //  OK
-                                            nextProgLineNumber = dpln;
-                                            tempProgLine.ref = dpln;
-                                        } else {   //  Invalide
-                                            error = ERROR_GTO_GSB;
-                                        }
-                                    }
-                                    if (error.length() == 0) {
-                                        nowmRUN = System.currentTimeMillis();
-                                        mode = MODES.RUN;   //   Exécuter un GSB, c'est se mettre en mode RUN car plusieurs lignes à exécuter
-                                        isAutoLine = true;
-                                    }
-                                }
-                            }
+                            saveOrExecLineWithLabel(true);
+                        }
+                        break;
+                    case SOLVE:
+                    case INTEG:
+                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
+                            isComplete = true;
+                            saveOrExecLineWithLabel(true);
                         }
                         break;
                     case FIX:
@@ -839,6 +815,27 @@ public class MainActivity extends Activity {
                 buttons[key.INDEX()].updateDisplay();
                 inOp = null;
             }
+        }
+    }
+
+    private void saveOrExecLineWithLabel(boolean setRunMode) {
+        if (!inEditModeAfterSavingLine(tempProgLine)) {
+            if (mode.equals(MODES.NORM)) {
+                alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
+                alu.linkGTOGSBToProgLineNumbers();
+                int dpln = alu.getGTODestProgLineNumber(tempProgLine);   //  L'exec() utilisera le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GTO/GSB I), donc pas dans tempProgLine en mode NORM !
+                if (dpln != (-1)) {   //  OK
+                    tempProgLine.ref = dpln;
+                    if (setRunMode) {
+                        nowmRUN = System.currentTimeMillis();
+                        mode = MODES.RUN;   //   Exécuter un GSB, SOLVE, INTEG, c'est se mettre en mode RUN car plusieurs lignes à exécuter
+                        isAutoLine = true;
+                    }
+                } else {   //  Invalide
+                    error = ERROR_GTO_GSB;
+                }
+            }
+            error = exec(tempProgLine);
         }
     }
 
@@ -1060,6 +1057,8 @@ public class MainActivity extends Activity {
             case DIM:
             case GTO:
             case GSB:
+            case INTEG:
+            case SOLVE:
             case LBL:
             case SF:
             case CF:
@@ -1109,7 +1108,7 @@ public class MainActivity extends Activity {
                 if ((Double.isNaN(d)) || (Double.isInfinite(d))) {
                     throw new IllegalArgumentException();
                 }
-                alu.setStkRegContent(STK_REGS.X.INDEX(), d);
+                alu.setStkRegContent(STK_REGS.X, d);
                 alu.setStackLiftEnabled(true);
                 alpha = "";
             } catch (IllegalArgumentException | SecurityException ex) {
@@ -1260,7 +1259,7 @@ public class MainActivity extends Activity {
     private void automaticOp() {
         handlerTimeOp.postDelayed(runnableTimeOp, updateInterval);
         if (!inInterpretOp) {
-            interpretAndEditExecOp();
+            interpretAndSaveOrExecOp();
         }
     }
 
@@ -1303,7 +1302,7 @@ public class MainActivity extends Activity {
                     alu.doStackLiftIfEnabled();
                     if (progLine.ops[LINE_OPS.DIM.INDEX()] != null) {   //  RCL DIM (i)
                         int n = alu.getRegsMaxIndex();
-                        alu.setStkRegContent(STK_REGS.X.INDEX(), alu.getDataRegIndexByIndex(n));
+                        alu.setStkRegContent(STK_REGS.X, alu.getDataRegIndexByIndex(n));
                     } else {   //  Pas RCL DIM (i)
                         if (progLine.ops[LINE_OPS.SIGMA_PLUS.INDEX()] != null) {   //  RCL SIGMA_PLUS
                             alu.doStackLift();    //  Un stacklift obligatoire + un deuxième (cf supra) si stackLift activé
@@ -1329,7 +1328,7 @@ public class MainActivity extends Activity {
                 break;
             case DIM:
                 if (alphaToX()) {
-                    int n = (int) alu.getStkRegContents(Alu.STK_REGS.X);
+                    int n = (int) alu.getStkRegContents(STK_REGS.X);
                     error = alu.setMaxDataRegIndex(n);
                     if (error.length() == 0) {
                         alu.setStackLiftEnabled(true);
@@ -1383,10 +1382,9 @@ public class MainActivity extends Activity {
                     }
                     if (error.length() == 0) {   //  OK Push
                         if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GSB I => recalculer selon I
-                            int dpln = alu.getGSBDestProgLineNumber(progLine);
+                            int dpln = alu.getGTODestProgLineNumber(progLine);
                             if (dpln != (-1)) {   //  OK
                                 nextProgLineNumber = dpln;
-                                progLine.ref = dpln;
                             } else {   //  Invalide
                                 error = ERROR_GTO_GSB;
                             }
@@ -1394,6 +1392,37 @@ public class MainActivity extends Activity {
                             nextProgLineNumber = progLine.ref;
                         }
                     }
+                }
+                break;
+            case SOLVE:
+                if (alphaToX()) {
+                    if (!inSolve) {  //  SVP Pas de réentrance
+                        solveOldNextProgLineNumber = nextProgLineNumber;
+                        solveUserFxLineNumber = progLine.ref;
+
+                        solveParamSet = new SolveParamSet();
+                        solveParamSet.x = alu.getStkRegContents(STK_REGS.X);
+                        solveParamSet.a = alu.getStkRegContents(STK_REGS.Y);
+                        solveParamSet.b = alu.getStkRegContents(STK_REGS.X);
+
+                        callUserFxForSolve(solveParamSet.x);
+                        solveParamSet.r = alu.getStkRegContents(STK_REGS.X);
+                        callUserFxForSolve(solveParamSet.x + 1.0);
+                        solveParamSet.r = solveParamSet.r + alu.getStkRegContents(STK_REGS.X);
+                        alu.setStkRegContent(STK_REGS.X, solveParamSet.r / 2.0);
+
+                        //error = alu.solve();
+                        nextProgLineNumber = inc(solveOldNextProgLineNumber);
+                        common = true;
+                    } else {   //  Déjà en Solve
+                        error = ERROR_NESTED_SOLVE_INTEG;
+                    }
+                }
+                break;
+            case INTEG:
+                if (alphaToX()) {
+                    //error = alu.integ();
+                    common = true;
                 }
                 break;
             case DSE:
@@ -1670,8 +1699,8 @@ public class MainActivity extends Activity {
                 if (alphaToX()) {
                     error = alu.expX();
                     common = true;
-                    break;
                 }
+                break;
             case LN:
                 if (alphaToX()) {
                     error = alu.lnX();
@@ -2037,14 +2066,40 @@ public class MainActivity extends Activity {
         return error;
     }
 
-    public String rtn(ProgLine progLine) {   //  Neutre sur StackLift ???
+    private String rtn(ProgLine progLine) {   //  Neutre sur StackLift ???
         if (!alu.isStkRetEmpty()) {  //  La pile d'appels n'est pas vide
-            int dpln = alu.popStkRetProgLineNumber();
+            int dpln = alu.popStkRetProgLineNumber();   //  Si Code de retour SP_RETS.SOLVE ou INTEG => Retour à ligne appelante dans exec() SOLVE ou INTEG
             alu.removeLastStkRetProgLineNumber();
             nextProgLineNumber = dpln;
         } else {   //  Pile d'appels vide => STOP sans erreur
             mode = MODES.RUN;
             isAutoLine = false;
+        }
+        return error;
+    }
+
+    private String callUserFxForSolve(double x) {
+        alu.fillStack(x);
+        if (!alu.pushStkRetProgLineNumber(SOLVE_RETURN_CODE)) {   //  Si False => MAX_RETS dépassé
+            alu.clearReturnStack();
+            error = ERROR_RET_STACK_FULL;
+        }
+        if (error.length() == 0) {   //  OK Push
+            currentProgLineNumber = solveUserFxLineNumber;
+            execCurrentProgLine();
+        }
+        return error;
+    }
+
+    private String callUserFxForInteg(double x) {
+        alu.fillStack(x);
+        if (!alu.pushStkRetProgLineNumber(INTEG_RETURN_CODE)) {   //  Si False => MAX_RETS dépassé
+            alu.clearReturnStack();
+            error = ERROR_RET_STACK_FULL;
+        }
+        if (error.length() == 0) {   //  OK Push
+            currentProgLineNumber = integUserFxLineNumber;
+            execCurrentProgLine();
         }
         return error;
     }

@@ -17,6 +17,8 @@ public class Alu {
         GSB("GSB"),
         LBL("LBL"),
         RTN("RTN"),
+        SOLVE("SOLVE"),
+        INTEG("INTEG"),
         DSE("DSE"),
         ISG("ISG"),
         USER("USER"),
@@ -164,7 +166,7 @@ public class Alu {
         KEY_17(17, OPS.DIGIT_7, OPS.FIX, OPS.DEG),
         KEY_18(18, OPS.DIGIT_8, OPS.SCI, OPS.RAD),
         KEY_19(19, OPS.DIGIT_9, OPS.ENG, OPS.GRAD),
-        KEY_10(10, OPS.DIV, OPS.UNKNOWN, OPS.XLEY),
+        KEY_10(10, OPS.DIV, OPS.SOLVE, OPS.XLEY),
         KEY_21(21, OPS.SST, OPS.LBL, OPS.BST),
         KEY_22(22, OPS.GTO, OPS.HYP, OPS.AHYP),
         KEY_23(23, OPS.SIN, OPS.DIM, OPS.ASIN),
@@ -174,7 +176,7 @@ public class Alu {
         KEY_27(27, OPS.DIGIT_4, OPS.XCHG, OPS.SF),
         KEY_28(28, OPS.DIGIT_5, OPS.DSE, OPS.CF),
         KEY_29(29, OPS.DIGIT_6, OPS.ISG, OPS.TF),
-        KEY_20(20, OPS.MULT, OPS.UNKNOWN, OPS.XE0),
+        KEY_20(20, OPS.MULT, OPS.INTEG, OPS.XE0),
         KEY_31(31, OPS.RS, OPS.PSE, OPS.PR),
         KEY_32(32, OPS.GSB, OPS.CLEAR_SIGMA, OPS.RTN),
         KEY_33(33, OPS.RDN, OPS.CLEAR_PRGM, OPS.RUP),
@@ -335,7 +337,7 @@ public class Alu {
 
         public int INDEX() {
             return ordinal();
-        }   //  Servira aussi d'index dans regs
+        }
     }
 
     final int MAX_DIGITS = 10;
@@ -531,8 +533,8 @@ public class Alu {
         return stkRegs[stkReg.INDEX()];
     }
 
-    public void setStkRegContent(int stkRegIndex, double value) {
-        stkRegs[stkRegIndex] = value;
+    public void setStkRegContent(STK_REGS stkReg, double value) {
+        stkRegs[stkReg.INDEX()] = value;
     }
 
     public String getRoundXForDisplay() {
@@ -738,7 +740,7 @@ public class Alu {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.X.INDEX()] * (180d / Math.PI);
+            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.X.INDEX()] * (180.0 / Math.PI);
             if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
@@ -868,7 +870,7 @@ public class Alu {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = 1d / stkRegs[STK_REGS.X.INDEX()];
+            stkRegs[STK_REGS.X.INDEX()] = 1.0 / stkRegs[STK_REGS.X.INDEX()];
             if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
@@ -883,7 +885,7 @@ public class Alu {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.Y.INDEX()] * (stkRegs[STK_REGS.X.INDEX()] / 100d);
+            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.Y.INDEX()] * (stkRegs[STK_REGS.X.INDEX()] / 100.0);
             if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
@@ -898,7 +900,7 @@ public class Alu {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = (stkRegs[STK_REGS.X.INDEX()] / stkRegs[STK_REGS.Y.INDEX()] - 1d) * 100d;
+            stkRegs[STK_REGS.X.INDEX()] = (stkRegs[STK_REGS.X.INDEX()] / stkRegs[STK_REGS.Y.INDEX()] - 1.0) * 100.0;
             if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
@@ -929,7 +931,7 @@ public class Alu {
         int exp = 0;
         double mant = 0;
         if (val != 0) {
-            exp = (int) Math.floor(1d + Math.log10(val));
+            exp = (int) Math.floor(1.0 + Math.log10(val));
             mant = val / Math.pow(10, exp);   //  Entre 0 et 1
         }
         double valr = mant * Math.pow(10, MAX_DIGITS);
@@ -940,14 +942,14 @@ public class Alu {
     public String hmsX() {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = (90d * stkRegs[STK_REGS.X.INDEX()] + (int) (60d * stkRegs[STK_REGS.X.INDEX()]) + 100d * (int) stkRegs[STK_REGS.X.INDEX()]) / 250d;
+        stkRegs[STK_REGS.X.INDEX()] = (90.0 * stkRegs[STK_REGS.X.INDEX()] + (int) (60.0 * stkRegs[STK_REGS.X.INDEX()]) + 100.0 * (int) stkRegs[STK_REGS.X.INDEX()]) / 250.0;
         return error;
     }
 
     public String hX() {
         String error = "";
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = (250d * stkRegs[STK_REGS.X.INDEX()] - (int) (100d * stkRegs[STK_REGS.X.INDEX()]) - 60d * (int) stkRegs[STK_REGS.X.INDEX()]) / 90d;
+        stkRegs[STK_REGS.X.INDEX()] = (250.0 * stkRegs[STK_REGS.X.INDEX()] - (int) (100.0 * stkRegs[STK_REGS.X.INDEX()]) - 60.0 * (int) stkRegs[STK_REGS.X.INDEX()]) / 90.0;
         return error;
     }
 
@@ -980,7 +982,7 @@ public class Alu {
         int n = (int) stkRegs[STK_REGS.X.INDEX()];
         if ((m >= 0) && (n >= 0) && (n <= m)) {
             try {
-                stkRegs[STK_REGS.X.INDEX()] = factOver(m, m - n) / (double) fact(n);
+                stkRegs[STK_REGS.X.INDEX()] = factOver(m, m - n) / fact(n);
                 if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
                     throw new ArithmeticException();
                 }
@@ -1122,7 +1124,7 @@ public class Alu {
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         double t = stkRegs[STK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t + 1));
+            stkRegs[STK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t + 1.0));
             if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
@@ -1138,7 +1140,7 @@ public class Alu {
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         double t = stkRegs[STK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t - 1));
+            stkRegs[STK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t - 1.0));
             if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
@@ -1154,7 +1156,7 @@ public class Alu {
         stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
         double t = stkRegs[STK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.log((1d + t) / (1d - t)) / 2d;
+            stkRegs[STK_REGS.X.INDEX()] = Math.log((1.0 + t) / (1.0 - t)) / 2.0;
             if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
@@ -1171,13 +1173,13 @@ public class Alu {
         double y = round(stkRegs[STK_REGS.Y.INDEX()], MAX_DIGITS + 1);
         switch (op) {
             case XNE0:
-                res = (x != 0d);
+                res = (x != 0.0);
                 break;
             case XG0:
-                res = (x > 0d);
+                res = (x > 0.0);
                 break;
             case XL0:
-                res = (x < 0d);
+                res = (x < 0.0);
                 break;
             case XGE0:
                 res = (x >= 0d);
@@ -1204,7 +1206,7 @@ public class Alu {
                 res = (x <= y);
                 break;
             case XE0:
-                res = (x == 0d);
+                res = (x == 0.0);
                 break;
         }
         return res;
@@ -1483,6 +1485,13 @@ public class Alu {
         stkRegs[STK_REGS.LX.INDEX()] = 0;
     }
 
+    public void fillStack(double value) {
+        stkRegs[STK_REGS.X.INDEX()] = value;
+        stkRegs[STK_REGS.Y.INDEX()] = value;
+        stkRegs[STK_REGS.Z.INDEX()] = value;
+        stkRegs[STK_REGS.T.INDEX()] = value;
+    }
+
     public void clearFlags() {
         int n = flags.length;
         for (int i = 1; i <= (n - 1); i = i + 1) {
@@ -1538,7 +1547,7 @@ public class Alu {
         double mant = 0;
         if (val != 0) {
             exp = (int) Math.floor(1d + Math.log10(val));
-            mant = val / Math.pow(10, exp - 1) / 10d;   //  Entre 0 et 1;    exp-1 pour éviter overflow
+            mant = val / Math.pow(10, exp - 1.0) / 10.0;   //  Entre 0 et 1;    exp-1 pour éviter overflow
         }
         int expr = 0;
         OPS rm = roundMode;   //  FIX, SCI, ENG
@@ -1577,7 +1586,7 @@ public class Alu {
                 res = Math.toRadians(res);
                 break;
             case GRAD:
-                res = Math.toRadians(res) * 0.9d;
+                res = Math.toRadians(res) * 0.9;
                 break;
         }
         return res;
@@ -1590,26 +1599,26 @@ public class Alu {
                 res = Math.toDegrees(res);
                 break;
             case GRAD:
-                res = Math.toDegrees(res) / 0.9d;
+                res = Math.toDegrees(res) / 0.9;
                 break;
         }
         return res;
     }
 
-    private int fact(int m) {
-        int res = 1;
+    private double fact(int m) {
+        double res = 1;
         if (m != 0) {
             for (int i = 1; i <= m; i = i + 1) {
-                res = res * i;
+                res = res * (double) i;
             }
         }
         return res;
     }
 
-    private int factOver(int m, int n) {
-        int res = 1;
+    private double factOver(int m, int n) {
+        double res = 1;
         for (int i = m; i > n; i = i - 1)
-            res = res * i;
+            res = res * (double) i;
         return res;
     }
 
@@ -1629,7 +1638,7 @@ public class Alu {
 
     private double round(double value, int n) {
         int scale = (int) Math.pow(10, n);
-        double res = Math.round(Math.abs(value) * scale) / scale;
+        double res = Math.round(Math.abs(value) * (double) scale) / (double) scale;
         if (value < 0) {
             res = -res;
         }
@@ -1641,8 +1650,8 @@ public class Alu {
                 771.32342877765313, -176.61502916214059, 12.507343278686905,
                 -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7};
         int g = 7;
-        if (x < 0.5) return Math.PI / (Math.sin(Math.PI * x) * gamma(1 - x));
-        x -= 1;
+        if (x < 0.5) return Math.PI / (Math.sin(Math.PI * x) * gamma(1.0 - x));
+        x -= 1.0;
         double a = p[0];
         double t = x + g + 0.5;
         for (int i = 1; i < p.length; i++) {
@@ -1809,33 +1818,6 @@ public class Alu {
                 }
             }
         } else {   //  Pas GTO I => GTO [.]0..9 ou A-E
-            LABELS lbl = symbolToLabelMap.get(progLine.symbol);
-            if (lbl != null) {
-                pln = labelToprogLineNumberMap.get(lbl);
-            }
-        }
-        if (pln != null) {
-            res = pln;
-        }
-        return res;
-    }
-
-    public int getGSBDestProgLineNumber(ProgLine progLine) {
-        int res = -1;
-        Integer pln = null;
-        if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GSB I
-            int n = (int) getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur de I
-            if (n >= 0) {   //  GSB I positif => GSB label   (n=labelIndex)
-                if (n <= LABELS.values().length - 1) {
-                    LABELS lbl = labelIndexToLabelMap.get(n);
-                    if (lbl != null) {
-                        pln = labelToprogLineNumberMap.get(lbl);
-                    }
-                }
-            } else {   //  n<0 cad GSB I négatif, non prévu par la HP-15C
-                //  NOP
-            }
-        } else {   //  Pas GSB I => GSB [.]0..9 ou A-E
             LABELS lbl = symbolToLabelMap.get(progLine.symbol);
             if (lbl != null) {
                 pln = labelToprogLineNumberMap.get(lbl);
