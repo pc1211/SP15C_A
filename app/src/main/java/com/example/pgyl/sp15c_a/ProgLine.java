@@ -23,12 +23,12 @@ public class ProgLine {
     }
 
     public OPS[] ops;
-    public int ref;
+    public int destProgLineNumber;
     public String symbol;
 
     public ProgLine() {
         ops = new OPS[LINE_OPS.values().length];
-        ref = 0;
+        destProgLineNumber = 0;
         symbol = "";
     }
 }

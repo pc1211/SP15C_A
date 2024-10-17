@@ -27,4 +27,9 @@ public class IntegParamSet {
         sumFx = 0;
         romberg = new ArrayList<ArrayList<Double>>();
     }
+
+    public void close() {
+        romberg.clear();
+        romberg = null;
+    }
 }

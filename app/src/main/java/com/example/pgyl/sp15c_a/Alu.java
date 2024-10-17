@@ -1676,7 +1676,7 @@ public class Alu {
             for (int i = 0; i <= (n - 1); i = i + 1) {   //  Copier dans la nouvelle ligne
                 newProgLine.ops[i] = progLine.ops[i];
             }
-            newProgLine.ref = progLine.ref;
+            newProgLine.destProgLineNumber = progLine.destProgLineNumber;
             newProgLine.symbol = progLine.symbol;
             proglines.add(progLineNumber, newProgLine);
             res = true;
@@ -1693,7 +1693,7 @@ public class Alu {
         for (int i = 0; i <= (n - 1); i = i + 1) {
             progLine.ops[i] = null;
         }
-        progLine.ref = 0;
+        progLine.destProgLineNumber = 0;
         progLine.symbol = "";
     }
 
@@ -1787,15 +1787,15 @@ public class Alu {
         }
     }
 
-    public void linkGTOGSBToProgLineNumbers() {
+    public void linkDestProgLineNumbers() {
         int n = proglines.size();
         for (int i = 0; i <= (n - 1); i = i + 1) {
             ProgLine progLine = proglines.get(i);
             OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];
-            if ((op.equals(OPS.GTO)) || (op.equals(OPS.GSB))) {
+            if ((op.equals(OPS.GTO)) || (op.equals(OPS.GSB)) || (op.equals(OPS.SOLVE)) || (op.equals(OPS.INTEG))) {
                 LABELS lbl = symbolToLabelMap.get(progLine.symbol);
                 int pln = labelToprogLineNumberMap.get(lbl);
-                progLine.ref = pln;
+                progLine.destProgLineNumber = pln;
             }
         }
     }
