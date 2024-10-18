@@ -1167,6 +1167,21 @@ public class Alu {
         return error;
     }
 
+    public String solveTransform(SolveParamSet solveParamSet) {
+        String error = "";
+        try {
+            Double newX = solveParamSet.b - solveParamSet.s * (solveParamSet.b - solveParamSet.a) / (solveParamSet.s - solveParamSet.r);
+            if ((Double.isNaN(newX)) || (Double.isInfinite(newX))) {
+                throw new ArithmeticException();
+            }
+            solveParamSet.t = newX;
+        } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
+            error = ERROR_OVERFLOW;
+        }
+        return error;
+    }
+
+
     public boolean test(OPS op) {
         boolean res = false;
         double x = round(stkRegs[STK_REGS.X.INDEX()], MAX_DIGITS + 1);
@@ -1827,6 +1842,10 @@ public class Alu {
             res = pln;
         }
         return res;
+    }
+
+    public int getStkRetSize() {
+        return stkRet.size();
     }
 
     public boolean pushStkRetProgLineNumber(int progLineNumber) {   //  PUSH
