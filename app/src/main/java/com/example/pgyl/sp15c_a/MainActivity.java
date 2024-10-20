@@ -1406,7 +1406,7 @@ public class MainActivity extends Activity {
                     }
                 }
                 break;
-            case SOLVE:   //  SOLVE est appelé après chaque évaluation de UserFx  (cf RTN)
+            case SOLVE:   //  SOLVE est rappelé après chaque évaluation de UserFx via un push sur StkRet d'un code de retour spécial (cf solveConfigForEvalUserFx() et RTN)
                 if (alphaToX()) {
                     solveParamSet.count = solveParamSet.count + 1;
                     if (solveParamSet.count == 1) {  //  Initialisation et début de traitement
@@ -1416,6 +1416,7 @@ public class MainActivity extends Activity {
                         solveParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
                         solveParamSet.a = alu.getStkRegContents(STK_REGS.Y);   //  Guess 1
                         solveParamSet.b = alu.getStkRegContents(STK_REGS.X);   //  Guess 2
+                        solveParamSet.separeAB();   //   Si a = b (à 1E-14 max près) => Séparer a et b avec une différence de 1E-6
                         error = solveConfigForEvalUserFx(solveParamSet.a);
                     }
                     if (solveParamSet.count == 2) {
@@ -2121,7 +2122,7 @@ public class MainActivity extends Activity {
             alu.removeLastStkRetProgLineNumber();
             if ((dpln == SOLVE_RETURN_CODE) || (dpln == INTEG_RETURN_CODE)) {
                 if (dpln == SOLVE_RETURN_CODE) {
-                    tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.SOLVE;
+                    tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.SOLVE;   //  Rappeler Solve pour continuer
                     tempProgLine.destProgLineNumber = solveParamSet.userFxLineNumber;
                 }
                 if (dpln == INTEG_RETURN_CODE) {
@@ -2155,7 +2156,7 @@ public class MainActivity extends Activity {
             error = ERROR_RET_STACK_FULL;
         }
         if (error.length() == 0) {   //  OK Push
-            currentProgLineNumber = integParamSet.userFxLineNumber;   //  Emplacement de UserFx à exécuter
+            nextProgLineNumber = integParamSet.userFxLineNumber;   //  Emplacement de UserFx à exécuter
         }
         return error;
     }

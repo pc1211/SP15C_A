@@ -2,6 +2,8 @@ package com.example.pgyl.sp15c_a;
 
 public class SolveParamSet {
     public final int ITER_COUNT_MAX = 50;
+    public final double GUESS_DIFF_MAX = 1e-14;
+    public final double GUESS_CORRECTION = 5e-7;
 
     public double a;
     public double b;
@@ -45,5 +47,12 @@ public class SolveParamSet {
 
     public void close() {
         //  NOP
+    }
+
+    public void separeAB() {   //  Pour empêcher a = b au démarrage du Solve
+        if (Math.abs(a - b) < GUESS_DIFF_MAX) {
+            a = a - GUESS_CORRECTION;
+            b = b + GUESS_CORRECTION;   //  La différence entre a et b sera de 1E-6 (si GUESS_CORRECTION = 5E-7)
+        }
     }
 }
