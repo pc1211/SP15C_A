@@ -78,7 +78,7 @@ public class MainActivity extends Activity {
     private final long PSE_MS = MILLISECONDS_PER_SECOND;   //  1 seconde
     private final long FLASH_RUN_MS = MILLISECONDS_PER_SECOND / 2;   //  1/2 seconde
     private final long AUTO_UPDATE_INTERVAL_MS = 1;
-    private final int SOLVE_RETURN_CODE = 100000;
+    private final int SOLVE_RETURN_CODE = 100000;   //  > 10000 pour ne pas le confondre avec un N° de ligne ordinaire (0000-9999)
     private final int INTEG_RETURN_CODE = 200000;
 
     public enum SWTIMER_SHP_KEY_NAMES {SHOW_EXPIRATION_TIME, ADD_NEW_CHRONOTIMER_TO_LIST, SET_CLOCK_APP_ALARM_ON_START_TIMER, KEEP_SCREEN, REQUESTED_CLOCK_APP_ALARM_DISMISSES}
@@ -834,7 +834,7 @@ public class MainActivity extends Activity {
                     tempProgLine.destProgLineNumber = dpln;
                     if (setRunMode) {
                         if (tempProgLine.ops[LINE_OPS.BASE.INDEX()] == OPS.SOLVE) {
-                            requestStopAfterSolve = true;   //  Nécessaire car un SOLVE ou INTEG ne setermine pas par un RTN comme un GTO ou GSB
+                            requestStopAfterSolve = true;   //  Nécessaire car un SOLVE ou INTEG ne se termine pas par un RTN comme un GTO ou GSB
                         }
                         if (tempProgLine.ops[LINE_OPS.BASE.INDEX()] == OPS.INTEG) {
                             requestStopAfterInteg = true;
@@ -2222,8 +2222,7 @@ public class MainActivity extends Activity {
         alu.fillStack(x);   //  C'est ainsi que procède la HP-15C
         if (!alu.pushStkRetProgLineNumber(INTEG_RETURN_CODE)) {   //  Push Code de retour spécial après évaluation de UserFx => Retour à INTEG  cf (RTN);    Si False => MAX_RETS dépassé
             error = ERROR_RET_STACK_FULL;
-        }
-        if (error.length() == 0) {   //  OK Push
+        } else {  //  OK Push   //  OK Push
             nextProgLineNumber = integParamSet.userFxLineNumber;   //  Emplacement de UserFx à exécuter
         }
         return error;
