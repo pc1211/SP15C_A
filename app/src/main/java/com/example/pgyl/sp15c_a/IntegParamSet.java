@@ -3,13 +3,14 @@ package com.example.pgyl.sp15c_a;
 import java.util.ArrayList;
 
 public class IntegParamSet {
+    public final int ITER_COUNT_MAX = 50;
+
     public double a;
     public double b;
-    public double n;
+    public int n;
     public double h;
-    public double m;
-    private double x;
     public int countFx;
+    public int countFxMax;
     public double sumFx;
     public ArrayList<ArrayList<Double>> romberg;
     public int oldNextProgLineNumber;
@@ -32,8 +33,8 @@ public class IntegParamSet {
         b = 0;
         n = 0;
         h = 0;
-        m = 0;
         countFx = 0;
+        countFxMax = 0;
         sumFx = 0;
         romberg = new ArrayList<ArrayList<Double>>();
         oldNextProgLineNumber = 0;
@@ -47,5 +48,16 @@ public class IntegParamSet {
     public void close() {
         romberg.clear();
         romberg = null;
+    }
+
+    public String calcRombergLine() {
+        String error = "";
+        ArrayList<Double> romLine = new ArrayList<Double>();
+        romberg.add(romLine);   //  Ligne n
+        romberg.get(n).add(romberg.get(n - 1).get(0) / 2.0 + h * sumFx);
+        for (int i = 0; i <= (n - 1); i = i + 1) {
+            romberg.get(n).add((Math.pow(4, n) * romberg.get(n).get(i) - romberg.get(n - 1).get(i)) / (Math.pow(4, n) - 1));
+        }
+        return error;
     }
 }

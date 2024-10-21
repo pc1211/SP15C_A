@@ -26,6 +26,7 @@ import com.example.pgyl.sp15c_a.Alu.OPS;
 import com.example.pgyl.sp15c_a.Alu.STK_REGS;
 import com.example.pgyl.sp15c_a.ProgLine.LINE_OPS;
 
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -76,7 +77,7 @@ public class MainActivity extends Activity {
     private final String ERROR_MAX_ITER_INTEG = "Max Iter INTEG";
     private final long PSE_MS = MILLISECONDS_PER_SECOND;   //  1 seconde
     private final long FLASH_RUN_MS = MILLISECONDS_PER_SECOND / 2;   //  1/2 seconde
-    private final long AUTO_UPDATE_INTERVAL_MS = MILLISECONDS_PER_SECOND / 50;   //  20 ms
+    private final long AUTO_UPDATE_INTERVAL_MS = 1;
     private final int SOLVE_RETURN_CODE = 100000;
     private final int INTEG_RETURN_CODE = 200000;
 
@@ -1416,7 +1417,7 @@ public class MainActivity extends Activity {
                         solveParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
                         solveParamSet.a = alu.getStkRegContents(STK_REGS.Y);   //  Guess 1
                         solveParamSet.b = alu.getStkRegContents(STK_REGS.X);   //  Guess 2
-                        solveParamSet.separeAB();   //   Si a = b (à 1E-14 max près) => Séparer a et b avec une différence de 1E-6
+                        solveParamSet.separateAB();   //   Si a = b (à 1E-14 max près) => Séparer a et b avec une différence de 1E-6
                         error = solveConfigForEvalUserFx(solveParamSet.a);
                     }
                     if (solveParamSet.count == 2) {
@@ -1429,7 +1430,7 @@ public class MainActivity extends Activity {
                     }
                     if (solveParamSet.count == 3) {
                         solveParamSet.s = alu.getStkRegContents(STK_REGS.X);   //  f(b)
-                        error = alu.solveTransform(solveParamSet);
+                        error = solveParamSet.solveTransform();
                         if (error.length() == 0) {
                             solveParamSet.c = solveParamSet.t;
                             error = solveConfigForEvalUserFx(solveParamSet.c);
@@ -1441,7 +1442,7 @@ public class MainActivity extends Activity {
                         solveParamSet.s = solveParamSet.r;
                         solveParamSet.a = solveParamSet.c;
                         solveParamSet.r = solveParamSet.q;
-                        error = alu.solveTransform(solveParamSet);
+                        error = solveParamSet.solveTransform();
                         if (error.length() == 0) {
                             double newX = solveParamSet.t;
                             if (Math.abs(newX - solveParamSet.c) <= solveParamSet.tol) {   //  OK c'est bon
@@ -1471,9 +1472,76 @@ public class MainActivity extends Activity {
                 break;
             case INTEG:
                 if (alphaToX()) {
-                    //error = alu.integ();
-                    common = true;
+                    integParamSet.count = integParamSet.count + 1;
+                    if (integParamSet.count == 1) {  //  Initialisation et début de traitement
+                        integParamSet.oldNextProgLineNumber = nextProgLineNumber;
+                        integParamSet.userFxLineNumber = progLine.destProgLineNumber;
+                        integParamSet.retLevel = alu.getStkRetSize();
+                        integParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
+                        integParamSet.a = alu.getStkRegContents(STK_REGS.Y);   //  a
+                        integParamSet.b = alu.getStkRegContents(STK_REGS.X);   //  b
+                        integParamSet.n = 0;
+                        integParamSet.h = integParamSet.b - integParamSet.a;
+                        error = integConfigForEvalUserFx(integParamSet.a);
+                    }
+                    if (integParamSet.count == 2) {
+                        if (alu.getStkRetSize() != integParamSet.retLevel) {
+                            error = ERROR_NESTED_INTEG;
+                        } else {   //  Pas de Integ imbriqués, on continue
+                            integParamSet.countFx = integParamSet.countFx + 1;
+                            integParamSet.sumFx = alu.getStkRegContents(STK_REGS.X);   //  f(a)
+                            error = integConfigForEvalUserFx(integParamSet.b);
+                        }
+                    }
+                    if (integParamSet.count >= 3) {
+                        if (integParamSet.n == 0) {
+                            integParamSet.sumFx = integParamSet.sumFx + alu.getStkRegContents(STK_REGS.X);   //  f(a) + f(b)
+                            integParamSet.romberg.add(new ArrayList<Double>());   //  Ligne n (0)
+                            integParamSet.romberg.get(0).add(integParamSet.sumFx / 2.0 * (integParamSet.b - integParamSet.a));
+                            integParamSet.n = 1;
+                            integParamSet.h = integParamSet.h / 2.0;
+                            integParamSet.sumFx = 0;
+                            integParamSet.countFx = 0;
+                            integParamSet.countFxMax = 1;
+                            error = integConfigForEvalUserFx(integParamSet.a + integParamSet.h * (2 * integParamSet.countFx + 1.0));   //  cad 2i-1 si i en base 1
+                        } else {   //  n > 0
+                            integParamSet.sumFx = integParamSet.sumFx + alu.getStkRegContents(STK_REGS.X);
+                            integParamSet.countFx = integParamSet.countFx + 1;
+                            if (integParamSet.countFx >= integParamSet.countFxMax) {   //  La somme est complète, on peut calculer la ligne n
+                                error = integParamSet.calcRombergLine();   //  Ligne n
+                                double newInteg = integParamSet.romberg.get(integParamSet.n).get(integParamSet.n);
+                                double diff = Math.abs(newInteg - integParamSet.romberg.get(integParamSet.n - 1).get(integParamSet.n - 1));
+                                if (diff <= integParamSet.tol) {   //  OK c'est bon
+                                    alu.setStkRegContent(STK_REGS.X, newInteg);
+                                    alu.setStkRegContent(STK_REGS.Y, diff);
+                                    alu.setStkRegContent(STK_REGS.Z, integParamSet.b);
+                                    alu.setStkRegContent(STK_REGS.T, integParamSet.a);
+                                    nextProgLineNumber = integParamSet.oldNextProgLineNumber;
+                                    integParamSet.clear();
+                                    if (requestStopAfterInteg) {   //  Forcer le STOP (comme en mode SST) si INTEG a été lancé au départ de mode NORM
+                                        requestStopAfterInteg = false;
+                                        inSST = true;
+                                    }
+                                } else {   //  Tolérance toujours pas respectée => On continue ?
+                                    integParamSet.iterCount = integParamSet.iterCount + 1;
+                                    if (integParamSet.iterCount > integParamSet.ITER_COUNT_MAX) {   //  Il n'y a plus d'espoir
+                                        error = ERROR_MAX_ITER_INTEG;
+                                    } else {  //  On continue !
+                                        integParamSet.n = integParamSet.n + 1;
+                                        integParamSet.h = integParamSet.h / 2.0;
+                                        integParamSet.sumFx = 0;
+                                        integParamSet.countFx = 0;
+                                        integParamSet.countFxMax = (int) Math.pow(2, integParamSet.n - 1);
+                                        error = integConfigForEvalUserFx(integParamSet.a + integParamSet.h * (2 * integParamSet.countFx + 1.0));   //  cad 2i-1 si i en base 1
+                                    }
+                                }
+                            } else {   //  La somme n'est pas encore complète
+                                error = integConfigForEvalUserFx(integParamSet.a + integParamSet.h * (2 * integParamSet.countFx + 1.0));   //  cad 2i-1 si i en base 1
+                            }
+                        }
+                    }
                 }
+                common = true;
                 break;
             case DSE:
             case ISG:
