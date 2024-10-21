@@ -12,7 +12,7 @@ public class IntegParamSet {
     public int countFx;
     public int countFxMax;
     public double sumFx;
-    public ArrayList<ArrayList<Double>> romberg;
+    public ArrayList<ArrayList<Double>> rombergLines;
     public int oldNextProgLineNumber;
     public int userFxLineNumber;
     public int count;
@@ -36,7 +36,7 @@ public class IntegParamSet {
         countFx = 0;
         countFxMax = 0;
         sumFx = 0;
-        romberg = new ArrayList<ArrayList<Double>>();
+        rombergLines = new ArrayList<ArrayList<Double>>();
         oldNextProgLineNumber = 0;
         userFxLineNumber = 0;
         count = 0;
@@ -46,18 +46,36 @@ public class IntegParamSet {
     }
 
     public void close() {
-        romberg.clear();
-        romberg = null;
+        rombergLines.clear();
+        rombergLines = null;
     }
 
-    public String calcRombergLine() {
-        String error = "";
-        ArrayList<Double> romLine = new ArrayList<Double>();
-        romberg.add(romLine);   //  Ligne n
-        romberg.get(n).add(romberg.get(n - 1).get(0) / 2.0 + h * sumFx);
+    public void setNextLevel() {
+        n = n + 1;
+        h = h / 2.0;
+        countFxMax = (n == 1 ? 1 : countFxMax * 2);
+        sumFx = 0;
+        countFx = 0;
+    }
+
+    public double getRombergCurrentValue() {
+        return rombergLines.get(n).get(n);
+    }
+
+    public double getRombergPreviousValue() {
+        return rombergLines.get(n - 1).get(n - 1);
+    }
+
+    public void calcRombergFirstValue() {
+        rombergLines.add(new ArrayList<Double>());   //  Ligne n (0)
+        rombergLines.get(0).add(sumFx / 2.0 * (b - a));
+    }
+
+    public void calcRombergLineValues() {
+        rombergLines.add(new ArrayList<Double>());   //  Ligne n
+        rombergLines.get(n).add(rombergLines.get(n - 1).get(0) / 2.0 + h * sumFx);
         for (int i = 0; i <= (n - 1); i = i + 1) {
-            romberg.get(n).add((Math.pow(4, n) * romberg.get(n).get(i) - romberg.get(n - 1).get(i)) / (Math.pow(4, n) - 1));
+            rombergLines.get(n).add((Math.pow(4, n) * rombergLines.get(n).get(i) - rombergLines.get(n - 1).get(i)) / (Math.pow(4, n) - 1));
         }
-        return error;
     }
 }

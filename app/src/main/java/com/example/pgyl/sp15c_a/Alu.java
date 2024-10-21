@@ -275,7 +275,7 @@ public class Alu {
         }
     }
 
-    public enum STK_REGS {
+    public enum STACK_REGS {
         X, Y, Z, T, LX, LY, LZ, LT;
 
         public int INDEX() {
@@ -343,7 +343,7 @@ public class Alu {
     final int MAX_DIGITS = 10;
     final int MAX_PROG_LINES = 9999;
     final int MAX_FLAGS = 10;
-    final int MAX_RETS = 100;
+    final int RET_STACK_SIZE_MAX = 100;
     final int MAX_REGS = 1000;   //  Max, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
     final int DEF_MAX_REGS = 100;    //  Par défaut, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
 
@@ -360,7 +360,7 @@ public class Alu {
     final int SHIFT_F_KEY_CODE = 42;
     final int SHIFT_G_KEY_CODE = 43;
 
-    private double[] stkRegs;
+    private double[] stackRegs;
     private boolean[] flags;
     private ArrayList<Double> regs;   //  Les registres de BASE_REGS puis les suivants (accessibles par (i) )
     private OPS roundMode;
@@ -376,7 +376,7 @@ public class Alu {
     private HashMap<Integer, LABELS> labelIndexToLabelMap;
     private HashMap<LABELS, Integer> labelToprogLineNumberMap;
     private ArrayList<ProgLine> proglines;
-    private ArrayList<Integer> stkRet;
+    private ArrayList<Integer> retStack;
 
     public Alu() {
         init();
@@ -389,12 +389,12 @@ public class Alu {
         }
 
         setupMaps();
-        stkRegs = new double[STK_REGS.values().length];
+        stackRegs = new double[STACK_REGS.values().length];
         clearStack();
         flags = new boolean[MAX_FLAGS];
         clearFlags();
         setupProgLines();
-        setupReturnStack();
+        setupRetStack();
         angleMode = OPS.RAD;
         roundMode = OPS.FIX;
         roundParam = 4;
@@ -402,10 +402,10 @@ public class Alu {
     }
 
     public void close() {
-        stkRegs = null;
+        stackRegs = null;
         flags = null;
-        stkRet.clear();
-        stkRet = null;
+        retStack.clear();
+        retStack = null;
         regs.clear();
         regs = null;
         proglines.clear();
@@ -525,20 +525,20 @@ public class Alu {
         return MAX_REGS;
     }
 
-    public double[] getStkRegs() {
-        return stkRegs;
+    public double[] getStackRegs() {
+        return stackRegs;
     }
 
-    public double getStkRegContents(STK_REGS stkReg) {
-        return stkRegs[stkReg.INDEX()];
+    public double getStackRegContents(STACK_REGS stackReg) {
+        return stackRegs[stackReg.INDEX()];
     }
 
-    public void setStkRegContent(STK_REGS stkReg, double value) {
-        stkRegs[stkReg.INDEX()] = value;
+    public void setStackRegContent(STACK_REGS stackReg, double value) {
+        stackRegs[stackReg.INDEX()] = value;
     }
 
     public String getRoundXForDisplay() {
-        return roundForDisplay(stkRegs[STK_REGS.X.INDEX()]);
+        return roundForDisplay(stackRegs[STACK_REGS.X.INDEX()]);
     }
 
     public double getRegContentsByIndex(int index) {
@@ -552,20 +552,20 @@ public class Alu {
     public String xXchgReg(int index) {
         String error = "";
         double reg = regs.get(index);
-        regs.set(index, stkRegs[STK_REGS.X.INDEX()]);
-        stkRegs[STK_REGS.X.INDEX()] = reg;
+        regs.set(index, stackRegs[STACK_REGS.X.INDEX()]);
+        stackRegs[STACK_REGS.X.INDEX()] = reg;
         return error;
     }
 
     public String xToReg(int index) {
         String error = "";
-        regs.set(index, stkRegs[STK_REGS.X.INDEX()]);
+        regs.set(index, stackRegs[STACK_REGS.X.INDEX()]);
         return error;
     }
 
     public String regToX(int index) {
         String error = "";
-        stkRegs[STK_REGS.X.INDEX()] = regs.get(index);
+        stackRegs[STACK_REGS.X.INDEX()] = regs.get(index);
         return error;
     }
 
@@ -575,19 +575,19 @@ public class Alu {
         try {
             switch (op) {
                 case PLUS:
-                    regs.set(index, regs.get(index) + stkRegs[STK_REGS.X.INDEX()]);
+                    regs.set(index, regs.get(index) + stackRegs[STACK_REGS.X.INDEX()]);
                     error1 = ERROR_OVERFLOW;
                     break;
                 case MINUS:
-                    regs.set(index, regs.get(index) - stkRegs[STK_REGS.X.INDEX()]);
+                    regs.set(index, regs.get(index) - stackRegs[STACK_REGS.X.INDEX()]);
                     error1 = ERROR_OVERFLOW;
                     break;
                 case MULT:
-                    regs.set(index, regs.get(index) * stkRegs[STK_REGS.X.INDEX()]);
+                    regs.set(index, regs.get(index) * stackRegs[STACK_REGS.X.INDEX()]);
                     error1 = ERROR_OVERFLOW;
                     break;
                 case DIV:
-                    regs.set(index, regs.get(index) / stkRegs[STK_REGS.X.INDEX()]);
+                    regs.set(index, regs.get(index) / stackRegs[STACK_REGS.X.INDEX()]);
                     error1 = ERROR_DIV_BY_0;
                     break;
             }
@@ -595,7 +595,7 @@ public class Alu {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error2 = error1;
         }
         return error2;
@@ -607,27 +607,27 @@ public class Alu {
         try {
             switch (op) {
                 case PLUS:
-                    stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.X.INDEX()] + regs.get(index);
+                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] + regs.get(index);
                     error1 = ERROR_OVERFLOW;
                     break;
                 case MINUS:
-                    stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.X.INDEX()] - regs.get(index);
+                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] - regs.get(index);
                     error1 = ERROR_OVERFLOW;
                     break;
                 case MULT:
-                    stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.X.INDEX()] * regs.get(index);
+                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] * regs.get(index);
                     error1 = ERROR_OVERFLOW;
                     break;
                 case DIV:
-                    stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.X.INDEX()] / regs.get(index);
+                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] / regs.get(index);
                     error1 = ERROR_DIV_BY_0;
                     break;
             }
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error2 = error1;
         }
         return error2;
@@ -635,14 +635,14 @@ public class Alu {
 
     public String yDivX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.Y.INDEX()] / stkRegs[STK_REGS.X.INDEX()];
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] / stackRegs[STACK_REGS.X.INDEX()];
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_DIV_BY_0;
         }
         return error;
@@ -650,14 +650,14 @@ public class Alu {
 
     public String yMultX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.Y.INDEX()] * stkRegs[STK_REGS.X.INDEX()];
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] * stackRegs[STACK_REGS.X.INDEX()];
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -665,14 +665,14 @@ public class Alu {
 
     public String yMinusX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.Y.INDEX()] - stkRegs[STK_REGS.X.INDEX()];
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] - stackRegs[STACK_REGS.X.INDEX()];
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -680,14 +680,14 @@ public class Alu {
 
     public String yPlusX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.Y.INDEX()] + stkRegs[STK_REGS.X.INDEX()];
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] + stackRegs[STACK_REGS.X.INDEX()];
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -695,20 +695,20 @@ public class Alu {
 
     public String negX() {   //  LASTX non modifié
         String error = "";
-        stkRegs[STK_REGS.X.INDEX()] = -stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = -stackRegs[STACK_REGS.X.INDEX()];
         return error;
     }
 
     public String sqrX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.X.INDEX()];
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] * stackRegs[STACK_REGS.X.INDEX()];
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -716,14 +716,14 @@ public class Alu {
 
     public String sqrtX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.sqrt(stkRegs[STK_REGS.X.INDEX()]);
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.sqrt(stackRegs[STACK_REGS.X.INDEX()]);
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_SQRT_NEG;
         }
         return error;
@@ -731,21 +731,21 @@ public class Alu {
 
     public String xToRad() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = Math.toRadians(stkRegs[STK_REGS.X.INDEX()]);
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = Math.toRadians(stackRegs[STACK_REGS.X.INDEX()]);
         return error;
     }
 
     public String xToDeg() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.X.INDEX()] * (180.0 / Math.PI);
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] * (180.0 / Math.PI);
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -753,19 +753,19 @@ public class Alu {
 
     public String xyToRect() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            double r = stkRegs[STK_REGS.X.INDEX()];
-            stkRegs[STK_REGS.X.INDEX()] = r * Math.cos(angleToRad(stkRegs[STK_REGS.Y.INDEX()]));
-            stkRegs[STK_REGS.Y.INDEX()] = r * Math.sin(angleToRad(stkRegs[STK_REGS.Y.INDEX()]));
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            double r = stackRegs[STACK_REGS.X.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = r * Math.cos(angleToRad(stackRegs[STACK_REGS.Y.INDEX()]));
+            stackRegs[STACK_REGS.Y.INDEX()] = r * Math.sin(angleToRad(stackRegs[STACK_REGS.Y.INDEX()]));
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
-            if ((Double.isNaN(stkRegs[STK_REGS.Y.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.Y.INDEX()]))) {
+            if ((Double.isNaN(stackRegs[STACK_REGS.Y.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.Y.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -773,19 +773,19 @@ public class Alu {
 
     public String xyToPol() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            double x = stkRegs[STK_REGS.X.INDEX()];
-            stkRegs[STK_REGS.X.INDEX()] = Math.hypot(x, stkRegs[STK_REGS.Y.INDEX()]);
-            stkRegs[STK_REGS.Y.INDEX()] = radToAngle(Math.atan2(stkRegs[STK_REGS.Y.INDEX()], x));
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            double x = stackRegs[STACK_REGS.X.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = Math.hypot(x, stackRegs[STACK_REGS.Y.INDEX()]);
+            stackRegs[STACK_REGS.Y.INDEX()] = radToAngle(Math.atan2(stackRegs[STACK_REGS.Y.INDEX()], x));
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
-            if ((Double.isNaN(stkRegs[STK_REGS.Y.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.Y.INDEX()]))) {
+            if ((Double.isNaN(stackRegs[STACK_REGS.Y.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.Y.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -793,14 +793,14 @@ public class Alu {
 
     public String expX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.exp(stkRegs[STK_REGS.X.INDEX()]);
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.exp(stackRegs[STACK_REGS.X.INDEX()]);
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -808,14 +808,14 @@ public class Alu {
 
     public String lnX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.log(stkRegs[STK_REGS.X.INDEX()]);   //  Math.log est en fait ln
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.log(stackRegs[STACK_REGS.X.INDEX()]);   //  Math.log est en fait ln
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_LOG;
         }
         return error;
@@ -823,14 +823,14 @@ public class Alu {
 
     public String exp10X() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.pow(10, stkRegs[STK_REGS.X.INDEX()]);
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.pow(10, stackRegs[STACK_REGS.X.INDEX()]);
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -838,14 +838,14 @@ public class Alu {
 
     public String logX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.log10(stkRegs[STK_REGS.X.INDEX()]);   //  Math.log est en fait ln
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.log10(stackRegs[STACK_REGS.X.INDEX()]);   //  Math.log est en fait ln
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_LOG;
         }
         return error;
@@ -853,14 +853,14 @@ public class Alu {
 
     public String pow() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.pow(stkRegs[STK_REGS.Y.INDEX()], stkRegs[STK_REGS.X.INDEX()]);
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.pow(stackRegs[STACK_REGS.Y.INDEX()], stackRegs[STACK_REGS.X.INDEX()]);
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -868,14 +868,14 @@ public class Alu {
 
     public String invX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = 1.0 / stkRegs[STK_REGS.X.INDEX()];
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = 1.0 / stackRegs[STACK_REGS.X.INDEX()];
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_DIV_BY_0;
         }
         return error;
@@ -883,14 +883,14 @@ public class Alu {
 
     public String xPcY() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.Y.INDEX()] * (stkRegs[STK_REGS.X.INDEX()] / 100.0);
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] * (stackRegs[STACK_REGS.X.INDEX()] / 100.0);
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -898,14 +898,14 @@ public class Alu {
 
     public String xDpcY() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = (stkRegs[STK_REGS.X.INDEX()] / stkRegs[STK_REGS.Y.INDEX()] - 1.0) * 100.0;
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = (stackRegs[STACK_REGS.X.INDEX()] / stackRegs[STACK_REGS.Y.INDEX()] - 1.0) * 100.0;
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_DIV_BY_0;
         }
         return error;
@@ -913,21 +913,21 @@ public class Alu {
 
     public String absX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = Math.abs(stkRegs[STK_REGS.X.INDEX()]);
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = Math.abs(stackRegs[STACK_REGS.X.INDEX()]);
         return error;
     }
 
     public String rndX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = Double.parseDouble(roundForDisplay(stkRegs[STK_REGS.X.INDEX()]));
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = Double.parseDouble(roundForDisplay(stackRegs[STACK_REGS.X.INDEX()]));
         return error;
     }
 
     public String prefX() {   //  LASTX non modifié
         String error = "";
-        double val = Math.abs(stkRegs[STK_REGS.X.INDEX()]);
+        double val = Math.abs(stackRegs[STACK_REGS.X.INDEX()]);
         int exp = 0;
         double mant = 0;
         if (val != 0) {
@@ -941,35 +941,35 @@ public class Alu {
 
     public String hmsX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = (90.0 * stkRegs[STK_REGS.X.INDEX()] + (int) (60.0 * stkRegs[STK_REGS.X.INDEX()]) + 100.0 * (int) stkRegs[STK_REGS.X.INDEX()]) / 250.0;
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = (90.0 * stackRegs[STACK_REGS.X.INDEX()] + (int) (60.0 * stackRegs[STACK_REGS.X.INDEX()]) + 100.0 * (int) stackRegs[STACK_REGS.X.INDEX()]) / 250.0;
         return error;
     }
 
     public String hX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = (250.0 * stkRegs[STK_REGS.X.INDEX()] - (int) (100.0 * stkRegs[STK_REGS.X.INDEX()]) - 60.0 * (int) stkRegs[STK_REGS.X.INDEX()]) / 90.0;
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = (250.0 * stackRegs[STACK_REGS.X.INDEX()] - (int) (100.0 * stackRegs[STACK_REGS.X.INDEX()]) - 60.0 * (int) stackRegs[STACK_REGS.X.INDEX()]) / 90.0;
         return error;
     }
 
     public String xyToPerm() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        int m = (int) stkRegs[STK_REGS.Y.INDEX()];
-        int n = (int) stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        int m = (int) stackRegs[STACK_REGS.Y.INDEX()];
+        int n = (int) stackRegs[STACK_REGS.X.INDEX()];
         if ((m >= 0) && (n >= 0) && (n <= m)) {
             try {
-                stkRegs[STK_REGS.X.INDEX()] = factOver(m, m - n);
-                if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+                stackRegs[STACK_REGS.X.INDEX()] = factOver(m, m - n);
+                if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                     throw new ArithmeticException();
                 }
             } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-                stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+                stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
                 error = ERROR_OVERFLOW;
             }
         } else {   //  Erreur
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_PERM_COMB;
         }
         return error;
@@ -977,21 +977,21 @@ public class Alu {
 
     public String xyToComb() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        int m = (int) stkRegs[STK_REGS.Y.INDEX()];
-        int n = (int) stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        int m = (int) stackRegs[STACK_REGS.Y.INDEX()];
+        int n = (int) stackRegs[STACK_REGS.X.INDEX()];
         if ((m >= 0) && (n >= 0) && (n <= m)) {
             try {
-                stkRegs[STK_REGS.X.INDEX()] = factOver(m, m - n) / fact(n);
-                if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+                stackRegs[STACK_REGS.X.INDEX()] = factOver(m, m - n) / fact(n);
+                if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                     throw new ArithmeticException();
                 }
             } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-                stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+                stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
                 error = ERROR_OVERFLOW;
             }
         } else {   //  Erreur
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_PERM_COMB;
         }
         return error;
@@ -999,47 +999,47 @@ public class Alu {
 
     public String fracX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        double val = Math.abs(stkRegs[STK_REGS.X.INDEX()]);
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        double val = Math.abs(stackRegs[STACK_REGS.X.INDEX()]);
         val = val - (int) val;
-        val = (stkRegs[STK_REGS.X.INDEX()] >= 0 ? val : -val);
-        stkRegs[STK_REGS.X.INDEX()] = val;
+        val = (stackRegs[STACK_REGS.X.INDEX()] >= 0 ? val : -val);
+        stackRegs[STACK_REGS.X.INDEX()] = val;
         return error;
     }
 
     public String integerX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        double val = (int) Math.abs(stkRegs[STK_REGS.X.INDEX()]);
-        val = (stkRegs[STK_REGS.X.INDEX()] >= 0 ? val : -val);
-        stkRegs[STK_REGS.X.INDEX()] = val;
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        double val = (int) Math.abs(stackRegs[STACK_REGS.X.INDEX()]);
+        val = (stackRegs[STACK_REGS.X.INDEX()] >= 0 ? val : -val);
+        stackRegs[STACK_REGS.X.INDEX()] = val;
         return error;
     }
 
     public String sinX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = Math.sin(angleToRad(stkRegs[STK_REGS.X.INDEX()]));
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = Math.sin(angleToRad(stackRegs[STACK_REGS.X.INDEX()]));
         return error;
     }
 
     public String cosX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = Math.cos(angleToRad(stkRegs[STK_REGS.X.INDEX()]));
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = Math.cos(angleToRad(stackRegs[STACK_REGS.X.INDEX()]));
         return error;
     }
 
     public String tanX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.tan(angleToRad(stkRegs[STK_REGS.X.INDEX()]));
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.tan(angleToRad(stackRegs[STACK_REGS.X.INDEX()]));
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1047,14 +1047,14 @@ public class Alu {
 
     public String asinX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = radToAngle(Math.asin(stkRegs[STK_REGS.X.INDEX()]));
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = radToAngle(Math.asin(stackRegs[STACK_REGS.X.INDEX()]));
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1062,14 +1062,14 @@ public class Alu {
 
     public String acosX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = radToAngle(Math.acos(stkRegs[STK_REGS.X.INDEX()]));
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = radToAngle(Math.acos(stackRegs[STACK_REGS.X.INDEX()]));
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1077,21 +1077,21 @@ public class Alu {
 
     public String atanX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = radToAngle(Math.atan(stkRegs[STK_REGS.X.INDEX()]));
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = radToAngle(Math.atan(stackRegs[STACK_REGS.X.INDEX()]));
         return error;
     }
 
     public String sinhX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.sinh(stkRegs[STK_REGS.X.INDEX()]);
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.sinh(stackRegs[STACK_REGS.X.INDEX()]);
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1099,14 +1099,14 @@ public class Alu {
 
     public String coshX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.cosh(stkRegs[STK_REGS.X.INDEX()]);
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.cosh(stackRegs[STACK_REGS.X.INDEX()]);
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1114,22 +1114,22 @@ public class Alu {
 
     public String tanhX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = Math.tanh(stkRegs[STK_REGS.X.INDEX()]);
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = Math.tanh(stackRegs[STACK_REGS.X.INDEX()]);
         return error;
     }
 
     public String asinhX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        double t = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        double t = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t + 1.0));
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t + 1.0));
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1137,15 +1137,15 @@ public class Alu {
 
     public String acoshX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        double t = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        double t = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t - 1.0));
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t - 1.0));
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1153,15 +1153,15 @@ public class Alu {
 
     public String atanhX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        double t = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        double t = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = Math.log((1.0 + t) / (1.0 - t)) / 2.0;
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = Math.log((1.0 + t) / (1.0 - t)) / 2.0;
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1169,8 +1169,8 @@ public class Alu {
 
     public boolean test(OPS op) {
         boolean res = false;
-        double x = round(stkRegs[STK_REGS.X.INDEX()], MAX_DIGITS + 1);
-        double y = round(stkRegs[STK_REGS.Y.INDEX()], MAX_DIGITS + 1);
+        double x = round(stackRegs[STACK_REGS.X.INDEX()], MAX_DIGITS + 1);
+        double y = round(stackRegs[STACK_REGS.Y.INDEX()], MAX_DIGITS + 1);
         switch (op) {
             case XNE0:
                 res = (x != 0.0);
@@ -1226,14 +1226,14 @@ public class Alu {
 
     public String factX() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
-            stkRegs[STK_REGS.X.INDEX()] = gamma(1 + stkRegs[STK_REGS.X.INDEX()]);
-            if ((Double.isNaN(stkRegs[STK_REGS.X.INDEX()])) || (Double.isInfinite(stkRegs[STK_REGS.X.INDEX()]))) {
+            stackRegs[STACK_REGS.X.INDEX()] = gamma(1 + stackRegs[STACK_REGS.X.INDEX()]);
+            if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1245,42 +1245,42 @@ public class Alu {
             int index = stat.DATA_REG_INDEX() + BASE_REGS.R0.INDEX();
             setRegContentsByIndex(index, 0);
         }
-        stkRegs[STK_REGS.X.INDEX()] = 0;
-        stkRegs[STK_REGS.Y.INDEX()] = 0;
-        stkRegs[STK_REGS.Z.INDEX()] = 0;
-        stkRegs[STK_REGS.T.INDEX()] = 0;
+        stackRegs[STACK_REGS.X.INDEX()] = 0;
+        stackRegs[STACK_REGS.Y.INDEX()] = 0;
+        stackRegs[STACK_REGS.Z.INDEX()] = 0;
+        stackRegs[STACK_REGS.T.INDEX()] = 0;
         return error;
     }
 
     public String sigmaPlus() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
             int index = getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX());
             int nMod = (int) getRegContentsByIndex(index) + 1;
             setRegContentsByIndex(index, nMod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX());
-            double sumXMod = getRegContentsByIndex(index) + stkRegs[STK_REGS.X.INDEX()];
+            double sumXMod = getRegContentsByIndex(index) + stackRegs[STACK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumXMod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX());
-            double sumX2Mod = getRegContentsByIndex(index) + stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.X.INDEX()];
+            double sumX2Mod = getRegContentsByIndex(index) + stackRegs[STACK_REGS.X.INDEX()] * stackRegs[STACK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumX2Mod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX());
-            double sumYMod = getRegContentsByIndex(index) + stkRegs[STK_REGS.Y.INDEX()];
+            double sumYMod = getRegContentsByIndex(index) + stackRegs[STACK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumYMod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX());
-            double sumY2Mod = getRegContentsByIndex(index) + stkRegs[STK_REGS.Y.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
+            double sumY2Mod = getRegContentsByIndex(index) + stackRegs[STACK_REGS.Y.INDEX()] * stackRegs[STACK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumY2Mod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX());
-            double sumXYMod = getRegContentsByIndex(index) + stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
+            double sumXYMod = getRegContentsByIndex(index) + stackRegs[STACK_REGS.X.INDEX()] * stackRegs[STACK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumXYMod);
 
-            stkRegs[STK_REGS.X.INDEX()] = nMod;
+            stackRegs[STACK_REGS.X.INDEX()] = nMod;
 
             if ((Double.isNaN(sumXMod)) || (Double.isInfinite(sumXMod))) {
                 throw new ArithmeticException();
@@ -1298,7 +1298,7 @@ public class Alu {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1306,33 +1306,33 @@ public class Alu {
 
     public String sigmaMinus() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         try {
             int index = getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX());
             int nMod = (int) getRegContentsByIndex(index) - 1;
             setRegContentsByIndex(index, nMod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX());
-            double sumXMod = getRegContentsByIndex(index) - stkRegs[STK_REGS.X.INDEX()];
+            double sumXMod = getRegContentsByIndex(index) - stackRegs[STACK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumXMod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_X2.DATA_REG_INDEX());
-            double sumX2Mod = getRegContentsByIndex(index) - stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.X.INDEX()];
+            double sumX2Mod = getRegContentsByIndex(index) - stackRegs[STACK_REGS.X.INDEX()] * stackRegs[STACK_REGS.X.INDEX()];
             setRegContentsByIndex(index, sumX2Mod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX());
-            double sumYMod = getRegContentsByIndex(index) - stkRegs[STK_REGS.Y.INDEX()];
+            double sumYMod = getRegContentsByIndex(index) - stackRegs[STACK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumYMod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_Y2.DATA_REG_INDEX());
-            double sumY2Mod = getRegContentsByIndex(index) - stkRegs[STK_REGS.Y.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
+            double sumY2Mod = getRegContentsByIndex(index) - stackRegs[STACK_REGS.Y.INDEX()] * stackRegs[STACK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumY2Mod);
 
             index = getRegIndexByDataRegIndex(STAT_OPS.SUM_XY.DATA_REG_INDEX());
-            double sumXYMod = getRegContentsByIndex(index) - stkRegs[STK_REGS.X.INDEX()] * stkRegs[STK_REGS.Y.INDEX()];
+            double sumXYMod = getRegContentsByIndex(index) - stackRegs[STACK_REGS.X.INDEX()] * stackRegs[STACK_REGS.Y.INDEX()];
             setRegContentsByIndex(index, sumXYMod);
 
-            stkRegs[STK_REGS.X.INDEX()] = nMod;
+            stackRegs[STACK_REGS.X.INDEX()] = nMod;
 
             if ((Double.isNaN(sumXMod)) || (Double.isInfinite(sumXMod))) {
                 throw new ArithmeticException();
@@ -1350,7 +1350,7 @@ public class Alu {
                 throw new ArithmeticException();
             }
         } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_OVERFLOW;
         }
         return error;
@@ -1364,8 +1364,8 @@ public class Alu {
             double sumY = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
             double meanX = sumX / n;
             double meanY = sumY / n;
-            stkRegs[STK_REGS.X.INDEX()] = meanX;
-            stkRegs[STK_REGS.Y.INDEX()] = meanY;
+            stackRegs[STACK_REGS.X.INDEX()] = meanX;
+            stackRegs[STACK_REGS.Y.INDEX()] = meanY;
         } else {   //  n <= 0
             error = ERROR_STAT_0;
         }
@@ -1384,8 +1384,8 @@ public class Alu {
             double nv = n * sumY2 - sumY * sumY;
             double stDevX = Math.sqrt(mv / (n * (n - 1)));
             double stDevY = Math.sqrt(nv / (n * (n - 1)));
-            stkRegs[STK_REGS.X.INDEX()] = stDevX;
-            stkRegs[STK_REGS.Y.INDEX()] = stDevY;
+            stackRegs[STACK_REGS.X.INDEX()] = stDevX;
+            stackRegs[STACK_REGS.Y.INDEX()] = stDevY;
         } else {   //  n <= 1
             error = ERROR_STAT_1;
         }
@@ -1406,8 +1406,8 @@ public class Alu {
             double p = n * sumXY - sumX * sumY;
             double a = p / mv;
             double b = (mv * sumY - p * sumX) / (n * mv);
-            stkRegs[STK_REGS.X.INDEX()] = b;
-            stkRegs[STK_REGS.Y.INDEX()] = a;
+            stackRegs[STACK_REGS.X.INDEX()] = b;
+            stackRegs[STACK_REGS.Y.INDEX()] = a;
         } else {   //  n <= 1
             error = ERROR_STAT_1;
         }
@@ -1416,7 +1416,7 @@ public class Alu {
 
     public String yer() {
         String error = "";
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         double n = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX()));
         if (n > 1) {
             double sumX = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
@@ -1428,11 +1428,11 @@ public class Alu {
             double nv = n * sumY2 - sumY * sumY;
             double p = n * sumXY - sumX * sumY;
             double r = p / Math.sqrt(mv * nv);
-            double ye = (mv * sumY + p * (n * stkRegs[STK_REGS.X.INDEX()] - sumX)) / (n * mv);
-            stkRegs[STK_REGS.X.INDEX()] = ye;
-            stkRegs[STK_REGS.Y.INDEX()] = r;
+            double ye = (mv * sumY + p * (n * stackRegs[STACK_REGS.X.INDEX()] - sumX)) / (n * mv);
+            stackRegs[STACK_REGS.X.INDEX()] = ye;
+            stackRegs[STACK_REGS.Y.INDEX()] = r;
         } else {   //  n <= 1
-            stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+            stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
             error = ERROR_STAT_1;
         }
         return error;
@@ -1442,54 +1442,54 @@ public class Alu {
         String error = "";
         double sumX = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
         double sumY = getRegContentsByIndex(getRegIndexByDataRegIndex(STAT_OPS.SUM_Y.DATA_REG_INDEX()));
-        stkRegs[STK_REGS.X.INDEX()] = sumX;
-        stkRegs[STK_REGS.Y.INDEX()] = sumY;
+        stackRegs[STACK_REGS.X.INDEX()] = sumX;
+        stackRegs[STACK_REGS.Y.INDEX()] = sumY;
         return error;
     }
 
     public String lastXToX() {   //  LASTX non modifié :)
         String error = "";
-        stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
         return error;
     }
 
     public String piToX() {  //  LASTX non modifié
         String error = "";
-        stkRegs[STK_REGS.X.INDEX()] = Math.PI;
+        stackRegs[STACK_REGS.X.INDEX()] = Math.PI;
         return error;
     }
 
     public String randToX() {  //  LASTX non modifié
         String error = "";
-        stkRegs[STK_REGS.X.INDEX()] = Math.random();
+        stackRegs[STACK_REGS.X.INDEX()] = Math.random();
         return error;
     }
 
     public String clX() {   //  T,Z,Y,X -> T,Z,Y,0    LASTX non modifié
         String error = "";
-        stkRegs[STK_REGS.X.INDEX()] = 0;
+        stackRegs[STACK_REGS.X.INDEX()] = 0;
         return error;
     }
 
     public void xchgXY() {   //  T,Z,Y,X -> T,Z,X,Y
-        Double temp = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.Y.INDEX()];
-        stkRegs[STK_REGS.Y.INDEX()] = temp;
+        Double temp = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
+        stackRegs[STACK_REGS.Y.INDEX()] = temp;
     }
 
     public void clearStack() {   //  T,Z,Y,X -> 0,0,0,0
-        stkRegs[STK_REGS.X.INDEX()] = 0;
-        stkRegs[STK_REGS.Y.INDEX()] = 0;
-        stkRegs[STK_REGS.Z.INDEX()] = 0;
-        stkRegs[STK_REGS.T.INDEX()] = 0;
-        stkRegs[STK_REGS.LX.INDEX()] = 0;
+        stackRegs[STACK_REGS.X.INDEX()] = 0;
+        stackRegs[STACK_REGS.Y.INDEX()] = 0;
+        stackRegs[STACK_REGS.Z.INDEX()] = 0;
+        stackRegs[STACK_REGS.T.INDEX()] = 0;
+        stackRegs[STACK_REGS.LX.INDEX()] = 0;
     }
 
     public void fillStack(double value) {
-        stkRegs[STK_REGS.X.INDEX()] = value;
-        stkRegs[STK_REGS.Y.INDEX()] = value;
-        stkRegs[STK_REGS.Z.INDEX()] = value;
-        stkRegs[STK_REGS.T.INDEX()] = value;
+        stackRegs[STACK_REGS.X.INDEX()] = value;
+        stackRegs[STACK_REGS.Y.INDEX()] = value;
+        stackRegs[STACK_REGS.Z.INDEX()] = value;
+        stackRegs[STACK_REGS.T.INDEX()] = value;
     }
 
     public void clearFlags() {
@@ -1500,44 +1500,44 @@ public class Alu {
     }
 
     public void stackRollDown() {   //  T,Z,Y,X -> X,T,Z,Y
-        Double temp = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.Y.INDEX()];
-        stkRegs[STK_REGS.Y.INDEX()] = stkRegs[STK_REGS.Z.INDEX()];
-        stkRegs[STK_REGS.Z.INDEX()] = stkRegs[STK_REGS.T.INDEX()];
-        stkRegs[STK_REGS.T.INDEX()] = temp;
+        Double temp = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
+        stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.Z.INDEX()];
+        stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.T.INDEX()];
+        stackRegs[STACK_REGS.T.INDEX()] = temp;
     }
 
     public void stackRollUp() {   //  T,Z,Y,X -> Z,Y,X,T
-        Double temp = stkRegs[STK_REGS.T.INDEX()];
-        stkRegs[STK_REGS.T.INDEX()] = stkRegs[STK_REGS.Z.INDEX()];
-        stkRegs[STK_REGS.Z.INDEX()] = stkRegs[STK_REGS.Y.INDEX()];
-        stkRegs[STK_REGS.Y.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.X.INDEX()] = temp;
+        Double temp = stackRegs[STACK_REGS.T.INDEX()];
+        stackRegs[STACK_REGS.T.INDEX()] = stackRegs[STACK_REGS.Z.INDEX()];
+        stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
+        stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = temp;
     }
 
     public void doStackLift() {   //  T,Z,Y,X -> Z,Y,X,X
-        stkRegs[STK_REGS.T.INDEX()] = stkRegs[STK_REGS.Z.INDEX()];
-        stkRegs[STK_REGS.Z.INDEX()] = stkRegs[STK_REGS.Y.INDEX()];
-        stkRegs[STK_REGS.Y.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.T.INDEX()] = stackRegs[STACK_REGS.Z.INDEX()];
+        stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
+        stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
     }
 
     public void stackMergeDown() {   //  T,Z,Y,X -> T,T,Z,f(X,Y)
-        stkRegs[STK_REGS.Y.INDEX()] = stkRegs[STK_REGS.Z.INDEX()];
-        stkRegs[STK_REGS.Z.INDEX()] = stkRegs[STK_REGS.T.INDEX()];
+        stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.Z.INDEX()];
+        stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.T.INDEX()];
     }
 
     public void saveStack() {
-        stkRegs[STK_REGS.LX.INDEX()] = stkRegs[STK_REGS.X.INDEX()];
-        stkRegs[STK_REGS.LY.INDEX()] = stkRegs[STK_REGS.Y.INDEX()];
-        stkRegs[STK_REGS.LZ.INDEX()] = stkRegs[STK_REGS.Z.INDEX()];
-        stkRegs[STK_REGS.LT.INDEX()] = stkRegs[STK_REGS.T.INDEX()];
+        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        stackRegs[STACK_REGS.LY.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
+        stackRegs[STACK_REGS.LZ.INDEX()] = stackRegs[STACK_REGS.Z.INDEX()];
+        stackRegs[STACK_REGS.LT.INDEX()] = stackRegs[STACK_REGS.T.INDEX()];
     }
 
     public void restoreStack() {
-        stkRegs[STK_REGS.X.INDEX()] = stkRegs[STK_REGS.LX.INDEX()];
-        stkRegs[STK_REGS.Y.INDEX()] = stkRegs[STK_REGS.LY.INDEX()];
-        stkRegs[STK_REGS.Z.INDEX()] = stkRegs[STK_REGS.LZ.INDEX()];
-        stkRegs[STK_REGS.T.INDEX()] = stkRegs[STK_REGS.LT.INDEX()];
+        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
+        stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.LY.INDEX()];
+        stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.LZ.INDEX()];
+        stackRegs[STACK_REGS.T.INDEX()] = stackRegs[STACK_REGS.LT.INDEX()];
     }
 
     public String roundForDisplay(double value) {
@@ -1829,43 +1829,41 @@ public class Alu {
         return res;
     }
 
-    public int getStkRetSize() {
-        return stkRet.size();
+    public int getRetStackSize() {
+        return retStack.size();
     }
 
-    public boolean pushStkRetProgLineNumber(int progLineNumber) {   //  PUSH
+    public boolean pushProgLineNumber(int progLineNumber) {   //  PUSH
         boolean res = false;
-        if (stkRet.size() < MAX_RETS) {
-            stkRet.add(0, progLineNumber);
+        if (retStack.size() < RET_STACK_SIZE_MAX) {
+            retStack.add(0, progLineNumber);
             res = true;
         }
         return res;
     }
 
-    public int popStkRetProgLineNumber() {   //  POP1
-        return stkRet.get(0);
+    public int popProgLineNumber() {
+        int res = retStack.get(0);
+        retStack.remove(0);
+        return res;
     }
 
-    public boolean isStkRetEmpty() {
+    public boolean isRetStackEmpty() {
         boolean res = false;
-        if (stkRet.get(0) == END_RETURN_STACK) {
+        if (retStack.get(0) == END_RETURN_STACK) {
             res = true;
         }
         return res;
     }
 
-    public void removeLastStkRetProgLineNumber() {   //  POP2
-        stkRet.remove(0);
+    public void clearRetStack() {
+        retStack.clear();
+        retStack.add(0, END_RETURN_STACK);
     }
 
-    public void clearReturnStack() {
-        stkRet.clear();
-        stkRet.add(0, END_RETURN_STACK);
-    }
-
-    private void setupReturnStack() {
-        stkRet = new ArrayList<Integer>();
-        stkRet.add(0, END_RETURN_STACK);
+    private void setupRetStack() {
+        retStack = new ArrayList<Integer>();
+        retStack.add(0, END_RETURN_STACK);
     }
 
     private void setupMaps() {

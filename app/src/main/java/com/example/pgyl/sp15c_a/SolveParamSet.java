@@ -57,7 +57,14 @@ public class SolveParamSet {
         }
     }
 
-    public String solveTransform() {
+    public void setNextLevel() {
+        b = a;
+        s = r;
+        a = c;
+        r = q;
+    }
+
+    public String transform() {
         String error = "";
         try {
             Double newX = b - s * (b - a) / (s - r);

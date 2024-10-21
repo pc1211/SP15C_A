@@ -23,10 +23,9 @@ import com.example.pgyl.pekislib_a.StringDB;
 import com.example.pgyl.sp15c_a.Alu.BASE_REGS;
 import com.example.pgyl.sp15c_a.Alu.KEYS;
 import com.example.pgyl.sp15c_a.Alu.OPS;
-import com.example.pgyl.sp15c_a.Alu.STK_REGS;
+import com.example.pgyl.sp15c_a.Alu.STACK_REGS;
 import com.example.pgyl.sp15c_a.ProgLine.LINE_OPS;
 
-import java.util.ArrayList;
 import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -73,8 +72,8 @@ public class MainActivity extends Activity {
     private final String ERROR_KEYBOARD_INTERRUPT = "Keyboard Break";
     private final String ERROR_NESTED_SOLVE = "Nested SOLVE";
     private final String ERROR_NESTED_INTEG = "Nested INTEG";
-    private final String ERROR_MAX_ITER_SOLVE = "Max Iter SOLVE";
-    private final String ERROR_MAX_ITER_INTEG = "Max Iter INTEG";
+    private final String ERROR_SOLVE_ITER_MAX = "Max Iter SOLVE";
+    private final String ERROR_INTEG_ITER_MAX = "Max Iter INTEG";
     private final long PSE_MS = MILLISECONDS_PER_SECOND;   //  1 seconde
     private final long FLASH_RUN_MS = MILLISECONDS_PER_SECOND / 2;   //  1/2 seconde
     private final long AUTO_UPDATE_INTERVAL_MS = 1;
@@ -112,11 +111,20 @@ public class MainActivity extends Activity {
     private long nowmPSE;
     private long nowmRUN;
     private int readProgLineOpIndex;
-    private boolean lineIsGhostKey;
     private Handler handlerTimeLine;
     private Runnable runnableTimeLine;
     private Handler handlerTimeOp;
     private Runnable runnableTimeOp;
+    private boolean lineIsGhostKey;
+    private OPS shiftFOp;
+    private OPS currentOp;
+    private SolveParamSet solveParamSet;
+    private IntegParamSet integParamSet;
+    private int nextProgLineNumber;
+    private int currentProgLineNumber;
+    private boolean inSST;
+    private boolean isWrapAround;
+    private String alpha = "";
     private boolean isAutoO;
     private boolean isAutoL;
     private boolean isAutoOp;
@@ -125,17 +133,8 @@ public class MainActivity extends Activity {
     private boolean inInterpretOp;
     private boolean inExecCurrentProgLine;
     private boolean inPSE;
-    private OPS shiftFOp;
-    private OPS currentOp;
-    private SolveParamSet solveParamSet;
-    private IntegParamSet integParamSet;
     private boolean requestStopAfterSolve;
     private boolean requestStopAfterInteg;
-    private int nextProgLineNumber;
-    private int currentProgLineNumber;
-    private boolean inSST;
-    private boolean isWrapAround;
-    private String alpha = "";
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -471,7 +470,7 @@ public class MainActivity extends Activity {
             }
         } else {   //  Erreur (ou Prefix) antérieure
             error = "";
-            alu.clearReturnStack();
+            alu.clearRetStack();
             solveParamSet.clear();
             integParamSet.clear();
             inOp = null;
@@ -1034,7 +1033,7 @@ public class MainActivity extends Activity {
                 if (mode.equals(MODES.NORM)) {
                     if (alphaToX()) {
                         nextProgLineNumber = 0;
-                        alu.clearReturnStack();
+                        alu.clearRetStack();
                         solveParamSet.clear();
                         integParamSet.clear();
                     }
@@ -1122,7 +1121,7 @@ public class MainActivity extends Activity {
                 if ((Double.isNaN(d)) || (Double.isInfinite(d))) {
                     throw new IllegalArgumentException();
                 }
-                alu.setStkRegContent(STK_REGS.X, d);
+                alu.setStackRegContent(STACK_REGS.X, d);
                 alu.setStackLiftEnabled(true);
                 alpha = "";
             } catch (IllegalArgumentException | SecurityException ex) {
@@ -1316,7 +1315,7 @@ public class MainActivity extends Activity {
                     alu.doStackLiftIfEnabled();
                     if (progLine.ops[LINE_OPS.DIM.INDEX()] != null) {   //  RCL DIM (i)
                         int n = alu.getRegsMaxIndex();
-                        alu.setStkRegContent(STK_REGS.X, alu.getDataRegIndexByIndex(n));
+                        alu.setStackRegContent(STACK_REGS.X, alu.getDataRegIndexByIndex(n));
                     } else {   //  Pas RCL DIM (i)
                         if (progLine.ops[LINE_OPS.SIGMA_PLUS.INDEX()] != null) {   //  RCL SIGMA_PLUS
                             alu.doStackLift();    //  Un stacklift obligatoire + un deuxième (cf supra) si stackLift activé
@@ -1342,7 +1341,7 @@ public class MainActivity extends Activity {
                 break;
             case DIM:
                 if (alphaToX()) {
-                    int n = (int) alu.getStkRegContents(STK_REGS.X);
+                    int n = (int) alu.getStackRegContents(STACK_REGS.X);
                     error = alu.setMaxDataRegIndex(n);
                     if (error.length() == 0) {
                         alu.setStackLiftEnabled(true);
@@ -1389,7 +1388,7 @@ public class MainActivity extends Activity {
             case GSB:    //  Neutre sur StackLift ???
                 if (alphaToX()) {
                     if (mode.equals(MODES.RUN)) {   //  => En mode NORM: ne pas faire de push, la pile vide générera un STOP
-                        if (!alu.pushStkRetProgLineNumber(nextProgLineNumber)) {   //  Si False => MAX_RETS dépassé
+                        if (!alu.pushProgLineNumber(nextProgLineNumber)) {   //  Si False => MAX_RETS dépassé
                             error = ERROR_RET_STACK_FULL;
                         }
                     }
@@ -1413,43 +1412,40 @@ public class MainActivity extends Activity {
                     if (solveParamSet.count == 1) {  //  Initialisation et début de traitement
                         solveParamSet.oldNextProgLineNumber = nextProgLineNumber;
                         solveParamSet.userFxLineNumber = progLine.destProgLineNumber;
-                        solveParamSet.retLevel = alu.getStkRetSize();
+                        solveParamSet.retLevel = alu.getRetStackSize();
                         solveParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
-                        solveParamSet.a = alu.getStkRegContents(STK_REGS.Y);   //  Guess 1
-                        solveParamSet.b = alu.getStkRegContents(STK_REGS.X);   //  Guess 2
+                        solveParamSet.a = alu.getStackRegContents(STACK_REGS.Y);   //  Guess 1
+                        solveParamSet.b = alu.getStackRegContents(STACK_REGS.X);   //  Guess 2
                         solveParamSet.separateAB();   //   Si a = b (à 1E-14 max près) => Séparer a et b avec une différence de 1E-6
                         error = solveConfigForEvalUserFx(solveParamSet.a);
                     }
                     if (solveParamSet.count == 2) {
-                        if (alu.getStkRetSize() != solveParamSet.retLevel) {
+                        if (alu.getRetStackSize() != solveParamSet.retLevel) {
                             error = ERROR_NESTED_SOLVE;
                         } else {   //  Pas de Solve imbriqués, on continue
-                            solveParamSet.r = alu.getStkRegContents(STK_REGS.X);   //  f(a)
+                            solveParamSet.r = alu.getStackRegContents(STACK_REGS.X);   //  f(a)
                             error = solveConfigForEvalUserFx(solveParamSet.b);
                         }
                     }
                     if (solveParamSet.count == 3) {
-                        solveParamSet.s = alu.getStkRegContents(STK_REGS.X);   //  f(b)
-                        error = solveParamSet.solveTransform();
+                        solveParamSet.s = alu.getStackRegContents(STACK_REGS.X);   //  f(b)
+                        error = solveParamSet.transform();
                         if (error.length() == 0) {
                             solveParamSet.c = solveParamSet.t;
                             error = solveConfigForEvalUserFx(solveParamSet.c);
                         }
                     }
                     if (solveParamSet.count >= 4) {
-                        solveParamSet.q = alu.getStkRegContents(STK_REGS.X);   //  f(c)
-                        solveParamSet.b = solveParamSet.a;
-                        solveParamSet.s = solveParamSet.r;
-                        solveParamSet.a = solveParamSet.c;
-                        solveParamSet.r = solveParamSet.q;
-                        error = solveParamSet.solveTransform();
+                        solveParamSet.q = alu.getStackRegContents(STACK_REGS.X);   //  f(c)
+                        solveParamSet.setNextLevel();
+                        error = solveParamSet.transform();
                         if (error.length() == 0) {
                             double newX = solveParamSet.t;
                             if (Math.abs(newX - solveParamSet.c) <= solveParamSet.tol) {   //  OK c'est bon
-                                alu.setStkRegContent(STK_REGS.X, newX);
-                                alu.setStkRegContent(STK_REGS.Y, solveParamSet.c);
-                                alu.setStkRegContent(STK_REGS.Z, solveParamSet.q);
-                                alu.setStkRegContent(STK_REGS.T, solveParamSet.c);   //  Ancien x ???
+                                alu.setStackRegContent(STACK_REGS.X, newX);
+                                alu.setStackRegContent(STACK_REGS.Y, solveParamSet.c);
+                                alu.setStackRegContent(STACK_REGS.Z, solveParamSet.q);
+                                alu.setStackRegContent(STACK_REGS.T, solveParamSet.c);   //  Ancien x ???
                                 nextProgLineNumber = solveParamSet.oldNextProgLineNumber;
                                 solveParamSet.clear();
                                 if (requestStopAfterSolve) {   //  Forcer le STOP (comme en mode SST) si SOLVE a été lancé au départ de mode NORM
@@ -1459,7 +1455,7 @@ public class MainActivity extends Activity {
                             } else {   //  Tolérance toujours pas respectée => On continue ?
                                 solveParamSet.iterCount = solveParamSet.iterCount + 1;
                                 if (solveParamSet.iterCount > solveParamSet.ITER_COUNT_MAX) {   //  Il n'y a plus d'espoir
-                                    error = ERROR_MAX_ITER_SOLVE;
+                                    error = ERROR_SOLVE_ITER_MAX;
                                 } else {  //  On continue !
                                     solveParamSet.c = newX;
                                     error = solveConfigForEvalUserFx(solveParamSet.c);
@@ -1476,46 +1472,40 @@ public class MainActivity extends Activity {
                     if (integParamSet.count == 1) {  //  Initialisation et début de traitement
                         integParamSet.oldNextProgLineNumber = nextProgLineNumber;
                         integParamSet.userFxLineNumber = progLine.destProgLineNumber;
-                        integParamSet.retLevel = alu.getStkRetSize();
+                        integParamSet.retLevel = alu.getRetStackSize();
                         integParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
-                        integParamSet.a = alu.getStkRegContents(STK_REGS.Y);   //  a
-                        integParamSet.b = alu.getStkRegContents(STK_REGS.X);   //  b
-                        integParamSet.n = 0;
+                        integParamSet.a = alu.getStackRegContents(STACK_REGS.Y);   //  a
+                        integParamSet.b = alu.getStackRegContents(STACK_REGS.X);   //  b
                         integParamSet.h = integParamSet.b - integParamSet.a;
                         error = integConfigForEvalUserFx(integParamSet.a);
                     }
                     if (integParamSet.count == 2) {
-                        if (alu.getStkRetSize() != integParamSet.retLevel) {
+                        if (alu.getRetStackSize() != integParamSet.retLevel) {
                             error = ERROR_NESTED_INTEG;
                         } else {   //  Pas de Integ imbriqués, on continue
                             integParamSet.countFx = integParamSet.countFx + 1;
-                            integParamSet.sumFx = alu.getStkRegContents(STK_REGS.X);   //  f(a)
+                            integParamSet.sumFx = alu.getStackRegContents(STACK_REGS.X);   //  f(a)
                             error = integConfigForEvalUserFx(integParamSet.b);
                         }
                     }
                     if (integParamSet.count >= 3) {
                         if (integParamSet.n == 0) {
-                            integParamSet.sumFx = integParamSet.sumFx + alu.getStkRegContents(STK_REGS.X);   //  f(a) + f(b)
-                            integParamSet.romberg.add(new ArrayList<Double>());   //  Ligne n (0)
-                            integParamSet.romberg.get(0).add(integParamSet.sumFx / 2.0 * (integParamSet.b - integParamSet.a));
-                            integParamSet.n = 1;
-                            integParamSet.h = integParamSet.h / 2.0;
-                            integParamSet.sumFx = 0;
-                            integParamSet.countFx = 0;
-                            integParamSet.countFxMax = 1;
+                            integParamSet.sumFx = integParamSet.sumFx + alu.getStackRegContents(STACK_REGS.X);   //  f(a) + f(b)
+                            integParamSet.calcRombergFirstValue();   //  n=0
+                            integParamSet.setNextLevel();
                             error = integConfigForEvalUserFx(integParamSet.a + integParamSet.h * (2 * integParamSet.countFx + 1.0));   //  cad 2i-1 si i en base 1
                         } else {   //  n > 0
-                            integParamSet.sumFx = integParamSet.sumFx + alu.getStkRegContents(STK_REGS.X);
+                            integParamSet.sumFx = integParamSet.sumFx + alu.getStackRegContents(STACK_REGS.X);
                             integParamSet.countFx = integParamSet.countFx + 1;
                             if (integParamSet.countFx >= integParamSet.countFxMax) {   //  La somme est complète, on peut calculer la ligne n
-                                error = integParamSet.calcRombergLine();   //  Ligne n
-                                double newInteg = integParamSet.romberg.get(integParamSet.n).get(integParamSet.n);
-                                double diff = Math.abs(newInteg - integParamSet.romberg.get(integParamSet.n - 1).get(integParamSet.n - 1));
+                                integParamSet.calcRombergLineValues();   //  Ligne n
+                                double newInteg = integParamSet.getRombergCurrentValue();   //  [n,n]
+                                double diff = Math.abs(newInteg - integParamSet.getRombergPreviousValue());   //  [n-1,n-1]
                                 if (diff <= integParamSet.tol) {   //  OK c'est bon
-                                    alu.setStkRegContent(STK_REGS.X, newInteg);
-                                    alu.setStkRegContent(STK_REGS.Y, diff);
-                                    alu.setStkRegContent(STK_REGS.Z, integParamSet.b);
-                                    alu.setStkRegContent(STK_REGS.T, integParamSet.a);
+                                    alu.setStackRegContent(STACK_REGS.X, newInteg);
+                                    alu.setStackRegContent(STACK_REGS.Y, diff);
+                                    alu.setStackRegContent(STACK_REGS.Z, integParamSet.b);
+                                    alu.setStackRegContent(STACK_REGS.T, integParamSet.a);
                                     nextProgLineNumber = integParamSet.oldNextProgLineNumber;
                                     integParamSet.clear();
                                     if (requestStopAfterInteg) {   //  Forcer le STOP (comme en mode SST) si INTEG a été lancé au départ de mode NORM
@@ -1525,13 +1515,9 @@ public class MainActivity extends Activity {
                                 } else {   //  Tolérance toujours pas respectée => On continue ?
                                     integParamSet.iterCount = integParamSet.iterCount + 1;
                                     if (integParamSet.iterCount > integParamSet.ITER_COUNT_MAX) {   //  Il n'y a plus d'espoir
-                                        error = ERROR_MAX_ITER_INTEG;
+                                        error = ERROR_INTEG_ITER_MAX;
                                     } else {  //  On continue !
-                                        integParamSet.n = integParamSet.n + 1;
-                                        integParamSet.h = integParamSet.h / 2.0;
-                                        integParamSet.sumFx = 0;
-                                        integParamSet.countFx = 0;
-                                        integParamSet.countFxMax = (int) Math.pow(2, integParamSet.n - 1);
+                                        integParamSet.setNextLevel();
                                         error = integConfigForEvalUserFx(integParamSet.a + integParamSet.h * (2 * integParamSet.countFx + 1.0));   //  cad 2i-1 si i en base 1
                                     }
                                 }
@@ -2140,16 +2126,13 @@ public class MainActivity extends Activity {
                 if (alphaToX()) {
                     if (isWrapAround) {   //  On est passé de la fin au début => STOP
                         isWrapAround = false;
-                        ProgLine progLine1 = new ProgLine();
-                        progLine1.ops[LINE_OPS.BASE.INDEX()] = OPS.RTN;   //  Opération requalifiée et à examiner ci-dessous
-                        error = rtn(progLine1);
-                        progLine1 = null;
+                        error = rtn();   //  Opération requalifiée et à examiner ci-dessous
                     }
                 }
                 break;
             case RTN:
                 if (alphaToX()) {
-                    error = rtn(progLine);
+                    error = rtn();
                 }
                 break;
             case RS:
@@ -2184,10 +2167,9 @@ public class MainActivity extends Activity {
         return error;
     }
 
-    private String rtn(ProgLine progLine) {   //  Neutre sur StackLift ???
-        if (!alu.isStkRetEmpty()) {  //  La pile d'appels n'est pas vide
-            int dpln = alu.popStkRetProgLineNumber();   //  Si Code de retour SOLVE ou INTEG => UserFx a été évaluée et donc Retour à SOLVE ou INTEG qui avait demandé l'évaluation
-            alu.removeLastStkRetProgLineNumber();
+    private String rtn() {   //  Neutre sur StackLift ???
+        if (!alu.isRetStackEmpty()) {  //  La pile d'appels n'est pas vide
+            int dpln = alu.popProgLineNumber();   //  Si Code de retour SOLVE ou INTEG => UserFx a été évaluée et donc Retour à SOLVE ou INTEG qui avait demandé l'évaluation
             if ((dpln == SOLVE_RETURN_CODE) || (dpln == INTEG_RETURN_CODE)) {
                 if (dpln == SOLVE_RETURN_CODE) {
                     tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.SOLVE;   //  Rappeler Solve pour continuer
@@ -2197,7 +2179,7 @@ public class MainActivity extends Activity {
                     tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.INTEG;
                     tempProgLine.destProgLineNumber = integParamSet.userFxLineNumber;
                 }
-                exec(tempProgLine);
+                error = exec(tempProgLine);
             } else {   //  Normal, Pas Code de retour à SOLVE ou INTEG
                 nextProgLineNumber = dpln;
             }
@@ -2210,7 +2192,7 @@ public class MainActivity extends Activity {
 
     private String solveConfigForEvalUserFx(double x) {
         alu.fillStack(x);   //  C'est ainsi que procède la HP-15C
-        if (!alu.pushStkRetProgLineNumber(SOLVE_RETURN_CODE)) {   //  Push Code de retour spécial après évaluation de UserFx => Retour à SOLVE  cf (RTN);    Si False => MAX_RETS dépassé
+        if (!alu.pushProgLineNumber(SOLVE_RETURN_CODE)) {   //  Push Code de retour spécial après évaluation de UserFx => Retour à SOLVE  cf (RTN);    Si False => MAX_RETS dépassé
             error = ERROR_RET_STACK_FULL;
         } else {  //  OK Push
             nextProgLineNumber = solveParamSet.userFxLineNumber;   //  Emplacement de UserFx à exécuter
@@ -2220,9 +2202,9 @@ public class MainActivity extends Activity {
 
     private String integConfigForEvalUserFx(double x) {
         alu.fillStack(x);   //  C'est ainsi que procède la HP-15C
-        if (!alu.pushStkRetProgLineNumber(INTEG_RETURN_CODE)) {   //  Push Code de retour spécial après évaluation de UserFx => Retour à INTEG  cf (RTN);    Si False => MAX_RETS dépassé
+        if (!alu.pushProgLineNumber(INTEG_RETURN_CODE)) {   //  Push Code de retour spécial après évaluation de UserFx => Retour à INTEG  cf (RTN);    Si False => MAX_RETS dépassé
             error = ERROR_RET_STACK_FULL;
-        } else {  //  OK Push   //  OK Push
+        } else {  //  OK Push
             nextProgLineNumber = integParamSet.userFxLineNumber;   //  Emplacement de UserFx à exécuter
         }
         return error;
