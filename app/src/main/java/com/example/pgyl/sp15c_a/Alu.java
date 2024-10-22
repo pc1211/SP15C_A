@@ -437,16 +437,14 @@ public class Alu {
         if (n > 0) {   //  Ajouter n registres
             if (newMaxDataRegIndex <= (MAX_REGS - 1 - BASE_REGS.R0.INDEX())) {   //  Respecte Max
                 for (int i = 0; i <= (n - 1); i = i + 1) {
-                    regs.add(0d);
+                    regs.add(0.0);
                 }
             } else {  //  > Max
                 res = RANGE_ERROR;
             }
         } else {   //  Retirer n registres, en commençant par les derniers de la liste
             if (newMaxDataRegIndex >= (BASE_REGS.values().length - BASE_REGS.R0.INDEX())) {   //   Respecte Min
-                for (int i = 0; i <= (n - 1); i = i + 1) {
-                    regs.subList(newMaxDataRegIndex + BASE_REGS.R0.INDEX(), oldMaxDataRegIndex + BASE_REGS.R0.INDEX()).clear();
-                }
+                regs.subList(newMaxDataRegIndex + BASE_REGS.R0.INDEX(), oldMaxDataRegIndex + BASE_REGS.R0.INDEX()).clear();
             } else {   //  < Min
                 res = RANGE_ERROR;
             }
@@ -1676,7 +1674,7 @@ public class Alu {
             for (int i = 0; i <= (n - 1); i = i + 1) {   //  Copier dans la nouvelle ligne
                 newProgLine.ops[i] = progLine.ops[i];
             }
-            newProgLine.destProgLineNumber = progLine.destProgLineNumber;
+            newProgLine.paramAddress = progLine.paramAddress;
             newProgLine.symbol = progLine.symbol;
             proglines.add(progLineNumber, newProgLine);
             res = true;
@@ -1693,7 +1691,7 @@ public class Alu {
         for (int i = 0; i <= (n - 1); i = i + 1) {
             progLine.ops[i] = null;
         }
-        progLine.destProgLineNumber = 0;
+        progLine.paramAddress = 0;
         progLine.symbol = "";
     }
 
@@ -1795,7 +1793,7 @@ public class Alu {
             if ((op.equals(OPS.GTO)) || (op.equals(OPS.GSB)) || (op.equals(OPS.SOLVE)) || (op.equals(OPS.INTEG))) {
                 LABELS lbl = symbolToLabelMap.get(progLine.symbol);
                 int pln = labelToprogLineNumberMap.get(lbl);
-                progLine.destProgLineNumber = pln;
+                progLine.paramAddress = pln;
             }
         }
     }

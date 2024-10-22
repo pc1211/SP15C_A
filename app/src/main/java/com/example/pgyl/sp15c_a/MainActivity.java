@@ -435,7 +435,7 @@ public class MainActivity extends Activity {
         if (isAutoOp) {   //  Op à obtenir automatiquement (p.ex. en mode RUN)
             currentOp = readProgLine.ops[readProgLineOpIndex];
             if (readProgLineOpIndex == LINE_OPS.BASE.INDEX()) {
-                tempProgLine.destProgLineNumber = readProgLine.destProgLineNumber;
+                tempProgLine.paramAddress = readProgLine.paramAddress;
             }
             readProgLineOpIndex = readProgLineOpIndex + 1;
         }
@@ -695,7 +695,7 @@ public class MainActivity extends Activity {
                 tempProgLine.ops[LINE_OPS.A09.INDEX()] = currentOp;
                 tempProgLine.symbol = (tempProgLine.ops[LINE_OPS.DOT.INDEX()] != null ? OPS.DOT.SYMBOL() + currentOp.SYMBOL() : currentOp.SYMBOL());
                 if ((inOp.equals(OPS.STO)) || (inOp.equals(OPS.RCL)) || (inOp.equals(OPS.XCHG)) || (inOp.equals(OPS.DSE)) || (inOp.equals(OPS.ISG))) {
-                    tempProgLine.destProgLineNumber = alu.getRegIndexBySymbol(tempProgLine.symbol);
+                    tempProgLine.paramAddress = alu.getRegIndexBySymbol(tempProgLine.symbol);
                 }
             }
             if ((currentOp.INDEX() >= OPS.A.INDEX()) && (currentOp.INDEX() <= OPS.E.INDEX())) {
@@ -703,7 +703,7 @@ public class MainActivity extends Activity {
                 tempProgLine.symbol = currentOp.SYMBOL();
             }
             if (currentOp.equals(OPS.I)) {
-                tempProgLine.destProgLineNumber = BASE_REGS.RI.INDEX();
+                tempProgLine.paramAddress = BASE_REGS.RI.INDEX();
                 tempProgLine.symbol = currentOp.SYMBOL();
             }
         }
@@ -725,14 +725,14 @@ public class MainActivity extends Activity {
 
                             if ((mode.equals(MODES.EDIT)) && (tempProgLine.ops[LINE_OPS.CHS.INDEX()] != null) && (!isAutoOp)) {   //  GTO CHS nnnnn en mode EDIT et pas en mode de lecture automatique de lignes
                                 if (tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) {
-                                    if (tempProgLine.destProgLineNumber == 0) {
-                                        tempProgLine.destProgLineNumber = 1;   //  cf ci-dessous, permet de multiplier par 10 puis d'ajouter un n (de nnnn), le 1 deviendra 10000 après entrée de nnnn
+                                    if (tempProgLine.paramAddress == 0) {
+                                        tempProgLine.paramAddress = 1;   //  cf ci-dessous, permet de multiplier par 10 puis d'ajouter un n (de nnnn), le 1 deviendra 10000 après entrée de nnnn
                                     }
-                                    tempProgLine.destProgLineNumber = 10 * tempProgLine.destProgLineNumber + Integer.valueOf(tempProgLine.ops[LINE_OPS.A09.INDEX()].SYMBOL());
-                                    if (tempProgLine.destProgLineNumber > 10000) {   //  OK 4 chiffres obligatoires (nnnn)
+                                    tempProgLine.paramAddress = 10 * tempProgLine.paramAddress + Integer.valueOf(tempProgLine.ops[LINE_OPS.A09.INDEX()].SYMBOL());
+                                    if (tempProgLine.paramAddress > 10000) {   //  OK 4 chiffres obligatoires (nnnn)
                                         isComplete = true;
-                                        int dpln = tempProgLine.destProgLineNumber - 10000;   //  nnnn
-                                        tempProgLine.destProgLineNumber = 0;
+                                        int dpln = tempProgLine.paramAddress - 10000;   //  nnnn
+                                        tempProgLine.paramAddress = 0;
                                         nextProgLineNumber = dpln;
                                         if (dpln > (alu.getProgLinesSize() - 1)) {
                                             error = ERROR_LINE_NUMBER;
@@ -830,7 +830,7 @@ public class MainActivity extends Activity {
                 alu.linkDestProgLineNumbers();
                 int dpln = alu.getGTODestProgLineNumber(tempProgLine);   //  L'exec() utilisera le progLine.ref, mis à jour dans les lignes existantes seulement (ou si GTO/GSB I), donc pas dans tempProgLine en mode NORM !
                 if (dpln != (-1)) {   //  OK
-                    tempProgLine.destProgLineNumber = dpln;
+                    tempProgLine.paramAddress = dpln;
                     if (setRunMode) {
                         if (tempProgLine.ops[LINE_OPS.BASE.INDEX()] == OPS.SOLVE) {
                             requestStopAfterSolve = true;   //  Nécessaire car un SOLVE ou INTEG ne se termine pas par un RTN comme un GTO ou GSB
@@ -1286,14 +1286,14 @@ public class MainActivity extends Activity {
             case ENG:
                 if (alphaToX()) {
                     alu.setRoundMode(progLine.ops[LINE_OPS.BASE.INDEX()]);
-                    int n = (progLine.ops[LINE_OPS.I.INDEX()] != null ? (int) alu.getRegContentsByIndex(progLine.destProgLineNumber) : Integer.valueOf(progLine.symbol));
+                    int n = (progLine.ops[LINE_OPS.I.INDEX()] != null ? (int) alu.getRegContentsByIndex(progLine.paramAddress) : Integer.valueOf(progLine.symbol));
                     alu.setRoundParam(n);
                 }
                 break;
             case STO:
                 if (alphaToX()) {
                     if (progLine.ops[LINE_OPS.RAND.INDEX()] == null) {   //  STO RAN# sans effet
-                        int regIndex = progLine.destProgLineNumber;
+                        int regIndex = progLine.paramAddress;
                         if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
                             int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
                             regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
@@ -1321,7 +1321,7 @@ public class MainActivity extends Activity {
                             alu.doStackLift();    //  Un stacklift obligatoire + un deuxième (cf supra) si stackLift activé
                             error = alu.sumXYToXY();
                         } else {   //  Pas RCL SIGMA_PLUS
-                            int regIndex = progLine.destProgLineNumber;
+                            int regIndex = progLine.paramAddress;
                             if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
                                 int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
                                 regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
@@ -1350,7 +1350,7 @@ public class MainActivity extends Activity {
                 break;
             case XCHG:
                 if (alphaToX()) {
-                    int regIndex = progLine.destProgLineNumber;
+                    int regIndex = progLine.paramAddress;
                     if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
                         int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
                         regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
@@ -1381,7 +1381,7 @@ public class MainActivity extends Activity {
                             error = ERROR_GTO_GSB;
                         }
                     } else {   //  Pas GTO I
-                        nextProgLineNumber = progLine.destProgLineNumber;
+                        nextProgLineNumber = progLine.paramAddress;
                     }
                 }
                 break;
@@ -1401,7 +1401,7 @@ public class MainActivity extends Activity {
                                 error = ERROR_GTO_GSB;
                             }
                         } else {   //  Pas GSB I
-                            nextProgLineNumber = progLine.destProgLineNumber;
+                            nextProgLineNumber = progLine.paramAddress;
                         }
                     }
                 }
@@ -1411,7 +1411,7 @@ public class MainActivity extends Activity {
                     solveParamSet.count = solveParamSet.count + 1;
                     if (solveParamSet.count == 1) {  //  Initialisation et début de traitement
                         solveParamSet.oldNextProgLineNumber = nextProgLineNumber;
-                        solveParamSet.userFxLineNumber = progLine.destProgLineNumber;
+                        solveParamSet.userFxLineNumber = progLine.paramAddress;
                         solveParamSet.retLevel = alu.getRetStackSize();
                         solveParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
                         solveParamSet.a = alu.getStackRegContents(STACK_REGS.Y);   //  Guess 1
@@ -1471,7 +1471,7 @@ public class MainActivity extends Activity {
                     integParamSet.count = integParamSet.count + 1;
                     if (integParamSet.count == 1) {  //  Initialisation et début de traitement
                         integParamSet.oldNextProgLineNumber = nextProgLineNumber;
-                        integParamSet.userFxLineNumber = progLine.destProgLineNumber;
+                        integParamSet.userFxLineNumber = progLine.paramAddress;
                         integParamSet.retLevel = alu.getRetStackSize();
                         integParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
                         integParamSet.a = alu.getStackRegContents(STACK_REGS.Y);   //  a
@@ -1532,7 +1532,7 @@ public class MainActivity extends Activity {
             case DSE:
             case ISG:
                 if (alphaToX()) {
-                    int regIndex = progLine.destProgLineNumber;
+                    int regIndex = progLine.paramAddress;
                     if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {   //  (i))
                         int dataRegIndex = (int) alu.getRegContentsByIndex(BASE_REGS.RI.INDEX());   //  Valeur dans I
                         regIndex = alu.getRegIndexByDataRegIndex(dataRegIndex);
@@ -2173,11 +2173,11 @@ public class MainActivity extends Activity {
             if ((dpln == SOLVE_RETURN_CODE) || (dpln == INTEG_RETURN_CODE)) {
                 if (dpln == SOLVE_RETURN_CODE) {
                     tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.SOLVE;   //  Rappeler Solve pour continuer
-                    tempProgLine.destProgLineNumber = solveParamSet.userFxLineNumber;
+                    tempProgLine.paramAddress = solveParamSet.userFxLineNumber;
                 }
                 if (dpln == INTEG_RETURN_CODE) {
                     tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.INTEG;
-                    tempProgLine.destProgLineNumber = integParamSet.userFxLineNumber;
+                    tempProgLine.paramAddress = integParamSet.userFxLineNumber;
                 }
                 error = exec(tempProgLine);
             } else {   //  Normal, Pas Code de retour à SOLVE ou INTEG

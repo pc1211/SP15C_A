@@ -23,12 +23,12 @@ public class ProgLine {
     }
 
     public OPS[] ops;
-    public int destProgLineNumber;
+    public int paramAddress;   //  index dans BASE_REGS (pour RCL/STO/XCHG/DSE/ISG) ou progLineNumber (pour LBL/GTO/GSB/SOLVE/INTEG)
     public String symbol;
 
     public ProgLine() {
         ops = new OPS[LINE_OPS.values().length];
-        destProgLineNumber = 0;
+        paramAddress = 0;
         symbol = "";
     }
 }
