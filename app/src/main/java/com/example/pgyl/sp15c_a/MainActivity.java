@@ -1445,7 +1445,6 @@ public class MainActivity extends Activity {
                                 alu.setStackRegContent(STACK_REGS.X, newX);
                                 alu.setStackRegContent(STACK_REGS.Y, solveParamSet.c);
                                 alu.setStackRegContent(STACK_REGS.Z, solveParamSet.q);
-                                alu.setStackRegContent(STACK_REGS.T, solveParamSet.c);   //  Ancien x ???
                                 nextProgLineNumber = solveParamSet.oldNextProgLineNumber;
                                 solveParamSet.clear();
                                 if (requestStopAfterSolve) {   //  Forcer le STOP (comme en mode SST) si SOLVE a été lancé au départ de mode NORM
