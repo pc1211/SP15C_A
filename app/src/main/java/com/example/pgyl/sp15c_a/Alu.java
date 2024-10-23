@@ -387,10 +387,8 @@ public class Alu {
         for (int i = 0; i <= (DEF_MAX_REGS - 1); i = i + 1) {   //  Les 21 registres de base (I, R0 à R9, R.0 à R.9) sont au début
             regs.add(0d);
         }
-
+        // setupStackRegs();   //  stackRegs sera alimenté par setStackRegs dans MainActivity (au départ de la DB)
         setupMaps();
-        stackRegs = new double[STACK_REGS.values().length];
-        clearStack();
         flags = new boolean[MAX_FLAGS];
         clearFlags();
         setupProgLines();
@@ -452,6 +450,11 @@ public class Alu {
         return res;
     }
 
+    public void setupStackRegs() {
+        stackRegs = new double[STACK_REGS.values().length];
+        clearStackRegs();
+    }
+
     public String clearRegs() {
         String res = "";
         for (int i = 0; i <= (regs.size() - 1); i = i + 1) {   //  Tout effacer: I, R0 à R9, R.0 à R.9 et suivants
@@ -470,6 +473,30 @@ public class Alu {
 
     public int getRegIndexBySymbol(String symbol) {   //  Pour les premiers registres de regs, cad ceux de BASE_REGS (I, R0 à R9, R.0 à R.9)
         return symbolToBaseRegMap.get(symbol).INDEX();
+    }
+
+    public int getRegsMaxIndex() {
+        return regs.size() - 1;
+    }
+
+    public int getRegsAbsoluteSizeMax() {
+        return MAX_REGS;
+    }
+
+    public double[] getStackRegs() {
+        return stackRegs;
+    }
+
+    public void setStackRegs(double[] stackRegs) {
+        this.stackRegs = stackRegs;
+    }
+
+    public double getStackRegContents(STACK_REGS stackReg) {
+        return stackRegs[stackReg.INDEX()];
+    }
+
+    public void setStackRegContent(STACK_REGS stackReg, double value) {
+        stackRegs[stackReg.INDEX()] = value;
     }
 
     public boolean isGhostKey(OPS op) {
@@ -513,26 +540,6 @@ public class Alu {
 
     public int getRoundParam() {
         return roundParam;
-    }
-
-    public int getRegsMaxIndex() {
-        return regs.size() - 1;
-    }
-
-    public int getRegsAbsoluteSizeMax() {
-        return MAX_REGS;
-    }
-
-    public double[] getStackRegs() {
-        return stackRegs;
-    }
-
-    public double getStackRegContents(STACK_REGS stackReg) {
-        return stackRegs[stackReg.INDEX()];
-    }
-
-    public void setStackRegContent(STACK_REGS stackReg, double value) {
-        stackRegs[stackReg.INDEX()] = value;
     }
 
     public String getRoundXForDisplay() {
@@ -1475,7 +1482,7 @@ public class Alu {
         stackRegs[STACK_REGS.Y.INDEX()] = temp;
     }
 
-    public void clearStack() {   //  T,Z,Y,X -> 0,0,0,0
+    public void clearStackRegs() {   //  T,Z,Y,X -> 0,0,0,0
         stackRegs[STACK_REGS.X.INDEX()] = 0;
         stackRegs[STACK_REGS.Y.INDEX()] = 0;
         stackRegs[STACK_REGS.Z.INDEX()] = 0;

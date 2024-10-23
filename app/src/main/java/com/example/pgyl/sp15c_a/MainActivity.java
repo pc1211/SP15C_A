@@ -31,7 +31,21 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
+import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
+import static com.example.pgyl.pekislib_a.StringDBTables.getAppInfosDataVersionIndex;
+import static com.example.pgyl.pekislib_a.StringDBTables.getAppInfosTableName;
+import static com.example.pgyl.pekislib_a.StringDBUtils.createPekislibTableIfNotExists;
+import static com.example.pgyl.pekislib_a.StringDBUtils.getCurrent;
+import static com.example.pgyl.pekislib_a.StringDBUtils.setCurrent;
 import static com.example.pgyl.pekislib_a.TimeDateUtils.MILLISECONDS_PER_SECOND;
+import static com.example.pgyl.sp15c_a.StringDBTables.DATA_VERSION;
+import static com.example.pgyl.sp15c_a.StringDBTables.getStackRegsTableName;
+import static com.example.pgyl.sp15c_a.StringDBUtils.createSp15cTableIfNotExists;
+import static com.example.pgyl.sp15c_a.StringDBUtils.getDBStackRegs;
+import static com.example.pgyl.sp15c_a.StringDBUtils.initializeTableStackRegs;
+import static com.example.pgyl.sp15c_a.StringDBUtils.saveDBStackRegs;
+import static com.example.pgyl.sp15c_a.StringDBUtils.stackRegRowsToStackRegs;
+import static com.example.pgyl.sp15c_a.StringDBUtils.stackRegsToStackRegsRows;
 
 //  MainActivity fait appel à CtRecordShandler pour la gestion des CtRecord (création, suppression, tri, écoute des événements, ...) grâce aux boutons de contrôle agissant sur la sélection des items de la liste, ...
 //  MainCtListUpdater maintient la liste de MainActivity (rafraîchissement, scrollbar, ...), fait appel à MainCtListAdapter (pour gérer chaque item) et également à CtRecordShandler (pour leur mise à jour)
@@ -150,7 +164,8 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
 
-        //setCurrent(stringDB, getAppInfosTableName(), getAppInfosDataVersionIndex(), String.valueOf(DATA_VERSION));
+        setCurrent(stringDB, getAppInfosTableName(), getAppInfosDataVersionIndex(), String.valueOf(DATA_VERSION));
+        saveDBStackRegs(stringDB, stackRegsToStackRegsRows(alu.getStackRegs()));
         ///mainCtListUpdater.stopAutomatic();
         //mainCtListUpdater.close();
         //mainCtListUpdater = null;
@@ -170,8 +185,8 @@ public class MainActivity extends Activity {
         integParamSet = null;
         tempProgLine = null;
         readProgLine = null;
-        //stringDB.close();
-        //stringDB = null;
+        stringDB.close();
+        stringDB = null;
         //menu = null;
         //savePreferences();
     }
@@ -182,13 +197,13 @@ public class MainActivity extends Activity {
         super.onResume();
 
         setContentView(R.layout.main);
-        //shpFileName = getPackageName() + SHP_FILE_NAME_SUFFIX;   //  Sans nom d'activité car sera partagé avec CtDisplayActivity
+        //shpFileName = getPackageName() + "." + getClass().getSimpleName() + SHP_FILE_NAME_SUFFIX;
         //keepScreen = getSHPKeepScreen();
 
+        setupStringDB();
         setupButtons();
         setupDotMatrixDisplay();
         setupSideDotMatrixDisplay();
-        //setupStringDB();
         //setupCtRecordsHandler();
         //setupMainCtList();
         //setupMainCtListUpdater();
@@ -221,14 +236,16 @@ public class MainActivity extends Activity {
         requestStopAfterSolve = false;
         requestStopAfterInteg = false;
 
-        setupDotMatrixDisplayUpdater();
-        updateDisplayDotMatrixColors();
-
         alu = new Alu();
         solveParamSet = new SolveParamSet();
         integParamSet = new IntegParamSet();
 
+        alu.setStackRegs(stackRegRowsToStackRegs(getDBStackRegs(stringDB)));
+
+        setupDotMatrixDisplayUpdater();
+        updateDisplayDotMatrixColors();
         dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
+
         updateDisplayButtonColors();
         setupSideDotMatrixDisplayUpdater();
         updateSideDotMatrixColors();
@@ -2094,7 +2111,7 @@ public class MainActivity extends Activity {
             case CLEAR_SIGMA:   //  Neutre sur StackLift
                 if (alphaToX()) {
                     error = alu.clearStats();
-                    alu.clearStack();
+                    alu.clearStackRegs();
                 }
                 break;
             case ENTER:   // Désactive Stacklift
@@ -2409,6 +2426,35 @@ public class MainActivity extends Activity {
                 automaticOp();
             }
         };
+    }
+
+    private void setupStringDB() {
+        stringDB = new StringDB(this);
+        stringDB.open();
+
+        String DBDataVersion = (stringDB.tableExists(getAppInfosTableName())) ? getCurrent(stringDB, getAppInfosTableName(), getAppInfosDataVersionIndex()) : null;
+        int ver = (DBDataVersion != null) ? Integer.parseInt(DBDataVersion) : 0;
+        if (ver != DATA_VERSION) {   //  Données invalides => Tout réinitialiser, avec données par défaut
+            stringDB.deleteTableIfExists(getAppInfosTableName());
+            stringDB.deleteTableIfExists(getActivityInfosTableName());
+            stringDB.deleteTableIfExists(getStackRegsTableName());
+            msgBox("All Data Deleted (Invalid)", this);
+        }
+
+        if (!stringDB.tableExists(getAppInfosTableName())) {
+            createPekislibTableIfNotExists(stringDB, getAppInfosTableName());    //  Réinitialiser
+            setCurrent(stringDB, getAppInfosTableName(), getAppInfosDataVersionIndex(), String.valueOf(DATA_VERSION));
+        }
+        if (!stringDB.tableExists(getActivityInfosTableName())) {
+            createPekislibTableIfNotExists(stringDB, getActivityInfosTableName());
+        }
+        if (!stringDB.tableExists(getStackRegsTableName())) {
+            createSp15cTableIfNotExists(stringDB, getStackRegsTableName());
+            //initializeTableStackRegs(stringDB);
+            //String[] defaults = getDefaults(stringDB, getStackRegsTableName());
+            //setCurrentsForActivity(stringDB, SP15C_ACTIVITIES.CT_DISPLAY.toString(), getDotMatrixDisplayColorsTableName(), defaults);
+            //createPresetWithDefaultValues(getDotMatrixDisplayColorsTableName(), defaults);   //  => PRESET1 = DEFAULT  dans la table de couleurs de DotMatrixDisplay
+        }
     }
 
 }
