@@ -6,6 +6,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
 
+import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
+import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
+
 public class Alu {
     public enum OPS {
         BEGIN("BEGIN"),
@@ -367,6 +370,7 @@ public class Alu {
     private int roundParam;
     private OPS angleMode;
     private boolean stackLiftEnabled;
+    private HashMap<Integer, KEYS> keyCodeToKeyMap;
     private HashMap<String, BASE_REGS> symbolToBaseRegMap;
     private HashMap<OPS, KEYS> opToKeyMap;
     private HashMap<OPS, Integer> opToShiftKeyCodeMap;
@@ -375,7 +379,7 @@ public class Alu {
     private HashMap<String, LABELS> symbolToLabelMap;
     private HashMap<Integer, LABELS> labelIndexToLabelMap;
     private HashMap<LABELS, Integer> labelToprogLineNumberMap;
-    private ArrayList<ProgLine> proglines;
+    private ArrayList<ProgLine> progLines;
     private ArrayList<Integer> retStack;
 
     public Alu() {
@@ -383,16 +387,12 @@ public class Alu {
     }
 
     private void init() {
-        regs = new ArrayList<Double>();
-        for (int i = 0; i <= (DEF_MAX_REGS - 1); i = i + 1) {   //  Les 21 registres de base (I, R0 à R9, R.0 à R.9) sont au début
-            regs.add(0d);
-        }
-        // setupStackRegs();   //  stackRegs sera alimenté par setStackRegs dans MainActivity (au départ de la DB)
+        //  setupStackRegs();   //  sera alimenté par set... dans MainActivity (au départ de la DB)
+        //  setupFlags();
+        //  setupRegs();
+        //  setupRetStack();
+        //  setupProgLines();
         setupMaps();
-        flags = new boolean[MAX_FLAGS];
-        clearFlags();
-        setupProgLines();
-        setupRetStack();
         angleMode = OPS.RAD;
         roundMode = OPS.FIX;
         roundParam = 4;
@@ -406,8 +406,8 @@ public class Alu {
         retStack = null;
         regs.clear();
         regs = null;
-        proglines.clear();
-        proglines = null;
+        progLines.clear();
+        progLines = null;
         symbolToBaseRegMap.clear();
         symbolToBaseRegMap = null;
         opToKeyMap.clear();
@@ -422,8 +422,12 @@ public class Alu {
         symbolToLabelMap = null;
         labelIndexToLabelMap.clear();
         labelIndexToLabelMap = null;
-        labelToprogLineNumberMap.clear();
-        labelToprogLineNumberMap = null;
+        keyCodeToKeyMap.clear();
+        keyCodeToKeyMap = null;
+        if (labelToprogLineNumberMap != null) {
+            labelToprogLineNumberMap.clear();
+            labelToprogLineNumberMap = null;
+        }
     }
 
     public String setMaxDataRegIndex(int newMaxDataRegIndex) {   //  les registres de données classiques (data) commencent à partir de R0
@@ -448,11 +452,6 @@ public class Alu {
             }
         }
         return res;
-    }
-
-    public void setupStackRegs() {
-        stackRegs = new double[STACK_REGS.values().length];
-        clearStackRegs();
     }
 
     public String clearRegs() {
@@ -483,6 +482,18 @@ public class Alu {
         return MAX_REGS;
     }
 
+    public void setRegs(ArrayList<Double> regs) {
+        this.regs = regs;
+    }
+
+    public ArrayList<Double> getRegs() {
+        return regs;
+    }
+
+    public int getRegsSize() {
+        return regs.size();
+    }
+
     public double[] getStackRegs() {
         return stackRegs;
     }
@@ -499,6 +510,13 @@ public class Alu {
         stackRegs[stackReg.INDEX()] = value;
     }
 
+    public void clearFlags() {
+        int n = flags.length;
+        for (int i = 1; i <= (n - 1); i = i + 1) {
+            flags[i] = false;
+        }
+    }
+
     public boolean isGhostKey(OPS op) {
         return (opToGhostKeyMap.get(op) != null);
     }
@@ -510,12 +528,12 @@ public class Alu {
         return op;
     }
 
-    public KEYS getKeyByOp(OPS op) {
-        return opToKeyMap.get(op);
+    public KEYS getKeyByKeyCode(int keyCode) {
+        return keyCodeToKeyMap.get(keyCode);
     }
 
-    public ArrayList<Double> getRegs() {
-        return regs;
+    public KEYS getKeyByOp(OPS op) {
+        return opToKeyMap.get(op);
     }
 
     public void setAngleMode(OPS angleMode) {
@@ -1229,6 +1247,14 @@ public class Alu {
         return flags[index];
     }
 
+    public boolean[] getFlags() {
+        return flags;
+    }
+
+    public void setFlags(boolean[] flags) {
+        this.flags = flags;
+    }
+
     public String factX() {
         String error = "";
         stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
@@ -1497,13 +1523,6 @@ public class Alu {
         stackRegs[STACK_REGS.T.INDEX()] = value;
     }
 
-    public void clearFlags() {
-        int n = flags.length;
-        for (int i = 1; i <= (n - 1); i = i + 1) {
-            flags[i] = false;
-        }
-    }
-
     public void stackRollDown() {   //  T,Z,Y,X -> X,T,Z,Y
         Double temp = stackRegs[STACK_REGS.X.INDEX()];
         stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
@@ -1665,17 +1684,62 @@ public class Alu {
         return Math.sqrt(2 * Math.PI) * Math.pow(t, x + 0.5) * Math.exp(-t) * a;
     }
 
+    public void setupProgLines() {
+        progLines = new ArrayList<ProgLine>();   //  progLines va progressivement se remplir progressivement avec les encodeKeyCode plus bas
+        ProgLine progLine = new ProgLine();
+        progLine.ops[LINE_OPS.BASE.INDEX()] = OPS.BEGIN;   //  Ajouter le 1er élément, tout en bas de la pile
+        progLines.add(0, progLine);
+    }
+
+    public ArrayList<ProgLine> getProgLines() {
+        return progLines;
+    }
+
+    public String[][] progLinesToRows() {
+        String[][] res = null;
+        if (progLines != null) {
+            int n = progLines.size() - 1;   //  Ignorer la ligne 0
+            if (n > 0) {
+                res = new String[n][4];   //  4: champ ID + champ VALUE1,2,3
+                for (int i = 1; i <= n; i = i + 1) {   //  Partir de la ligne 1
+                    String pl = progLineToString(i, false);   //  une string avec max 3 opcodes; p.ex. "0001: 45 23 24"
+                    String[] plc = pl.split(" ");   //   "0001:"  "45"  "23"  "24"
+                    res[i - 1][TABLE_ID_INDEX] = String.valueOf(i);   //  "1"
+                    res[i - 1][TABLE_DATA_INDEX] = (plc.length >= 2 ? plc[1] : null);   //  "45"
+                    res[i - 1][TABLE_DATA_INDEX + 1] = (plc.length >= 3 ? plc[2] : null);   //  "23"
+                    res[i - 1][TABLE_DATA_INDEX + 2] = (plc.length >= 4 ? plc[3] : null);   //  "24"
+                }
+            }
+        }
+        return res;
+    }
+
+    public boolean pushProgLineNumber(int progLineNumber) {   //  PUSH
+        boolean res = false;
+        if (retStack.size() < RET_STACK_SIZE_MAX) {
+            retStack.add(0, progLineNumber);
+            res = true;
+        }
+        return res;
+    }
+
+    public int popProgLineNumber() {
+        int res = retStack.get(0);
+        retStack.remove(0);
+        return res;
+    }
+
     public ProgLine getProgLine(int progLineNumber) {
-        return proglines.get(progLineNumber);
+        return progLines.get(progLineNumber);
     }
 
     public int getProgLinesSize() {
-        return proglines.size();
+        return progLines.size();
     }
 
     public boolean addProgLineAtNumber(ProgLine progLine, int progLineNumber) {
         boolean res = false;
-        if (proglines.size() < MAX_PROG_LINES) {   //  Il y a encore assez de lignes dispponibles
+        if (progLines.size() < MAX_PROG_LINES) {   //  Il y a encore assez de lignes dispponibles
             ProgLine newProgLine = new ProgLine();
             int n = progLine.ops.length;
             for (int i = 0; i <= (n - 1); i = i + 1) {   //  Copier dans la nouvelle ligne
@@ -1683,14 +1747,14 @@ public class Alu {
             }
             newProgLine.paramAddress = progLine.paramAddress;
             newProgLine.symbol = progLine.symbol;
-            proglines.add(progLineNumber, newProgLine);
+            progLines.add(progLineNumber, newProgLine);
             res = true;
         }
         return res;
     }
 
     public void removeProgLineAtNumber(int progLineNumber) {
-        proglines.remove(progLineNumber);
+        progLines.remove(progLineNumber);
     }
 
     public void clearProgLine(ProgLine progLine) {
@@ -1703,17 +1767,10 @@ public class Alu {
     }
 
     public void clearProgLines() {
-        proglines.clear();
+        progLines.clear();
         ProgLine progLine = new ProgLine();
         progLine.ops[LINE_OPS.BASE.INDEX()] = OPS.BEGIN;
-        proglines.add(progLine);    // A l'index 0, proglines contient au moins BEGIN
-    }
-
-    private void setupProgLines() {
-        proglines = new ArrayList<ProgLine>();
-        ProgLine progLine = new ProgLine();
-        progLine.ops[LINE_OPS.BASE.INDEX()] = OPS.BEGIN;
-        proglines.add(progLine);   // A l'index 0, proglines contient au moins BEGIN
+        progLines.add(progLine);    // A l'index 0, proglines contient au moins BEGIN
     }
 
     public String progLineToString(int progLineNumber, boolean displaySymbol) {   //  displaySymbol True => Afficher uniquement symboles ; displaySymbol False => afficher keyCodes (et parfois symbol (p.ex. ".5" ...)
@@ -1721,7 +1778,7 @@ public class Alu {
         String res = "";
         String s = "";
         if (progLineNumber != 0) {
-            ProgLine progLine = proglines.get(progLineNumber);
+            ProgLine progLine = progLines.get(progLineNumber);
             OPS opBase = progLine.ops[LINE_OPS.BASE.INDEX()];   //  LINE_OPS: BASE, A4OP, DOT, A09, AE, I, DIM, INDI, RAND, SIGMA_PLUS, CHS, GHOST1, GHOST2
             boolean isGhost = (opToGhostKeyMap.get(opBase) != null);
             int iMin = ((isGhost && !displaySymbol) ? LINE_OPS.GHOST1.INDEX() : LINE_OPS.BASE.INDEX());
@@ -1782,9 +1839,9 @@ public class Alu {
 
     public void rebuildlabelToProgLineNumberMap() {
         labelToprogLineNumberMap = new HashMap<LABELS, Integer>();
-        int n = proglines.size();
+        int n = progLines.size();
         for (int i = 0; i <= (n - 1); i = i + 1) {
-            ProgLine progLine = proglines.get(i);
+            ProgLine progLine = progLines.get(i);
             OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];
             if (op.equals(OPS.LBL)) {
                 labelToprogLineNumberMap.put(symbolToLabelMap.get(progLine.symbol), i);
@@ -1793,9 +1850,9 @@ public class Alu {
     }
 
     public void linkDestProgLineNumbers() {
-        int n = proglines.size();
+        int n = progLines.size();
         for (int i = 0; i <= (n - 1); i = i + 1) {
-            ProgLine progLine = proglines.get(i);
+            ProgLine progLine = progLines.get(i);
             OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];
             if ((op.equals(OPS.GTO)) || (op.equals(OPS.GSB)) || (op.equals(OPS.SOLVE)) || (op.equals(OPS.INTEG))) {
                 LABELS lbl = symbolToLabelMap.get(progLine.symbol);
@@ -1818,7 +1875,7 @@ public class Alu {
                     }
                 }
             } else {   //  n<0 cad GTO I négatif => GTO ProgLineNumber  (-n=ProgLine number)
-                if ((-n) <= (proglines.size() - 1)) {
+                if ((-n) <= (progLines.size() - 1)) {
                     pln = -n;
                 }
             }
@@ -1838,19 +1895,25 @@ public class Alu {
         return retStack.size();
     }
 
-    public boolean pushProgLineNumber(int progLineNumber) {   //  PUSH
-        boolean res = false;
-        if (retStack.size() < RET_STACK_SIZE_MAX) {
-            retStack.add(0, progLineNumber);
-            res = true;
-        }
-        return res;
+    public ArrayList<Integer> getRetStack() {
+        return retStack;
     }
 
-    public int popProgLineNumber() {
-        int res = retStack.get(0);
-        retStack.remove(0);
-        return res;
+    public void setRetStack(ArrayList<Integer> argRetStack) {
+        this.retStack = argRetStack;
+        if (retStack != null) {
+            int n = retStack.size();
+            if (n > 0) {  //  Vérifier le 1er élémebt de la pile
+                if (retStack.get(n - 1) != END_RETURN_STACK) {   //  Absent
+                    retStack.add(n, END_RETURN_STACK);   //  Ajouter le 1er élément, tout au-dessus de la pile
+                }
+            } else {   //  Pile vide, définier le 1er élément
+                retStack.add(0, END_RETURN_STACK);
+            }
+        } else {   //  Pas de pile => La définir
+            retStack = new ArrayList<Integer>();
+            retStack.add(0, END_RETURN_STACK);
+        }
     }
 
     public boolean isRetStackEmpty() {
@@ -1866,15 +1929,12 @@ public class Alu {
         retStack.add(0, END_RETURN_STACK);
     }
 
-    private void setupRetStack() {
-        retStack = new ArrayList<Integer>();
-        retStack.add(0, END_RETURN_STACK);
-    }
-
     private void setupMaps() {
         opToKeyMap = new HashMap<OPS, KEYS>();
         opToShiftKeyCodeMap = new HashMap<OPS, Integer>();
+        keyCodeToKeyMap = new HashMap<Integer, KEYS>();
         for (KEYS key : KEYS.values()) {
+            keyCodeToKeyMap.put(key.CODE(), key);
             OPS op = key.UNSHIFTED_OP();
             if (!op.equals(OPS.UNKNOWN)) {
                 opToKeyMap.put(op, key);

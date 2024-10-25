@@ -119,7 +119,9 @@ public class CalcDotMatrixDisplayUpdater {
     }
 
     public void stopAutomatic() {
-        handlerTime.removeCallbacks(runnableTime);
+        if (handlerTime != null) {
+            handlerTime.removeCallbacks(runnableTime);
+        }
     }
 
     private void automatic() {   // automatic() continue d'être appelé même si dotsPerSecond = 0 (cf getUpdateInterval()) mais ne doit pas scroller

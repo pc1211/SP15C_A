@@ -39,13 +39,25 @@ import static com.example.pgyl.pekislib_a.StringDBUtils.getCurrent;
 import static com.example.pgyl.pekislib_a.StringDBUtils.setCurrent;
 import static com.example.pgyl.pekislib_a.TimeDateUtils.MILLISECONDS_PER_SECOND;
 import static com.example.pgyl.sp15c_a.StringDBTables.DATA_VERSION;
+import static com.example.pgyl.sp15c_a.StringDBTables.getFlagsTableName;
+import static com.example.pgyl.sp15c_a.StringDBTables.getProgLinesTableName;
+import static com.example.pgyl.sp15c_a.StringDBTables.getRegsTableName;
+import static com.example.pgyl.sp15c_a.StringDBTables.getRetStackTableName;
+import static com.example.pgyl.sp15c_a.StringDBTables.getSp15cTableDataFieldsCount;
 import static com.example.pgyl.sp15c_a.StringDBTables.getStackRegsTableName;
+import static com.example.pgyl.sp15c_a.StringDBUtils.booleanArrayToRows;
 import static com.example.pgyl.sp15c_a.StringDBUtils.createSp15cTableIfNotExists;
-import static com.example.pgyl.sp15c_a.StringDBUtils.getDBStackRegs;
-import static com.example.pgyl.sp15c_a.StringDBUtils.initializeTableStackRegs;
-import static com.example.pgyl.sp15c_a.StringDBUtils.saveDBStackRegs;
-import static com.example.pgyl.sp15c_a.StringDBUtils.stackRegRowsToStackRegs;
-import static com.example.pgyl.sp15c_a.StringDBUtils.stackRegsToStackRegsRows;
+import static com.example.pgyl.sp15c_a.StringDBUtils.doubleArrayToList;
+import static com.example.pgyl.sp15c_a.StringDBUtils.doubleArrayToRows;
+import static com.example.pgyl.sp15c_a.StringDBUtils.doubleListToArray;
+import static com.example.pgyl.sp15c_a.StringDBUtils.intArrayToList;
+import static com.example.pgyl.sp15c_a.StringDBUtils.intArrayToRows;
+import static com.example.pgyl.sp15c_a.StringDBUtils.intListToArray;
+import static com.example.pgyl.sp15c_a.StringDBUtils.loadRowsFromDB;
+import static com.example.pgyl.sp15c_a.StringDBUtils.rowsToBooleanArray;
+import static com.example.pgyl.sp15c_a.StringDBUtils.rowsToDoubleArray;
+import static com.example.pgyl.sp15c_a.StringDBUtils.rowsToIntArray;
+import static com.example.pgyl.sp15c_a.StringDBUtils.saveRowsToDB;
 
 //  MainActivity fait appel à CtRecordShandler pour la gestion des CtRecord (création, suppression, tri, écoute des événements, ...) grâce aux boutons de contrôle agissant sur la sélection des items de la liste, ...
 //  MainCtListUpdater maintient la liste de MainActivity (rafraîchissement, scrollbar, ...), fait appel à MainCtListAdapter (pour gérer chaque item) et également à CtRecordShandler (pour leur mise à jour)
@@ -139,9 +151,7 @@ public class MainActivity extends Activity {
     private boolean inSST;
     private boolean isWrapAround;
     private String alpha = "";
-    private boolean isAutoO;
     private boolean isAutoL;
-    private boolean isAutoOp;
     private boolean isAutoLine;
     private boolean isKeyboardInterrupt;
     private boolean inInterpretOp;
@@ -165,7 +175,11 @@ public class MainActivity extends Activity {
         super.onPause();
 
         setCurrent(stringDB, getAppInfosTableName(), getAppInfosDataVersionIndex(), String.valueOf(DATA_VERSION));
-        saveDBStackRegs(stringDB, stackRegsToStackRegsRows(alu.getStackRegs()));
+        saveRowsToDB(stringDB, getStackRegsTableName(), doubleArrayToRows(alu.getStackRegs()));
+        saveRowsToDB(stringDB, getFlagsTableName(), booleanArrayToRows(alu.getFlags()));
+        saveRowsToDB(stringDB, getRegsTableName(), doubleArrayToRows(doubleListToArray(alu.getRegs())));
+        saveRowsToDB(stringDB, getRetStackTableName(), intArrayToRows(intListToArray(alu.getRetStack())));
+        saveRowsToDB(stringDB, getProgLinesTableName(), alu.progLinesToRows());
         ///mainCtListUpdater.stopAutomatic();
         //mainCtListUpdater.close();
         //mainCtListUpdater = null;
@@ -216,8 +230,6 @@ public class MainActivity extends Activity {
         inSST = false;
         alpha = "";
         inOp = null;
-        isAutoOp = false;
-        isAutoO = false;
         isAutoLine = false;
         isAutoL = false;
         inPSE = false;
@@ -240,17 +252,22 @@ public class MainActivity extends Activity {
         solveParamSet = new SolveParamSet();
         integParamSet = new IntegParamSet();
 
-        alu.setStackRegs(stackRegRowsToStackRegs(getDBStackRegs(stringDB)));
+        alu.setStackRegs(rowsToDoubleArray(loadRowsFromDB(stringDB, getStackRegsTableName()), STACK_REGS.values().length));
+        alu.setFlags(rowsToBooleanArray(loadRowsFromDB(stringDB, getFlagsTableName()), alu.MAX_FLAGS));
+        alu.setRegs(doubleArrayToList(rowsToDoubleArray(loadRowsFromDB(stringDB, getRegsTableName()), alu.DEF_MAX_REGS)));
+        alu.setRetStack(intArrayToList(rowsToIntArray(loadRowsFromDB(stringDB, getRetStackTableName()), 0)));
 
         setupDotMatrixDisplayUpdater();
         updateDisplayDotMatrixColors();
-        dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
-
         updateDisplayButtonColors();
         setupSideDotMatrixDisplayUpdater();
         updateSideDotMatrixColors();
         updateSideDisplay();
-        setupRunnableTimeOp();
+
+        encodeKeyCodesFromProgLinesRows(loadRowsFromDB(stringDB, getProgLinesTableName()));
+
+        dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
+        dotMatrixDisplayView.updateDisplay();
         setupRunnableTimeLine();
         //setupShowExpirationTime();
         //setupSetClockAppAlarmOnStartTimer();
@@ -402,7 +419,7 @@ public class MainActivity extends Activity {
                 if (currentOp.equals(OPS.UNKNOWN)) {    //  Fonction non encore implémentée
                     msgBox("Function not implemented yet", this);
                 } else {   //  Fonction déjà implémentée
-                    interpretAndSaveOrExecOp();
+                    interpretAndSaveOrExecOp(true);
                 }
             }
         } else {   //  RUN
@@ -410,52 +427,75 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void execCurrentProgLine() {
-        inExecCurrentProgLine = true;
-        readProgLine = alu.getProgLine(currentProgLineNumber);    //  Charger la ligne actuelle
-        nextProgLineNumber = inc(currentProgLineNumber);    //  Sauf mention contraire (GTO, GSB, RTN, ...)
-        if (nextProgLineNumber == 0) {
-            isWrapAround = true;  //  Wrap Around => RTN
-        }
-        error = exec(readProgLine);
-        if (error.length() == 0) {   //  Pas d'erreur nouvelle
-            currentProgLineNumber = nextProgLineNumber;
-            if (inSST) {   //  STOP après SST
-                inSST = false;
-                isAutoLine = false;
+    private void encodeProgKeyCode(int keyCode) {
+        currentOp = null;   //  Restera null si fonction f ou g activée ou annulée
+        int n = keyCode;
+        if (keyCode < 11) {   //  Retrouver le vrai keyCode (au lieu du chiffre repris dans la liste de codes du programme)
+            switch (keyCode) {
+                case 0:
+                    n = n + 47;
+                    break;
+                case 1:
+                case 2:
+                case 3:
+                    n = n + 36;
+                    break;
+                case 4:
+                case 5:
+                case 6:
+                    n = n + 23;
+                    break;
+                case 7:
+                case 8:
+                case 9:
+                    n = n + 10;
+                    break;
             }
-        } else {    //  Erreur nouvelle
-            isAutoLine = false;
+            keyCode = n;
         }
-        if (isKeyboardInterrupt) {
-            isKeyboardInterrupt = false;
-            isAutoLine = false;
-            error = ERROR_KEYBOARD_INTERRUPT;
+        KEYS key = alu.getKeyByKeyCode(keyCode);
+        switch (shiftMode) {
+            case UNSHIFTED:
+                switch (key) {
+                    case KEY_42:
+                        shiftMode = SHIFT_MODES.F_SHIFT;
+                        break;
+                    case KEY_43:
+                        shiftMode = SHIFT_MODES.G_SHIFT;
+                        break;
+                    default:
+                        if ((key.SHIFT_F_OP().INDEX() >= OPS.A.INDEX()) && (key.SHIFT_F_OP().INDEX() <= OPS.E.INDEX())) {
+                            currentOp = (user ? key.SHIFT_F_OP() : key.UNSHIFTED_OP());
+                        } else {   //  Pas A..E
+                            currentOp = key.UNSHIFTED_OP();
+                        }
+                        break;
+                }
+                break;
+            case F_SHIFT:
+                shiftMode = SHIFT_MODES.UNSHIFTED;
+                if ((key.SHIFT_F_OP().INDEX() >= OPS.A.INDEX()) && (key.SHIFT_F_OP().INDEX() <= OPS.E.INDEX())) {
+                    currentOp = (user ? key.UNSHIFTED_OP() : key.SHIFT_F_OP());
+                } else {   //  Pas A..E
+                    currentOp = key.SHIFT_F_OP();
+                }
+                break;
+            case G_SHIFT:
+                shiftMode = SHIFT_MODES.UNSHIFTED;
+                currentOp = key.SHIFT_G_OP();
+                break;
         }
-        startOrStopAutomaticLine();
-        if (!isAutoLine) {
-            mode = MODES.NORM;
-            dotMatrixDisplayView.setInvertOn(false);
-            if (error.length() == 0) {   //  Pas d'erreur nouvelle
-                dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
-            } else {   //  Erreur nouvelle
-                dotMatrixDisplayUpdater.displayText(error, false);
+        if (currentOp != null) {   //  Pas Fonction Shift f ou g activée ou annulée
+            if (currentOp.equals(OPS.UNKNOWN)) {    //  Fonction non encore implémentée
+                msgBox("Function not implemented yet", this);
+            } else {   //  Fonction déjà implémentée
+                interpretAndSaveOrExecOp(false);
             }
-            dotMatrixDisplayView.updateDisplay();
-            updateSideDisplay();
         }
-        inExecCurrentProgLine = false;
     }
 
-    private void interpretAndSaveOrExecOp() {
+    private void interpretAndSaveOrExecOp(boolean display) {
         inInterpretOp = true;
-        if (isAutoOp) {   //  Op à obtenir automatiquement (p.ex. en mode RUN)
-            currentOp = readProgLine.ops[readProgLineOpIndex];
-            if (readProgLineOpIndex == LINE_OPS.BASE.INDEX()) {
-                tempProgLine.paramAddress = readProgLine.paramAddress;
-            }
-            readProgLineOpIndex = readProgLineOpIndex + 1;
-        }
         if (error.length() == 0) {   //  Pas d'erreur (ou Prefix) antérieure
             interpretDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
             interpretGhostOp();      //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
@@ -500,20 +540,45 @@ public class MainActivity extends Activity {
         }
         dotMatrixDisplayView.updateDisplay();
         updateSideDisplay();
-        if (isAutoOp) {   //  Obtenir automatiquement le prochain op de la ligne ou de la suivante
-            if (readProgLineOpIndex == LINE_OPS.BASE.INDEX()) {   //  Op0 toujours disponible
-                readProgLine = alu.getProgLine(currentProgLineNumber);    //  Ligne suivante
-                lineIsGhostKey = alu.isGhostKey(readProgLine.ops[LINE_OPS.BASE.INDEX()]);   //  Si Ligne avec touche fantôme => Ne pas aller au-delà de Op0
-            } else {   //  Index > 0
-                readProgLineOpIndex = getValidProgLineOpIndex(readProgLine, readProgLineOpIndex);   //  Les ops d'une progLine ne ne sont pas toujours côte à côte
-                if ((readProgLineOpIndex == -1) || lineIsGhostKey) {   //  Il n'y a plus d'ops dans la progLine ou Ligne avec touche fantôme
-                    isAutoOp = false;
-                }
-            }
-        }
-        startOrStopAutomaticOp();
         startOrStopAutomaticLine();
         inInterpretOp = false;
+    }
+
+    private void execCurrentProgLine() {
+        inExecCurrentProgLine = true;
+        readProgLine = alu.getProgLine(currentProgLineNumber);    //  Charger la ligne actuelle
+        nextProgLineNumber = inc(currentProgLineNumber);    //  Sauf mention contraire (GTO, GSB, RTN, ...)
+        if (nextProgLineNumber == 0) {
+            isWrapAround = true;  //  Wrap Around => RTN
+        }
+        error = exec(readProgLine);
+        if (error.length() == 0) {   //  Pas d'erreur nouvelle
+            currentProgLineNumber = nextProgLineNumber;
+            if (inSST) {   //  STOP après SST
+                inSST = false;
+                isAutoLine = false;
+            }
+        } else {    //  Erreur nouvelle
+            isAutoLine = false;
+        }
+        if (isKeyboardInterrupt) {
+            isKeyboardInterrupt = false;
+            isAutoLine = false;
+            error = ERROR_KEYBOARD_INTERRUPT;
+        }
+        startOrStopAutomaticLine();
+        if (!isAutoLine) {
+            mode = MODES.NORM;
+            dotMatrixDisplayView.setInvertOn(false);
+            if (error.length() == 0) {   //  Pas d'erreur nouvelle
+                dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+            } else {   //  Erreur nouvelle
+                dotMatrixDisplayUpdater.displayText(error, false);
+            }
+            dotMatrixDisplayView.updateDisplay();
+            updateSideDisplay();
+        }
+        inExecCurrentProgLine = false;
     }
 
     private void updateSideDisplay() {
@@ -740,7 +805,7 @@ public class MainActivity extends Activity {
                         if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null) ||
                                 (tempProgLine.ops[LINE_OPS.CHS.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
 
-                            if ((mode.equals(MODES.EDIT)) && (tempProgLine.ops[LINE_OPS.CHS.INDEX()] != null) && (!isAutoOp)) {   //  GTO CHS nnnnn en mode EDIT et pas en mode de lecture automatique de lignes
+                            if ((mode.equals(MODES.EDIT)) && (tempProgLine.ops[LINE_OPS.CHS.INDEX()] != null)) {   //  GTO CHS nnnnn en mode EDIT et pas en mode de lecture automatique de lignes
                                 if (tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) {
                                     if (tempProgLine.paramAddress == 0) {
                                         tempProgLine.paramAddress = 1;   //  cf ci-dessous, permet de multiplier par 10 puis d'ajouter un n (de nnnn), le 1 deviendra 10000 après entrée de nnnn
@@ -1105,6 +1170,27 @@ public class MainActivity extends Activity {
         }
     }
 
+    public void encodeKeyCodesFromProgLinesRows(String[][] progLinesRows) {
+        String[][] rows = progLinesRows;
+        alu.setupProgLines();
+        if (progLinesRows != null) {
+            int n = rows.length;
+            if (n > 0) {
+                mode = MODES.EDIT;
+                int m = getSp15cTableDataFieldsCount(getProgLinesTableName());   //  Normalement 3 (après le champ ID (n° de ligne)) : p.ex. ID:"1"  Values:"45"  "23"  "24"
+                for (int i = 0; i <= (n - 1); i = i + 1) {
+                    for (int j = 1; j <= m; j = j + 1) {   //  Après le champ ID (ProgLineNumber)
+                        String kc = rows[i][j];
+                        if (kc != null) {
+                            encodeProgKeyCode(Integer.parseInt(kc));   //  progLines va progressivement se remplir de toutes ses lignes
+                        }
+                    }
+                }
+                mode = MODES.NORM;
+            }
+        }
+    }
+
     private String formatAlphaNumber() {
         int indMax = alpha.length();   //  Faire apparaître le séparateur de milliers au cours de l'entrée de nombre, avant le 1er "." ou "E"
         int indDot = alpha.indexOf(OPS.DOT.SYMBOL());
@@ -1261,35 +1347,6 @@ public class MainActivity extends Activity {
                 dotMatrixDisplayUpdater.displayText("RUNNING...", false);
                 dotMatrixDisplayView.updateDisplay();
             }
-        }
-    }
-
-    private void startOrStopAutomaticOp() {
-        if (isAutoOp) {
-            if (!isAutoO) {
-                startAutomaticOp();
-            }
-        } else {   //  Pas autoOp
-            if (isAutoO) {
-                stopAutomaticOp();
-            }
-        }
-    }
-
-    public void startAutomaticOp() {
-        isAutoO = true;
-        handlerTimeOp.postDelayed(runnableTimeOp, updateInterval);
-    }
-
-    public void stopAutomaticOp() {
-        handlerTimeOp.removeCallbacks(runnableTimeOp);
-        isAutoO = false;
-    }
-
-    private void automaticOp() {
-        handlerTimeOp.postDelayed(runnableTimeOp, updateInterval);
-        if (!inInterpretOp) {
-            interpretAndSaveOrExecOp();
         }
     }
 
@@ -1604,6 +1661,9 @@ public class MainActivity extends Activity {
                     if (opBase.equals(OPS.TF)) {
                         if (!alu.testFlag(flagIndex)) {   //  Skip next line if flag cleared
                             nextProgLineNumber = inc(nextProgLineNumber);
+                        }
+                        if (mode.equals(MODES.NORM)) {   //  Afficher sa valeur ("True" ou "False"))
+                            error = (alu.testFlag(flagIndex) ? "True" : "False");
                         }
                     }
                     alu.setStackLiftEnabled(true);
@@ -2418,16 +2478,6 @@ public class MainActivity extends Activity {
         };
     }
 
-    private void setupRunnableTimeOp() {
-        handlerTimeOp = new Handler();
-        runnableTimeOp = new Runnable() {
-            @Override
-            public void run() {
-                automaticOp();
-            }
-        };
-    }
-
     private void setupStringDB() {
         stringDB = new StringDB(this);
         stringDB.open();
@@ -2438,6 +2488,10 @@ public class MainActivity extends Activity {
             stringDB.deleteTableIfExists(getAppInfosTableName());
             stringDB.deleteTableIfExists(getActivityInfosTableName());
             stringDB.deleteTableIfExists(getStackRegsTableName());
+            stringDB.deleteTableIfExists(getFlagsTableName());
+            stringDB.deleteTableIfExists(getRegsTableName());
+            stringDB.deleteTableIfExists(getRetStackTableName());
+            stringDB.deleteTableIfExists(getProgLinesTableName());
             msgBox("All Data Deleted (Invalid)", this);
         }
 
@@ -2454,6 +2508,18 @@ public class MainActivity extends Activity {
             //String[] defaults = getDefaults(stringDB, getStackRegsTableName());
             //setCurrentsForActivity(stringDB, SP15C_ACTIVITIES.CT_DISPLAY.toString(), getDotMatrixDisplayColorsTableName(), defaults);
             //createPresetWithDefaultValues(getDotMatrixDisplayColorsTableName(), defaults);   //  => PRESET1 = DEFAULT  dans la table de couleurs de DotMatrixDisplay
+        }
+        if (!stringDB.tableExists(getFlagsTableName())) {
+            createSp15cTableIfNotExists(stringDB, getFlagsTableName());
+        }
+        if (!stringDB.tableExists(getRegsTableName())) {
+            createSp15cTableIfNotExists(stringDB, getRegsTableName());
+        }
+        if (!stringDB.tableExists(getRetStackTableName())) {
+            createSp15cTableIfNotExists(stringDB, getRetStackTableName());
+        }
+        if (!stringDB.tableExists(getProgLinesTableName())) {
+            createSp15cTableIfNotExists(stringDB, getProgLinesTableName());
         }
     }
 
