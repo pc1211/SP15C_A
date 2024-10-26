@@ -31,6 +31,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
+import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
+import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
 import static com.example.pgyl.pekislib_a.StringDBTables.getAppInfosDataVersionIndex;
 import static com.example.pgyl.pekislib_a.StringDBTables.getAppInfosTableName;
@@ -40,6 +42,7 @@ import static com.example.pgyl.pekislib_a.StringDBUtils.setCurrent;
 import static com.example.pgyl.pekislib_a.TimeDateUtils.MILLISECONDS_PER_SECOND;
 import static com.example.pgyl.sp15c_a.StringDBTables.DATA_VERSION;
 import static com.example.pgyl.sp15c_a.StringDBTables.getFlagsTableName;
+import static com.example.pgyl.sp15c_a.StringDBTables.getParamsTableName;
 import static com.example.pgyl.sp15c_a.StringDBTables.getProgLinesTableName;
 import static com.example.pgyl.sp15c_a.StringDBTables.getRegsTableName;
 import static com.example.pgyl.sp15c_a.StringDBTables.getRetStackTableName;
@@ -180,6 +183,7 @@ public class MainActivity extends Activity {
         saveRowsToDB(stringDB, getRegsTableName(), doubleArrayToRows(doubleListToArray(alu.getRegs())));
         saveRowsToDB(stringDB, getRetStackTableName(), intArrayToRows(intListToArray(alu.getRetStack())));
         saveRowsToDB(stringDB, getProgLinesTableName(), alu.progLinesToRows());
+        saveRowsToDB(stringDB, getParamsTableName(), paramsToRows());
         ///mainCtListUpdater.stopAutomatic();
         //mainCtListUpdater.close();
         //mainCtListUpdater = null;
@@ -262,12 +266,14 @@ public class MainActivity extends Activity {
         updateDisplayButtonColors();
         setupSideDotMatrixDisplayUpdater();
         updateSideDotMatrixColors();
-        updateSideDisplay();
 
         encodeKeyCodesFromProgLinesRows(loadRowsFromDB(stringDB, getProgLinesTableName()));
+        rowsToParams(loadRowsFromDB(stringDB, getParamsTableName()));
 
         dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
         dotMatrixDisplayView.updateDisplay();
+        updateSideDisplay();
+
         setupRunnableTimeLine();
         //setupShowExpirationTime();
         //setupSetClockAppAlarmOnStartTimer();
@@ -1187,6 +1193,62 @@ public class MainActivity extends Activity {
                     }
                 }
                 mode = MODES.NORM;
+            }
+        }
+    }
+
+    public String[][] paramsToRows() {
+        String[][] res = new String[8][2];
+        res[0][TABLE_ID_INDEX] = "ROUND_MODE";
+        res[0][TABLE_DATA_INDEX] = alu.getRoundMode().toString();
+        res[1][TABLE_ID_INDEX] = "ROUND_PARAM";
+        res[1][TABLE_DATA_INDEX] = String.valueOf(alu.getRoundParam());
+        res[2][TABLE_ID_INDEX] = "ANGLE_MODE";
+        res[2][TABLE_DATA_INDEX] = alu.getAngleMode().toString();
+        res[3][TABLE_ID_INDEX] = "NEXT_PROG_LINE_NUMBER";
+        res[3][TABLE_DATA_INDEX] = String.valueOf(nextProgLineNumber);
+        res[4][TABLE_ID_INDEX] = "CURRENT_PROG_LINE_NUMBER";
+        res[4][TABLE_DATA_INDEX] = String.valueOf(currentProgLineNumber);
+        res[5][TABLE_ID_INDEX] = "USER";
+        res[5][TABLE_DATA_INDEX] = (user ? "1" : "0");
+        res[6][TABLE_ID_INDEX] = "DISPLAY_SYMBOL";
+        res[6][TABLE_DATA_INDEX] = (displaySymbol ? "1" : "0");
+        res[7][TABLE_ID_INDEX] = "STACK_LIFT_ENABLED";
+        res[7][TABLE_DATA_INDEX] = (alu.getStackLiftEnabled() ? "1" : "0");
+        return res;
+    }
+
+    public void rowsToParams(String[][] paramRows) {
+        if (paramRows != null) {
+            int n = paramRows.length;
+            if (n > 0) {
+                for (int i = 0; i <= (n - 1); i = i + 1) {
+                    String s = paramRows[i][TABLE_ID_INDEX];
+                    if (s.equals("ROUND_MODE")) {
+                        alu.setRoundMode(OPS.valueOf(paramRows[i][TABLE_DATA_INDEX]));
+                    }
+                    if (s.equals("ROUND_PARAM")) {
+                        alu.setRoundParam(Integer.parseInt(paramRows[i][TABLE_DATA_INDEX]));
+                    }
+                    if (s.equals("ANGLE_MODE")) {
+                        alu.setAngleMode(OPS.valueOf(paramRows[i][TABLE_DATA_INDEX]));
+                    }
+                    if (s.equals("NEXT_PROG_LINE_NUMBER")) {
+                        nextProgLineNumber = Integer.parseInt(paramRows[i][TABLE_DATA_INDEX]);
+                    }
+                    if (s.equals("CURRENT_PROG_LINE_NUMBER")) {
+                        currentProgLineNumber = Integer.parseInt(paramRows[i][TABLE_DATA_INDEX]);
+                    }
+                    if (s.equals("USER")) {
+                        user = (paramRows[i][TABLE_DATA_INDEX].equals("1"));
+                    }
+                    if (s.equals("DISPLAY_SYMBOL")) {
+                        displaySymbol = (paramRows[i][TABLE_DATA_INDEX].equals("1"));
+                    }
+                    if (s.equals("STACK_LIFT_ENABLED")) {
+                        alu.setStackLiftEnabled((paramRows[i][TABLE_DATA_INDEX].equals("1")));
+                    }
+                }
             }
         }
     }
@@ -2520,6 +2582,9 @@ public class MainActivity extends Activity {
         }
         if (!stringDB.tableExists(getProgLinesTableName())) {
             createSp15cTableIfNotExists(stringDB, getProgLinesTableName());
+        }
+        if (!stringDB.tableExists(getParamsTableName())) {
+            createSp15cTableIfNotExists(stringDB, getParamsTableName());
         }
     }
 
