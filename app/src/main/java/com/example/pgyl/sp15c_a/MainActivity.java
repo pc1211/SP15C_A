@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -13,12 +14,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.LinearLayout;
-import android.widget.ListView;
 
 import com.example.pgyl.pekislib_a.ColorBox;
 import com.example.pgyl.pekislib_a.ColorUtils.BUTTON_COLOR_TYPES;
 import com.example.pgyl.pekislib_a.DotMatrixDisplayView;
+import com.example.pgyl.pekislib_a.HelpActivity;
 import com.example.pgyl.pekislib_a.StringDB;
 import com.example.pgyl.sp15c_a.Alu.BASE_REGS;
 import com.example.pgyl.sp15c_a.Alu.KEYS;
@@ -30,6 +30,9 @@ import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS;
+import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
+import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
@@ -62,11 +65,6 @@ import static com.example.pgyl.sp15c_a.StringDBUtils.rowsToDoubleArray;
 import static com.example.pgyl.sp15c_a.StringDBUtils.rowsToIntArray;
 import static com.example.pgyl.sp15c_a.StringDBUtils.saveRowsToDB;
 
-//  MainActivity fait appel à CtRecordShandler pour la gestion des CtRecord (création, suppression, tri, écoute des événements, ...) grâce aux boutons de contrôle agissant sur la sélection des items de la liste, ...
-//  MainCtListUpdater maintient la liste de MainActivity (rafraîchissement, scrollbar, ...), fait appel à MainCtListAdapter (pour gérer chaque item) et également à CtRecordShandler (pour leur mise à jour)
-//  MainCtListItemAdapter reçoit ses items (CtRecord) de la part de MainCtListUpdater et gère chaque item de la liste (avec ses boutons de contrôle)
-//  CtRecordsHandler reçoit les événements onExpiredTimer() des CtRecord (et les relaie à MainCtListUpdater), et aussi leurs onRequestClockAppAlarmSwitch() pour la création/suppression d'alarmes dans Clock App
-//  Si un item de liste génère un onExpiredTimer(), MainCtListUpdater le signalera à l'utilisateur
 public class MainActivity extends Activity {
     //region Constantes
     private enum SHIFT_MODES {
@@ -109,20 +107,16 @@ public class MainActivity extends Activity {
     private final int SOLVE_RETURN_CODE = 100000;   //  > 10000 pour ne pas le confondre avec un N° de ligne ordinaire (0000-9999)
     private final int INTEG_RETURN_CODE = 200000;
 
-    public enum SWTIMER_SHP_KEY_NAMES {SHOW_EXPIRATION_TIME, ADD_NEW_CHRONOTIMER_TO_LIST, SET_CLOCK_APP_ALARM_ON_START_TIMER, KEEP_SCREEN, REQUESTED_CLOCK_APP_ALARM_DISMISSES}
+    public enum SWTIMER_SHP_KEY_NAMES {KEEP_SCREEN}
     //endregion
 
     //region Variables
-    private LinearLayout layoutButtonsOnSelection;
-    private LinearLayout layoutDotMatrixDisplay;
     private ImageButtonViewStack[] buttons;
     private DotMatrixDisplayView dotMatrixDisplayView;
     private DotMatrixDisplayView sideDotMatrixDisplayView;
     private Menu menu;
-    private MenuItem barMenuItemSetClockAppAlarmOnStartTimer;
     private MenuItem barMenuItemKeepScreen;
     private boolean keepScreen;
-    private ListView mainCtListView;
     private StringDB stringDB;
     private String shpFileName;
     private SHIFT_MODES shiftMode;
@@ -142,8 +136,6 @@ public class MainActivity extends Activity {
     private int readProgLineOpIndex;
     private Handler handlerTimeLine;
     private Runnable runnableTimeLine;
-    private Handler handlerTimeOp;
-    private Runnable runnableTimeOp;
     private boolean lineIsGhostKey;
     private OPS shiftFOp;
     private OPS currentOp;
@@ -184,13 +176,6 @@ public class MainActivity extends Activity {
         saveRowsToDB(stringDB, getRetStackTableName(), intArrayToRows(intListToArray(alu.getRetStack())));
         saveRowsToDB(stringDB, getProgLinesTableName(), alu.progLinesToRows());
         saveRowsToDB(stringDB, getParamsTableName(), paramsToRows());
-        ///mainCtListUpdater.stopAutomatic();
-        //mainCtListUpdater.close();
-        //mainCtListUpdater = null;
-        //mainCtListItemAdapter.close();
-        //mainCtListItemAdapter = null;
-        //ctRecordsHandler.saveAndclose();
-        //ctRecordsHandler = null;
         dotMatrixDisplayUpdater.close();
         dotMatrixDisplayUpdater = null;
         sideDotMatrixDisplayUpdater.close();
@@ -205,8 +190,8 @@ public class MainActivity extends Activity {
         readProgLine = null;
         stringDB.close();
         stringDB = null;
-        //menu = null;
-        //savePreferences();
+        menu = null;
+        savePreferences();
     }
     //endregion
 
@@ -215,16 +200,13 @@ public class MainActivity extends Activity {
         super.onResume();
 
         setContentView(R.layout.main);
-        //shpFileName = getPackageName() + "." + getClass().getSimpleName() + SHP_FILE_NAME_SUFFIX;
-        //keepScreen = getSHPKeepScreen();
+        shpFileName = getPackageName() + "." + getClass().getSimpleName() + SHP_FILE_NAME_SUFFIX;
+        keepScreen = getSHPKeepScreen();
 
         setupStringDB();
         setupButtons();
         setupDotMatrixDisplay();
         setupSideDotMatrixDisplay();
-        //setupCtRecordsHandler();
-        //setupMainCtList();
-        //setupMainCtListUpdater();
 
         mode = MODES.NORM;
         error = "";
@@ -275,13 +257,7 @@ public class MainActivity extends Activity {
         updateSideDisplay();
 
         setupRunnableTimeLine();
-        //setupShowExpirationTime();
-        //setupSetClockAppAlarmOnStartTimer();
-        //setupAddNewChronoTimerToList();
-        //updateDisplayKeepScreen();
-        //mainCtListUpdater.reload();
-        //mainCtListUpdater.startAutomatic(System.currentTimeMillis(), 0);
-        //updateDisplayButtonsAndDotMatrixDisplayVisibility();
+        updateDisplayKeepScreen();
         invalidateOptionsMenu();
     }
 
@@ -289,24 +265,22 @@ public class MainActivity extends Activity {
     public boolean onCreateOptionsMenu(Menu menu) {  //  Non appelé après changement d'orientation
         getMenuInflater().inflate(R.menu.menu_main, menu);
         this.menu = menu;
-        //setupBarMenuItems();
-        //updateDisplaySetClockAppAlarmOnStartTimerBarMenuItemIcon(setClockAppAlarmOnStartTimer);
-        //updateDisplayKeepScreenBarMenuItemIcon(keepScreen);
+        setupBarMenuItems();
+        updateDisplayKeepScreenBarMenuItemIcon(keepScreen);
         return true;
     }
     //endregion
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {  // appelé par invalideOptionsMenu après changement d'orientation
-        //updateDisplaySetClockAppAlarmOnStartTimerBarMenuItemIcon(setClockAppAlarmOnStartTimer);
-        //updateDisplayKeepScreenBarMenuItemIcon(keepScreen);
+        updateDisplayKeepScreenBarMenuItemIcon(keepScreen);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.HELP) {
-            //launchHelpActivity();
+            launchHelpActivity();
             return true;
         }
         if (item.getItemId() == R.id.ABOUT) {
@@ -425,7 +399,7 @@ public class MainActivity extends Activity {
                 if (currentOp.equals(OPS.UNKNOWN)) {    //  Fonction non encore implémentée
                     msgBox("Function not implemented yet", this);
                 } else {   //  Fonction déjà implémentée
-                    interpretAndSaveOrExecOp(true);
+                    interpretAndSaveOrExecOp();
                 }
             }
         } else {   //  RUN
@@ -433,31 +407,36 @@ public class MainActivity extends Activity {
         }
     }
 
+    private int digitToRealKeyCode(int kc) {
+        int res = kc;
+        switch (kc) {
+            case 0:
+                res = res + 47;
+                break;
+            case 1:
+            case 2:
+            case 3:
+                res = res + 36;
+                break;
+            case 4:
+            case 5:
+            case 6:
+                res = res + 23;
+                break;
+            case 7:
+            case 8:
+            case 9:
+                res = res + 10;
+                break;
+        }
+        return res;
+    }
+
     private void encodeProgKeyCode(int keyCode) {
         currentOp = null;   //  Restera null si fonction f ou g activée ou annulée
         int n = keyCode;
-        if (keyCode < 11) {   //  Retrouver le vrai keyCode (au lieu du chiffre repris dans la liste de codes du programme)
-            switch (keyCode) {
-                case 0:
-                    n = n + 47;
-                    break;
-                case 1:
-                case 2:
-                case 3:
-                    n = n + 36;
-                    break;
-                case 4:
-                case 5:
-                case 6:
-                    n = n + 23;
-                    break;
-                case 7:
-                case 8:
-                case 9:
-                    n = n + 10;
-                    break;
-            }
-            keyCode = n;
+        if (keyCode < 10) {   //  Retrouver le vrai keyCode (au lieu du chiffre repris dans la liste de codes du programme)
+            keyCode = digitToRealKeyCode(keyCode);
         }
         KEYS key = alu.getKeyByKeyCode(keyCode);
         switch (shiftMode) {
@@ -495,12 +474,12 @@ public class MainActivity extends Activity {
             if (currentOp.equals(OPS.UNKNOWN)) {    //  Fonction non encore implémentée
                 msgBox("Function not implemented yet", this);
             } else {   //  Fonction déjà implémentée
-                interpretAndSaveOrExecOp(false);
+                interpretAndSaveOrExecOp();
             }
         }
     }
 
-    private void interpretAndSaveOrExecOp(boolean display) {
+    private void interpretAndSaveOrExecOp() {
         inInterpretOp = true;
         if (error.length() == 0) {   //  Pas d'erreur (ou Prefix) antérieure
             interpretDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
@@ -696,11 +675,6 @@ public class MainActivity extends Activity {
         buttons[key.INDEX()].updateDisplay();
     }
 
-    private void updateDisplaySetClockAppAlarmOnStartTimerBarMenuItemIcon(
-            boolean setClockAppAlarmOnStartTimer) {
-        barMenuItemSetClockAppAlarmOnStartTimer.setIcon((setClockAppAlarmOnStartTimer ? R.drawable.main_bell_start_on : R.drawable.main_bell_start_off));
-    }
-
     private void updateDisplayKeepScreenBarMenuItemIcon(boolean keepScreen) {
         barMenuItemKeepScreen.setIcon((keepScreen ? R.drawable.main_light_on : R.drawable.main_light_off));
     }
@@ -718,13 +692,6 @@ public class MainActivity extends Activity {
         SharedPreferences.Editor shpEditor = shp.edit();
         shpEditor.putBoolean(SWTIMER_SHP_KEY_NAMES.KEEP_SCREEN.toString(), keepScreen);
         shpEditor.commit();
-    }
-
-    private boolean getSHPShowExpirationTime() {
-        final boolean SHOW_EXPIRATION_TIME_DEFAULT_VALUE = false;
-
-        SharedPreferences shp = getSharedPreferences(shpFileName, MODE_PRIVATE);
-        return shp.getBoolean(SWTIMER_SHP_KEY_NAMES.SHOW_EXPIRATION_TIME.toString(), SHOW_EXPIRATION_TIME_DEFAULT_VALUE);
     }
 
     private boolean getSHPKeepScreen() {
@@ -2508,6 +2475,17 @@ public class MainActivity extends Activity {
         //layoutButtonsOnSelection = findViewById(R.id.LAY_BUTTONS_ON_SELECTION);
     }
 
+    private void setupBarMenuItems() {
+        final String BAR_MENU_ITEM_KEEP_SCREEN_NAME = "BAR_MENU_ITEM_KEEP_SCREEN";
+
+        Class rid = R.id.class;
+        try {
+            barMenuItemKeepScreen = menu.findItem(rid.getField(BAR_MENU_ITEM_KEEP_SCREEN_NAME).getInt(rid));
+        } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException ex) {
+            Logger.getLogger(MainActivity.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
     private void setupDotMatrixDisplayUpdater() {
         dotMatrixDisplayUpdater = new CalcDotMatrixDisplayUpdater(dotMatrixDisplayView);
     }
@@ -2586,6 +2564,13 @@ public class MainActivity extends Activity {
         if (!stringDB.tableExists(getParamsTableName())) {
             createSp15cTableIfNotExists(stringDB, getParamsTableName());
         }
+    }
+
+    private void launchHelpActivity() {
+        Intent callingIntent = new Intent(this, HelpActivity.class);
+        callingIntent.putExtra(PEKISLIB_ACTIVITY_EXTRA_KEYS.TITLE.toString(), HELP_ACTIVITY_TITLE);
+        callingIntent.putExtra(HelpActivity.HELP_ACTIVITY_EXTRA_KEYS.HTML_ID.toString(), R.raw.helpmainactivity);
+        startActivity(callingIntent);
     }
 
 }

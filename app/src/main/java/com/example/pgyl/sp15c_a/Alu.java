@@ -387,11 +387,6 @@ public class Alu {
     }
 
     private void init() {
-        //  setupStackRegs();   //  sera alimenté par set... dans MainActivity (au départ de la DB)
-        //  setupFlags();
-        //  setupRegs();
-        //  setupRetStack();
-        //  setupProgLines();
         setupMaps();
         angleMode = OPS.RAD;
         roundMode = OPS.FIX;

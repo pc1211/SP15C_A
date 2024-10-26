@@ -2,7 +2,7 @@ package com.example.pgyl.sp15c_a;
 
 public class StringDBTables {
 
-    public static final int DATA_VERSION = 46;   //   A augmenter dès que les données éventuelles dans la DB existante ne seront plus comptatibles après changements
+    public static final int DATA_VERSION = 47;   //   A augmenter dès que les données éventuelles dans la DB existante ne seront plus comptatibles après changements
 
     enum SP15C_TABLES {   // Les tables, rattachées à leurs champs de data
         STACK_REGS(Sp15cTableDataFields.StackRegs.class, "Stack Registers"),
