@@ -294,12 +294,12 @@ public class MainActivity extends Activity {
                 msgBox("clipboard pas null", this);
                 if (clipboard.hasPrimaryClip()) {
                     msgBox("has primary clip", this);
-                    if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
-                        msgBox("est mime text", this);
-                        String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
-                        msgBox(clipText, this);
-                        formattedInputToProgLines(clipText);
-                    }
+                    //if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
+                    //    msgBox("est mime text", this);
+                    //    String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
+                    //    msgBox(clipText, this);
+                    //    formattedInputToProgLines(clipText);
+                    //}
                 }
             }
             return true;
