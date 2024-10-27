@@ -32,7 +32,6 @@ import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static android.content.ClipDescription.MIMETYPE_TEXT_PLAIN;
 import static com.example.pgyl.pekislib_a.Constants.CRLF;
 import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS;
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
@@ -290,18 +289,17 @@ public class MainActivity extends Activity {
             return true;
         }
         if (item.getItemId() == R.id.IMPORT) {
-            if (clipboard != null) {
-                msgBox("clipboard pas null", this);
-                if (clipboard.hasPrimaryClip()) {
-                    msgBox("has primary clip", this);
-                    //if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
-                    //    msgBox("est mime text", this);
-                    //    String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
-                    //    msgBox(clipText, this);
-                    //    formattedInputToProgLines(clipText);
-                    //}
-                }
-            }
+            msgBox("OK", this);
+            //if (clipboard != null) {
+            //if (clipboard.hasPrimaryClip()) {
+            //if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
+            //    msgBox("est mime text", this);
+            //    String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
+            //    msgBox(clipText, this);
+            //    formattedInputToProgLines(clipText);
+            //}
+            //}
+            //}
             return true;
         }
         if (item.getItemId() == R.id.EXPORT) {
