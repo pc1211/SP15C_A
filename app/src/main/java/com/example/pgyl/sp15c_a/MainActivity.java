@@ -3,6 +3,8 @@ package com.example.pgyl.sp15c_a;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -30,6 +32,7 @@ import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.example.pgyl.pekislib_a.Constants.CRLF;
 import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS;
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
@@ -149,7 +152,6 @@ public class MainActivity extends Activity {
     private boolean isAutoL;
     private boolean isAutoLine;
     private boolean isKeyboardInterrupt;
-    private boolean inInterpretOp;
     private boolean inExecCurrentProgLine;
     private boolean inPSE;
     private boolean requestStopAfterSolve;
@@ -281,6 +283,17 @@ public class MainActivity extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.HELP) {
             launchHelpActivity();
+            return true;
+        }
+        if (item.getItemId() == R.id.IMPORT) {
+            msgBox("IMPORT", this);
+            return true;
+        }
+        if (item.getItemId() == R.id.EXPORT) {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText(null, "Salut");
+            //progLinesToFormattedOutput()
+            clipboard.setPrimaryClip(clip);
             return true;
         }
         if (item.getItemId() == R.id.ABOUT) {
@@ -480,7 +493,6 @@ public class MainActivity extends Activity {
     }
 
     private void interpretAndSaveOrExecOp() {
-        inInterpretOp = true;
         if (error.length() == 0) {   //  Pas d'erreur (ou Prefix) antérieure
             interpretDirectAEOp();   //  Test si A..E: inOp y deviendra OPS.GSB
             interpretGhostOp();      //  Test si Touche fantôme (après opération HYP, AHYP ou TEST déjà engagée): inOp y deviendra null
@@ -526,7 +538,6 @@ public class MainActivity extends Activity {
         dotMatrixDisplayView.updateDisplay();
         updateSideDisplay();
         startOrStopAutomaticLine();
-        inInterpretOp = false;
     }
 
     private void execCurrentProgLine() {
@@ -1143,6 +1154,59 @@ public class MainActivity extends Activity {
         }
     }
 
+    private String progLinesToFormattedOutput() {
+        String clipText = "";
+        int n = alu.getProgLines().size();
+        if (n > 0) {
+            for (int i = 0; i <= (n - 1); i = i + 1) {
+                String code1 = "  ";
+                String code2 = "  ";
+                String code3 = "  ";
+                String plc = alu.progLineToString(i, false);   //  Codes
+                String pls = alu.progLineToString(i, true);   //  Symbols
+                String res = String.format("%04d", i) + ": ( ";
+                String[] codes = plc.split(" ");   //   "0001:"  "45"  "23"  "24"
+                if (codes.length >= 2) {
+                    int c = Integer.parseInt(codes[1]);
+                    code1 = (c >= 10 ? String.format("%02d", c) : (c == 0 ? "  " : codes[1] + " "));
+                }
+                if (codes.length >= 3) {
+                    int c = Integer.parseInt(codes[2]);
+                    code2 = (c >= 10 ? String.format("%02d", c) : (c == 0 ? "  " : codes[2] + " "));
+                }
+                if (codes.length >= 4) {
+                    int c = Integer.parseInt(codes[3]);
+                    code3 = (c >= 10 ? String.format("%02d", c) : (c == 0 ? "  " : codes[3] + " "));
+                }
+                res = res + code1 + " " + code2 + " " + code3 + " ) ";
+                res = res + pls.substring(6);   //  Ne pas reprendre de nouveau le n° de ligne
+                clipText = clipText + res + CRLF;
+            }
+        }
+        return clipText;
+    }
+
+    private void formattedInputToProgLines(String clipText) {
+        String[] lines = clipText.split("\\r?\\n");   //  Splitter selon CR/LF
+        int n = lines.length - 1;   //  Pas la ligne 0
+        if (n > 0) {
+            alu.setupProgLines();
+            for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
+                String[] codes = lines[i].split(" ");   //   "0001" "(" "45" "23" "14" ")" "etc"
+                if (!codes[2].equals("(")) {
+                    encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                }
+                if (!codes[3].equals("(")) {  //  Il y a encore des codes
+                    encodeProgKeyCode(Integer.parseInt(codes[3]));
+                }
+                if (!codes[4].equals("(")) {  //  Il y a encore des codes
+                    encodeProgKeyCode(Integer.parseInt(codes[4]));
+                }
+            }
+        }
+    }
+
+
     public void encodeKeyCodesFromProgLinesRows(String[][] progLinesRows) {
         String[][] rows = progLinesRows;
         alu.setupProgLines();
@@ -1150,7 +1214,7 @@ public class MainActivity extends Activity {
             int n = rows.length;
             if (n > 0) {
                 mode = MODES.EDIT;
-                int m = getSp15cTableDataFieldsCount(getProgLinesTableName());   //  Normalement 3 (après le champ ID (n° de ligne)) : p.ex. ID:"1"  Values:"45"  "23"  "24"
+                int m = getSp15cTableDataFieldsCount(getProgLinesTableName());   //  Normalement 3 (après le champ ID (n° de ligne)) : p.ex. ID: "1"  Values:"45"  "23"  "24"
                 for (int i = 0; i <= (n - 1); i = i + 1) {
                     for (int j = 1; j <= m; j = j + 1) {   //  Après le champ ID (ProgLineNumber)
                         String kc = rows[i][j];
