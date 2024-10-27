@@ -32,7 +32,6 @@ import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static android.content.ClipDescription.MIMETYPE_TEXT_PLAIN;
 import static com.example.pgyl.pekislib_a.Constants.CRLF;
 import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS;
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
@@ -115,6 +114,7 @@ public class MainActivity extends Activity {
     //endregion
 
     //region Variables
+    private ClipboardManager clipboard;
     private ImageButtonViewStack[] buttons;
     private DotMatrixDisplayView dotMatrixDisplayView;
     private DotMatrixDisplayView sideDotMatrixDisplayView;
@@ -179,6 +179,7 @@ public class MainActivity extends Activity {
         saveRowsToDB(stringDB, getRetStackTableName(), intArrayToRows(intListToArray(alu.getRetStack())));
         saveRowsToDB(stringDB, getProgLinesTableName(), alu.progLinesToRows());
         saveRowsToDB(stringDB, getParamsTableName(), paramsToRows());
+        clipboard = null;
         dotMatrixDisplayUpdater.close();
         dotMatrixDisplayUpdater = null;
         sideDotMatrixDisplayUpdater.close();
@@ -259,6 +260,7 @@ public class MainActivity extends Activity {
         dotMatrixDisplayView.updateDisplay();
         updateSideDisplay();
 
+        clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         setupRunnableTimeLine();
         updateDisplayKeepScreen();
         invalidateOptionsMenu();
@@ -287,17 +289,12 @@ public class MainActivity extends Activity {
             return true;
         }
         if (item.getItemId() == R.id.IMPORT) {
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            if (clipboard.hasPrimaryClip()) {
-                if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
-                    String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
-                    formattedInputToProgLines(clipText);
-                }
-            }
+            String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
+                msgBox(clipText, this);
+            formattedInputToProgLines(clipText);
             return true;
         }
         if (item.getItemId() == R.id.EXPORT) {
-            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText(null, progLinesToFormattedOutput());
             clipboard.setPrimaryClip(clip);
             return true;
@@ -1193,20 +1190,22 @@ public class MainActivity extends Activity {
     }
 
     private void formattedInputToProgLines(String clipText) {
-        String[] lines = clipText.split("\\r?\\n");   //  Splitter selon CR/LF
-        int n = lines.length - 1;   //  Pas la ligne 0
-        if (n > 0) {
-            alu.setupProgLines();
-            for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
-                String[] codes = lines[i].split(" ");   //   "0001" "(" "45" "23" "14" ")" "etc"
-                if (!codes[2].equals("(")) {
-                    encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
-                }
-                if (!codes[3].equals("(")) {  //  Il y a encore des codes
-                    encodeProgKeyCode(Integer.parseInt(codes[3]));
-                }
-                if (!codes[4].equals("(")) {  //  Il y a encore des codes
-                    encodeProgKeyCode(Integer.parseInt(codes[4]));
+        if (clipText != null) {
+            String[] lines = clipText.split("\\r?\\n");   //  Splitter selon CR/LF
+            int n = lines.length - 1;   //  Pas la ligne 0
+            if (n > 0) {
+                alu.setupProgLines();
+                for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
+                    String[] codes = lines[i].split(" ");   //   "0001" "(" "45" "23" "14" ")" "etc"
+                    if (!codes[2].equals("(")) {
+                        encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                    }
+                    if (!codes[3].equals("(")) {  //  Il y a encore des codes
+                        encodeProgKeyCode(Integer.parseInt(codes[3]));
+                    }
+                    if (!codes[4].equals("(")) {  //  Il y a encore des codes
+                        encodeProgKeyCode(Integer.parseInt(codes[4]));
+                    }
                 }
             }
         }
