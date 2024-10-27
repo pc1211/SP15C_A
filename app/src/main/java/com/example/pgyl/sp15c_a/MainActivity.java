@@ -32,6 +32,7 @@ import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static android.content.ClipDescription.MIMETYPE_TEXT_PLAIN;
 import static com.example.pgyl.pekislib_a.Constants.CRLF;
 import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS;
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
@@ -286,13 +287,18 @@ public class MainActivity extends Activity {
             return true;
         }
         if (item.getItemId() == R.id.IMPORT) {
-            msgBox("IMPORT", this);
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (clipboard.hasPrimaryClip()) {
+                if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
+                    String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
+                    formattedInputToProgLines(clipText);
+                }
+            }
             return true;
         }
         if (item.getItemId() == R.id.EXPORT) {
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-            ClipData clip = ClipData.newPlainText(null, "Salut");
-            //progLinesToFormattedOutput()
+            ClipData clip = ClipData.newPlainText(null, progLinesToFormattedOutput());
             clipboard.setPrimaryClip(clip);
             return true;
         }
