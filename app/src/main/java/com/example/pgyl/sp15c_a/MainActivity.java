@@ -1209,33 +1209,25 @@ public class MainActivity extends Activity {
             if (n > 0) {
                 alu.setupProgLines();
                 mode = MODES.EDIT;
-                String s = "";
                 for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
                     String[] codes = lines[i].split(" ");   //   "0001:" "(" "45" "23" "14" ")" "etc"
-                    if (codes != null) {
-                        if (codes.length >= 3) {
-                            if (!codes[2].equals(")")) {
-                                s = s + codes[2] + "("+codes[2].length()+")-";
-                                //encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
-                            }
-                        }
-                        if (codes.length >= 4) {
-                            if (!codes[3].equals(")")) {
-                                s = s + codes[3] + "("+codes[3].length()+")-";
-                                //encodeProgKeyCode(Integer.parseInt(codes[3]));   //   progLines va progressivement se remplir de toutes ses lignes
-                            }
-                        }
-                        if (codes.length >= 5) {
-                            if (!codes[4].equals(")")) {
-                                s = s + codes[4] + "("+codes[4].length()+")-";
-                                //encodeProgKeyCode(Integer.parseInt(codes[4]));   //   progLines va progressivement se remplir de toutes ses lignes
-                            }
+                    if (codes.length >= 3) {
+                        if ((!codes[2].equals("")) && (!codes[2].equals(")"))) {
+                            encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
                         }
                     }
-                    s = s + "***";
+                    if (codes.length >= 4) {
+                        if ((!codes[3].equals("")) && (!codes[3].equals(")"))) {
+                            encodeProgKeyCode(Integer.parseInt(codes[3]));   //   progLines va progressivement se remplir de toutes ses lignes
+                        }
+                    }
+                    if (codes.length >= 5) {
+                        if ((!codes[4].equals("")) && (!codes[4].equals(")"))) {
+                            encodeProgKeyCode(Integer.parseInt(codes[4]));   //   progLines va progressivement se remplir de toutes ses lignes
+                        }
+                    }
                 }
                 mode = MODES.NORM;
-                msgBox(s, this);
             }
         }
     }
