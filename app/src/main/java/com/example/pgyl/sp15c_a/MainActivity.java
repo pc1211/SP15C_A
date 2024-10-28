@@ -38,6 +38,7 @@ import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
+import static com.example.pgyl.pekislib_a.MiscUtils.toastLong;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
@@ -300,24 +301,24 @@ public class MainActivity extends Activity {
                                 CharSequence cs = cldi.getText();
                                 if (cs != null) {
                                     String s = cs.toString();
-                                    msgBox(s, this);
+                                    toastLong(s, this);
                                 } else {
-                                    msgBox("cldi.getText() null", this);
+                                    toastLong("cldi.getText() null", this);
                                 }
                             } else {
-                                msgBox("cld.getItemAt(0) null", this);
+                                toastLong("cld.getItemAt(0) null", this);
                             }
                         } else {
-                            msgBox("clipboard.getPrimaryClip() null", this);
+                            toastLong("clipboard.getPrimaryClip() null", this);
                         }
                     } else {
-                        msgBox("clipboard.getPrimaryClipDescription() not text", this);
+                        toastLong("clipboard.getPrimaryClipDescription() not text", this);
                     }
                 } else {
-                    msgBox("clipboard.hasPrimaryClip() false", this);
+                    toastLong("clipboard.hasPrimaryClip() false", this);
                 }
             } else {
-                msgBox("clipboard null", this);
+                toastLong("clipboard null", this);
             }
             return true;
             //    if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
