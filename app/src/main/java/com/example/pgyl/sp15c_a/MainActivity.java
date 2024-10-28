@@ -38,7 +38,6 @@ import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
-import static com.example.pgyl.pekislib_a.MiscUtils.toastLong;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
@@ -1207,19 +1206,24 @@ public class MainActivity extends Activity {
         if (clipText != null) {
             String[] lines = clipText.split("\\r?\\n");   //  Splitter selon CR/LF
             int n = lines.length - 1;   //  Pas la ligne 0
-            toastLong(n + " lignes", this);
             if (n > 0) {
                 alu.setupProgLines();
                 for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
                     String[] codes = lines[i].split(" ");   //   "0001" "(" "45" "23" "14" ")" "etc"
-                    if (!codes[2].equals("(")) {
-                        encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                    if (codes.length >= 3) {
+                        if (!codes[2].equals(")")) {
+                            encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                        }
                     }
-                    if (!codes[3].equals("(")) {  //  Il y a encore des codes
-                        encodeProgKeyCode(Integer.parseInt(codes[3]));
+                    if (codes.length >= 4) {
+                        if (!codes[3].equals(")")) {
+                            encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                        }
                     }
-                    if (!codes[4].equals("(")) {  //  Il y a encore des codes
-                        encodeProgKeyCode(Integer.parseInt(codes[4]));
+                    if (codes.length >= 5) {
+                        if (!codes[4].equals(")")) {
+                            encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                        }
                     }
                 }
             }
