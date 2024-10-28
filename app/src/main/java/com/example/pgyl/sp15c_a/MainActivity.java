@@ -37,6 +37,7 @@ import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
+import static com.example.pgyl.pekislib_a.MiscUtils.toastLong;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
@@ -289,17 +290,16 @@ public class MainActivity extends Activity {
             return true;
         }
         if (item.getItemId() == R.id.IMPORT) {
-            msgBox("OK", this);
-            //if (clipboard != null) {
-            //if (clipboard.hasPrimaryClip()) {
-            //if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
-            //    msgBox("est mime text", this);
-            //    String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
-            //    msgBox(clipText, this);
-            //    formattedInputToProgLines(clipText);
-            //}
-            //}
-            //}
+            if (clipboard != null) {
+                if (!clipboard.hasPrimaryClip()) {
+                    msgBox("no primary clip",this);
+                }
+                //    if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
+                //        String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
+                //        formattedInputToProgLines(clipText);
+                //    }
+                //}
+            }
             return true;
         }
         if (item.getItemId() == R.id.EXPORT) {
