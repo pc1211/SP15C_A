@@ -298,34 +298,13 @@ public class MainActivity extends Activity {
                         if (cld != null) {
                             ClipData.Item cldi = cld.getItemAt(0);
                             if (cldi != null) {
-                                CharSequence cs = cldi.getText();
-                                if (cs != null) {
-                                    String s = cs.toString();
-                                    toastLong(s, this);
-                                } else {
-                                    toastLong("cldi.getText() null", this);
-                                }
-                            } else {
-                                toastLong("cld.getItemAt(0) null", this);
+                                formattedInputToProgLines(cldi.getText().toString());
                             }
-                        } else {
-                            toastLong("clipboard.getPrimaryClip() null", this);
                         }
-                    } else {
-                        toastLong("clipboard.getPrimaryClipDescription() not text", this);
                     }
-                } else {
-                    toastLong("clipboard.hasPrimaryClip() false", this);
                 }
-            } else {
-                toastLong("clipboard null", this);
             }
             return true;
-            //    if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
-            //        String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
-            //        formattedInputToProgLines(clipText);
-            //    }
-            //}
         }
         if (item.getItemId() == R.id.EXPORT) {
             if (clipboard != null) {
@@ -1228,6 +1207,7 @@ public class MainActivity extends Activity {
         if (clipText != null) {
             String[] lines = clipText.split("\\r?\\n");   //  Splitter selon CR/LF
             int n = lines.length - 1;   //  Pas la ligne 0
+            toastLong(n + " lignes", this);
             if (n > 0) {
                 alu.setupProgLines();
                 for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
