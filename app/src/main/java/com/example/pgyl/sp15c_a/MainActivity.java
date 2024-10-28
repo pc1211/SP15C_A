@@ -299,7 +299,8 @@ public class MainActivity extends Activity {
                             if (cldi != null) {
                                 CharSequence cs = cldi.getText();
                                 if (cs != null) {
-
+                                    String s = cs.toString();
+                                    msgBox(s, this);
                                 } else {
                                     msgBox("cldi.getText() null", this);
                                 }
@@ -315,13 +316,15 @@ public class MainActivity extends Activity {
                 } else {
                     msgBox("clipboard.hasPrimaryClip() false", this);
                 }
-                //    if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
-                //        String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
-                //        formattedInputToProgLines(clipText);
-                //    }
-                //}
+            } else {
+                msgBox("clipboard null", this);
             }
             return true;
+            //    if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
+            //        String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
+            //        formattedInputToProgLines(clipText);
+            //    }
+            //}
         }
         if (item.getItemId() == R.id.EXPORT) {
             if (clipboard != null) {
