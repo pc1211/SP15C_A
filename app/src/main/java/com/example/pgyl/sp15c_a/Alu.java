@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
 
-import static com.example.pgyl.pekislib_a.Constants.CRLF;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 
@@ -1792,8 +1791,12 @@ public class Alu {
                         }
                         if (i == LINE_OPS.DOT.INDEX()) {
                             if (progLine.ops[LINE_OPS.A09.INDEX()] != null) {
-                                s = OPS.DOT.SYMBOL();
+                                s = "";
+                                sep = "";
                             }
+                        }
+                        if (i == LINE_OPS.A09.INDEX()) {
+                            s = progLine.symbol;   //   8,9, ou .8, .9, ...
                         }
                         if (res.equals("")) {
                             int shiftKeyCode = opToShiftKeyCodeMap.get(progLine.ops[i]);   //  Préfixer de l'éventuelle touche shift F ou G
@@ -1807,6 +1810,15 @@ public class Alu {
                         } else {   //  Pas EEX ni CHS
                             s = progLine.ops[i].SYMBOL();
                         }
+                        if (i == LINE_OPS.DOT.INDEX()) {
+                            if (progLine.ops[LINE_OPS.A09.INDEX()] != null) {   //  Si A09 => Tien déjà compte du point (cf prepareMultiOpsProgLine())
+                                s = "";
+                                sep = "";
+                            }
+                        }
+                        if (i == LINE_OPS.A09.INDEX()) {
+                            s = progLine.symbol;   //   8,9, ou .8, .9, ...
+                        }
                         if ((opBase.equals(OPS.STO)) || (opBase.equals(OPS.RCL))) {
                             if (i == LINE_OPS.A4OP.INDEX()) {
                                 sep = "";   //  Pour avoir +-*/ juste à côté de l'op: STO+ ... RCL* ..., et non STO + ... RCL * ...
@@ -1814,7 +1826,7 @@ public class Alu {
                         }
                         if (opBase.equals(OPS.XCHG)) {
                             if (i != LINE_OPS.BASE.INDEX()) {
-                                sep = "";   //  Pour avoir X<>1  X<>(i) ...
+                                sep = "";   //  Pour avoir X<>1,  X<>(i) ...
                             }
                         }
                     }

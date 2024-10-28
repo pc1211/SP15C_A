@@ -298,6 +298,8 @@ public class MainActivity extends Activity {
                             ClipData.Item cldi = cld.getItemAt(0);
                             if (cldi != null) {
                                 formattedInputToProgLines(cldi.getText().toString());
+                                dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+                                dotMatrixDisplayView.updateDisplay();
                             }
                         }
                     }
@@ -1171,35 +1173,16 @@ public class MainActivity extends Activity {
     }
 
     private String progLinesToFormattedOutput() {
-        String clipText = "";
+        String res = "";
         int n = alu.getProgLines().size();
         if (n > 0) {
             for (int i = 0; i <= (n - 1); i = i + 1) {
-                String code1 = "  ";
-                String code2 = "  ";
-                String code3 = "  ";
                 String plc = alu.progLineToString(i, false);   //  Codes
                 String pls = alu.progLineToString(i, true);   //  Symbols
-                String res = String.format("%04d", i) + ": ( ";
-                String[] codes = plc.split(" ");   //   "0001:"  "45"  "23"  "24"
-                if (codes.length >= 2) {
-                    int c = Integer.parseInt(codes[1]);
-                    code1 = (c >= 10 ? String.format("%02d", c) : (c == 0 ? "  " : codes[1] + " "));
-                }
-                if (codes.length >= 3) {
-                    int c = Integer.parseInt(codes[2]);
-                    code2 = (c >= 10 ? String.format("%02d", c) : (c == 0 ? "  " : codes[2] + " "));
-                }
-                if (codes.length >= 4) {
-                    int c = Integer.parseInt(codes[3]);
-                    code3 = (c >= 10 ? String.format("%02d", c) : (c == 0 ? "  " : codes[3] + " "));
-                }
-                res = res + code1 + " " + code2 + " " + code3 + " ) ";
-                res = res + pls.substring(6);   //  Ne pas reprendre de nouveau le n° de ligne
-                clipText = clipText + res + CRLF;
+                res = res + plc.substring(0, 5) + " ( " + plc.substring(6) + " ) " + pls.substring(6) + CRLF;   //  Ne pas reprendre de nouveau le n° de ligne de la ligne de symboles
             }
         }
-        return clipText;
+        return res;
     }
 
     private void formattedInputToProgLines(String clipText) {
@@ -1212,19 +1195,13 @@ public class MainActivity extends Activity {
                 for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
                     String[] codes = lines[i].split(" ");   //   "0001:" "(" "45" "23" "14" ")" "etc"
                     if (codes.length >= 3) {
-                        if ((!codes[2].equals("")) && (!codes[2].equals(")"))) {
-                            encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
-                        }
+                        handleCodeToEncode(codes[2]);   //   progLines va progressivement se remplir de toutes ses lignes
                     }
                     if (codes.length >= 4) {
-                        if ((!codes[3].equals("")) && (!codes[3].equals(")"))) {
-                            encodeProgKeyCode(Integer.parseInt(codes[3]));   //   progLines va progressivement se remplir de toutes ses lignes
-                        }
+                        handleCodeToEncode(codes[3]);
                     }
                     if (codes.length >= 5) {
-                        if ((!codes[4].equals("")) && (!codes[4].equals(")"))) {
-                            encodeProgKeyCode(Integer.parseInt(codes[4]));   //   progLines va progressivement se remplir de toutes ses lignes
-                        }
+                        handleCodeToEncode(codes[4]);
                     }
                 }
                 mode = MODES.NORM;
@@ -1232,6 +1209,16 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void handleCodeToEncode(String code) {
+        if ((!code.equals("")) && (!code.equals(")"))) {
+            if ((code.length() > 1) && (code.substring(0, 1).equals("."))) {   //  .8 ou .9 , ...  => Envoyer Point puis envoyer chiffre
+                encodeProgKeyCode(Integer.parseInt("48"));   //  keycode de Point
+                encodeProgKeyCode(Integer.parseInt(code.substring(1)));   //  Le reste
+            } else {   //  Code normal
+                encodeProgKeyCode(Integer.parseInt(code));
+            }
+        }
+    }
 
     public void encodeKeyCodesFromProgLinesRows(String[][] progLinesRows) {
         String[][] rows = progLinesRows;
@@ -1245,7 +1232,7 @@ public class MainActivity extends Activity {
                     for (int j = 1; j <= m; j = j + 1) {   //  Après le champ ID (ProgLineNumber)
                         String kc = rows[i][j];
                         if (kc != null) {
-                            encodeProgKeyCode(Integer.parseInt(kc));   //  progLines va progressivement se remplir de toutes ses lignes
+                            handleCodeToEncode(kc);   //  progLines va progressivement se remplir de toutes ses lignes
                         }
                     }
                 }
