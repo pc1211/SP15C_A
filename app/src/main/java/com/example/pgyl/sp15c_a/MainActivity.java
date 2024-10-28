@@ -1209,7 +1209,7 @@ public class MainActivity extends Activity {
             if (n > 0) {
                 alu.setupProgLines();
                 for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
-                    String[] codes = lines[i].split(" ");   //   "0001" "(" "45" "23" "14" ")" "etc"
+                    String[] codes = lines[i].split(" ");   //   "0001:" "(" "45" "23" "14" ")" "etc"
                     if (codes.length >= 3) {
                         if (!codes[2].equals(")")) {
                             encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
@@ -1217,12 +1217,12 @@ public class MainActivity extends Activity {
                     }
                     if (codes.length >= 4) {
                         if (!codes[3].equals(")")) {
-                            encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                            encodeProgKeyCode(Integer.parseInt(codes[3]));   //   progLines va progressivement se remplir de toutes ses lignes
                         }
                     }
                     if (codes.length >= 5) {
                         if (!codes[4].equals(")")) {
-                            encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                            encodeProgKeyCode(Integer.parseInt(codes[4]));   //   progLines va progressivement se remplir de toutes ses lignes
                         }
                     }
                 }
