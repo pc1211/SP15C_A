@@ -32,12 +32,12 @@ import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static android.content.ClipDescription.MIMETYPE_TEXT_PLAIN;
 import static com.example.pgyl.pekislib_a.Constants.CRLF;
 import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS;
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
-import static com.example.pgyl.pekislib_a.MiscUtils.toastLong;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
@@ -291,8 +291,29 @@ public class MainActivity extends Activity {
         }
         if (item.getItemId() == R.id.IMPORT) {
             if (clipboard != null) {
-                if (!clipboard.hasPrimaryClip()) {
-                    msgBox("no primary clip",this);
+                if (clipboard.hasPrimaryClip()) {
+                    if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
+                        ClipData cld = clipboard.getPrimaryClip();
+                        if (cld != null) {
+                            ClipData.Item cldi = cld.getItemAt(0);
+                            if (cldi != null) {
+                                CharSequence cs = cldi.getText();
+                                if (cs != null) {
+
+                                } else {
+                                    msgBox("cldi.getText() null", this);
+                                }
+                            } else {
+                                msgBox("cld.getItemAt(0) null", this);
+                            }
+                        } else {
+                            msgBox("clipboard.getPrimaryClip() null", this);
+                        }
+                    } else {
+                        msgBox("clipboard.getPrimaryClipDescription() not text", this);
+                    }
+                } else {
+                    msgBox("clipboard.hasPrimaryClip() false", this);
                 }
                 //    if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
                 //        String clipText = clipboard.getPrimaryClip().getItemAt(0).getText().toString();
