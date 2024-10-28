@@ -38,7 +38,7 @@ import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
-import static com.example.pgyl.pekislib_a.MiscUtils.toastLong;
+import static com.example.pgyl.pekislib_a.MiscUtils.toastShort;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
@@ -1209,27 +1209,31 @@ public class MainActivity extends Activity {
             int n = lines.length - 1;   //  Pas la ligne 0
             if (n > 0) {
                 alu.setupProgLines();
+                mode = MODES.EDIT;
                 for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
                     String[] codes = lines[i].split(" ");   //   "0001:" "(" "45" "23" "14" ")" "etc"
-                    if (codes.length >= 3) {
-                        if (!codes[2].equals(")")) {
-                            toastLong(codes[2], this);
-                            encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                    if (codes != null) {
+                        if (codes.length >= 3) {
+                            if (!codes[2].equals(")")) {
+                                toastShort(codes[2] + "*" + codes[2].length(), this);
+                                encodeProgKeyCode(Integer.parseInt(codes[2]));   //   progLines va progressivement se remplir de toutes ses lignes
+                            }
                         }
-                    }
-                    if (codes.length >= 4) {
-                        if (!codes[3].equals(")")) {
-                            toastLong(codes[3], this);
-                            encodeProgKeyCode(Integer.parseInt(codes[3]));   //   progLines va progressivement se remplir de toutes ses lignes
+                        if (codes.length >= 4) {
+                            if (!codes[3].equals(")")) {
+                                toastShort(codes[3] + "*" + codes[3].length(), this);
+                                encodeProgKeyCode(Integer.parseInt(codes[3]));   //   progLines va progressivement se remplir de toutes ses lignes
+                            }
                         }
-                    }
-                    if (codes.length >= 5) {
-                        if (!codes[4].equals(")")) {
-                            toastLong(codes[4], this);
-                            encodeProgKeyCode(Integer.parseInt(codes[4]));   //   progLines va progressivement se remplir de toutes ses lignes
+                        if (codes.length >= 5) {
+                            if (!codes[4].equals(")")) {
+                                toastShort(codes[4] + "*" + codes[4].length(), this);
+                                encodeProgKeyCode(Integer.parseInt(codes[4]));   //   progLines va progressivement se remplir de toutes ses lignes
+                            }
                         }
                     }
                 }
+                mode = MODES.NORM;
             }
         }
     }
