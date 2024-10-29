@@ -130,30 +130,28 @@ public class MainActivity extends Activity {
     private Alu alu;
     private MODES mode;
     private String error;
-    private boolean displaySymbol;
-    private boolean user;
-    private OPS inOp = null;
     private ProgLine tempProgLine;
     private ProgLine readProgLine;
     private long updateInterval;
     private long nowmPSE;
     private long nowmRUN;
-    private int readProgLineOpIndex;
     private Handler handlerTimeLine;
     private Runnable runnableTimeLine;
-    private boolean lineIsGhostKey;
+    private OPS inOp;
     private OPS shiftFOp;
     private OPS currentOp;
     private SolveParamSet solveParamSet;
     private IntegParamSet integParamSet;
     private int nextProgLineNumber;
     private int currentProgLineNumber;
-    private boolean inSST;
+    private String alpha;
+    private boolean displaySymbol;
+    private boolean user;
     private boolean isWrapAround;
-    private String alpha = "";
     private boolean isAutoL;
     private boolean isAutoLine;
     private boolean isKeyboardInterrupt;
+    private boolean inSST;
     private boolean inExecCurrentProgLine;
     private boolean inPSE;
     private boolean requestStopAfterSolve;
@@ -215,29 +213,27 @@ public class MainActivity extends Activity {
 
         mode = MODES.NORM;
         error = "";
-        isWrapAround = false;
+        alpha = "";
         currentProgLineNumber = 0;
         nextProgLineNumber = 0;
-        inSST = false;
-        alpha = "";
+        nowmPSE = 0;
+        nowmRUN = 0;
         inOp = null;
+        shiftFOp = null;
+        inSST = false;
+        isWrapAround = false;
         isAutoLine = false;
         isAutoL = false;
         inPSE = false;
-        readProgLineOpIndex = LINE_OPS.BASE.INDEX();
-        lineIsGhostKey = false;
-        isKeyboardInterrupt = false;
-        tempProgLine = new ProgLine();
-        readProgLine = new ProgLine();
-        displaySymbol = true;
         user = false;
-        nowmPSE = 0;
-        nowmRUN = 0;
-        updateInterval = AUTO_UPDATE_INTERVAL_MS;
-        shiftFOp = null;
-        shiftMode = SHIFT_MODES.UNSHIFTED;
+        isKeyboardInterrupt = false;
+        displaySymbol = true;
         requestStopAfterSolve = false;
         requestStopAfterInteg = false;
+        tempProgLine = new ProgLine();
+        readProgLine = new ProgLine();
+        updateInterval = AUTO_UPDATE_INTERVAL_MS;
+        shiftMode = SHIFT_MODES.UNSHIFTED;
 
         alu = new Alu();
         solveParamSet = new SolveParamSet();
@@ -1354,19 +1350,6 @@ public class MainActivity extends Activity {
         return res;
     }
 
-    private int getValidProgLineOpIndex(ProgLine progLine, int fromIndex) {
-        int res = -1;
-        int n = progLine.ops.length;
-        for (int i = fromIndex; i <= (n - 1); i = i + 1) {
-            OPS op = progLine.ops[i];
-            if (op != null) {
-                res = i;
-                break;
-            }
-        }
-        return res;
-    }
-
     public int inc(int progLineNumber) {
         int res = progLineNumber + 1;
         if (res == alu.getProgLinesSize()) {   //  N'existe pas => Premier
@@ -1450,7 +1433,7 @@ public class MainActivity extends Activity {
             if ((nowm - nowmRUN) >= FLASH_RUN_MS) {   //  Fin du temps entre 2 flash
                 nowmRUN = nowm;
                 dotMatrixDisplayView.invert();
-                dotMatrixDisplayUpdater.displayText("RUNNING...", false);
+                dotMatrixDisplayUpdater.displayText("Running...", false);
                 dotMatrixDisplayView.updateDisplay();
             }
         }
