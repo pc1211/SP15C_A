@@ -110,6 +110,7 @@ public class MainActivity extends Activity {
     private final long AUTO_UPDATE_INTERVAL_MS = 1;
     private final int SOLVE_RETURN_CODE = 100000;   //  > 10000 pour ne pas le confondre avec un N° de ligne ordinaire (0000-9999)
     private final int INTEG_RETURN_CODE = 200000;
+    private final int END_RETURN_CODE = 300000;
 
     public enum SWTIMER_SHP_KEY_NAMES {KEEP_SCREEN}
     //endregion
@@ -745,7 +746,7 @@ public class MainActivity extends Activity {
             OPS dop = alu.getOpByGhostKeyOps(inOp, currentOp);   //  Pas null pour opérations fantômes (cf GHOST_KEYS) : HYP, AHYP, TEST
             if (dop != null) {   // Cas particuliers: SINH,COSH,TANH,ASINH,ACOSH,ATANH et les 10 tests ("x<0?", ... (TEST n)) sont codées en clair en op0 (pex "ACOSH", "x<0?") et en normal (p.ex. HYP-1 COS, TEST 2) dans les op suivants
                 // Suite: Ce qui implique que si Affichage symboles: Afficher uniquement op0, Si Affichage Codes: Afficher à partir de op1
-                tempProgLine.ops[LINE_OPS.GHOST1.INDEX()] = inOp;   //  Garder l'opération initiale (AHYP COS , TEST n) après op0; op0 sera fixé dans handleOp()
+                tempProgLine.ops[LINE_OPS.GHOST1.INDEX()] = inOp;   //  Garder l'opération initiale (AHYP COS , TEST n) après op0; op0 sera fixé dans interpretOp()
                 tempProgLine.ops[LINE_OPS.GHOST2.INDEX()] = currentOp;
                 currentOp = dop;   //  l'opération est requalifiée en son équivalent direct et sera examinée plus bas
                 if ((mode.equals(MODES.NORM)) || (mode.equals(MODES.EDIT))) {
@@ -862,11 +863,6 @@ public class MainActivity extends Activity {
                             common = true;
                         }
                         break;
-                    case XCHG:
-                        if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
-                            common = true;
-                        }
-                        break;
                     case LBL:
                         if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.AE.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
                             common = true;
@@ -874,6 +870,7 @@ public class MainActivity extends Activity {
                         break;
                     case DSE:
                     case ISG:
+                    case XCHG:
                         if ((tempProgLine.ops[LINE_OPS.A09.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.I.INDEX()] != null) || (tempProgLine.ops[LINE_OPS.INDI.INDEX()] != null)) {   //  A09 tient déjà compte du DOT (cf prepareMultiOpsProgLine())
                             common = true;
                         }
@@ -912,11 +909,16 @@ public class MainActivity extends Activity {
                 if (dpln != (-1)) {   //  OK
                     tempProgLine.paramAddress = dpln;
                     if (setRunMode) {
-                        if (tempProgLine.ops[LINE_OPS.BASE.INDEX()] == OPS.SOLVE) {
-                            requestStopAfterSolve = true;   //  Nécessaire car un SOLVE ou INTEG ne se termine pas par un RTN comme un GTO ou GSB
-                        }
-                        if (tempProgLine.ops[LINE_OPS.BASE.INDEX()] == OPS.INTEG) {
-                            requestStopAfterInteg = true;
+                        switch (tempProgLine.ops[LINE_OPS.BASE.INDEX()]) {
+                            case SOLVE:
+                                requestStopAfterSolve = true;   //  Nécessaire car un SOLVE ou INTEG ne se termine pas par un RTN comme dans un GSB
+                                break;
+                            case INTEG:
+                                requestStopAfterInteg = true;
+                                break;
+                            case GSB:
+                                nextProgLineNumber = END_RETURN_CODE;
+                                break;
                         }
                         nowmRUN = System.currentTimeMillis();
                         mode = MODES.RUN;   //   Exécuter un GSB, SOLVE, INTEG, c'est se mettre en mode RUN car plusieurs lignes à exécuter
@@ -1049,7 +1051,9 @@ public class MainActivity extends Activity {
                 }
                 break;
             case BEGIN:   //  Neutre sur StackLift
-                error = exec(tempProgLine);   //  Pour tenir compte de l'éventuel wrap around
+                if (alphaToX()) {
+                    //  NOP
+                }
                 break;
             case PR:
                 boolean sw = false;
@@ -1550,12 +1554,9 @@ public class MainActivity extends Activity {
                 break;
             case GSB:    //  Neutre sur StackLift ???
                 if (alphaToX()) {
-                    if (mode.equals(MODES.RUN)) {   //  => En mode NORM: ne pas faire de push, la pile vide générera un STOP
-                        if (!alu.pushProgLineNumber(nextProgLineNumber)) {   //  Si False => MAX_RETS dépassé
-                            error = ERROR_RET_STACK_FULL;
-                        }
-                    }
-                    if (error.length() == 0) {   //  OK Push
+                    if (!alu.pushProgLineNumber(nextProgLineNumber)) {   //  Si False => MAX_RETS dépassé
+                        error = ERROR_RET_STACK_FULL;
+                    } else {   //  OK Push
                         if (progLine.ops[LINE_OPS.I.INDEX()] != null) {   //  GSB I => recalculer selon I
                             int dpln = alu.getGTODestProgLineNumber(progLine);
                             if (dpln != (-1)) {   //  OK
@@ -2291,13 +2292,39 @@ public class MainActivity extends Activity {
                 if (alphaToX()) {
                     if (isWrapAround) {   //  On est passé de la fin au début => STOP
                         isWrapAround = false;
-                        error = rtn();   //  Opération requalifiée et à examiner ci-dessous
+                        mode = MODES.NORM;
+                        isAutoLine = false;
+                        alu.clearRetStack();
                     }
                 }
                 break;
-            case RTN:
+            case RTN:   //  Neutre sur StackLift ???
                 if (alphaToX()) {
-                    error = rtn();
+                    if (!alu.isRetStackEmpty()) {  //  La pile d'appels n'est pas vide
+                        int dpln = alu.popProgLineNumber();
+                        switch (dpln) {
+                            case SOLVE_RETURN_CODE:    //  Si Code de retour SOLVE ou INTEG => UserFx a été évaluée et donc Retour à SOLVE ou INTEG qui avait demandé l'évaluation
+                                tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.SOLVE;   //  Rappeler Solve pour continuer
+                                tempProgLine.paramAddress = solveParamSet.userFxLineNumber;
+                                error = exec(tempProgLine);
+                                break;
+                            case INTEG_RETURN_CODE:
+                                tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.INTEG;
+                                tempProgLine.paramAddress = integParamSet.userFxLineNumber;
+                                error = exec(tempProgLine);
+                                break;
+                            case END_RETURN_CODE:   //  RTN de GSB appelé depuis mode NORM (cf saveOrExecLineWithLabel(runMode))
+                                mode = MODES.NORM;
+                                isAutoLine = false;
+                                break;
+                            default:   //  Normal, Pas Code de retour à SOLVE ou INTEG, et pas de RTN de GSB appelé depuis mode NORM
+                                nextProgLineNumber = dpln;
+                                break;
+                        }
+                    } else {   //  Pile d'appels vide => STOP sans erreur
+                        mode = MODES.NORM;
+                        isAutoLine = false;
+                    }
                 }
                 break;
             case RS:
@@ -2328,29 +2355,6 @@ public class MainActivity extends Activity {
             } else {
                 alu.lastXToX();
             }
-        }
-        return error;
-    }
-
-    private String rtn() {   //  Neutre sur StackLift ???
-        if (!alu.isRetStackEmpty()) {  //  La pile d'appels n'est pas vide
-            int dpln = alu.popProgLineNumber();   //  Si Code de retour SOLVE ou INTEG => UserFx a été évaluée et donc Retour à SOLVE ou INTEG qui avait demandé l'évaluation
-            if ((dpln == SOLVE_RETURN_CODE) || (dpln == INTEG_RETURN_CODE)) {
-                if (dpln == SOLVE_RETURN_CODE) {
-                    tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.SOLVE;   //  Rappeler Solve pour continuer
-                    tempProgLine.paramAddress = solveParamSet.userFxLineNumber;
-                }
-                if (dpln == INTEG_RETURN_CODE) {
-                    tempProgLine.ops[LINE_OPS.BASE.INDEX()] = OPS.INTEG;
-                    tempProgLine.paramAddress = integParamSet.userFxLineNumber;
-                }
-                error = exec(tempProgLine);
-            } else {   //  Normal, Pas Code de retour à SOLVE ou INTEG
-                nextProgLineNumber = dpln;
-            }
-        } else {   //  Pile d'appels vide => STOP sans erreur
-            mode = MODES.NORM;
-            isAutoLine = false;
         }
         return error;
     }
