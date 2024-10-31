@@ -30,7 +30,7 @@ public class Alu {
         PSE("PSE"),
         MATRIX("MATRIX"),
         RESULT("RESULT"),
-        REIM("REIM"),
+        REIM("Re<>Im"),
         //  ****************************** Début Bloc (à laisser dans l'ordre, pour identifier facilement "de A à E")
         A("A"),
         B("B"),
