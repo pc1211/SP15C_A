@@ -88,7 +88,7 @@ public class MainActivity extends Activity {
     }
 
     private enum MODES {
-        NORM, EDIT, RUN, EXPORT;
+        NORM, EDIT, RUN;
 
         public int INDEX() {
             return ordinal();
@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
     private final long AUTO_UPDATE_INTERVAL_MS = 1;
     private final int SOLVE_RETURN_CODE = 100000;   //  > 10000 pour ne pas le confondre avec un N° de ligne ordinaire (0000-9999)
     private final int INTEG_RETURN_CODE = 200000;
-    private final int END_RETURN_CODE = 300000;
+    private final int END_RETURN_CODE = 300000;   //  Pour assurer le retour après un GSB lancé en mode NORM
 
     public enum SWTIMER_SHP_KEY_NAMES {KEEP_SCREEN}
     //endregion
@@ -1193,7 +1193,7 @@ public class MainActivity extends Activity {
                 alu.setupProgLines();
                 mode = MODES.EDIT;
                 for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
-                    String[] codes = lines[i].split(" ");   //   "0001:" "(" "45" "23" "14" ")" "etc"
+                    String[] codes = lines[i].split("\\s+");   //   "0001:" "(" "45" "23" "14" ")" "etc"   (les espaces simples ou multiples sont éliminés)
                     if (codes.length >= 3) {
                         handleCodeToEncode(codes[2]);   //   progLines va progressivement se remplir de toutes ses lignes
                     }

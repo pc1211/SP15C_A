@@ -30,6 +30,7 @@ public class Alu {
         PSE("PSE"),
         MATRIX("MATRIX"),
         RESULT("RESULT"),
+        REIM("REIM"),
         //  ****************************** Début Bloc (à laisser dans l'ordre, pour identifier facilement "de A à E")
         A("A"),
         B("B"),
@@ -189,7 +190,7 @@ public class Alu {
         KEY_37(37, OPS.DIGIT_1, OPS.RECT, OPS.POL),
         KEY_38(38, OPS.DIGIT_2, OPS.HMS, OPS.H),
         KEY_39(39, OPS.DIGIT_3, OPS.TO_RAD, OPS.TO_DEG),
-        KEY_30(30, OPS.MINUS, OPS.UNKNOWN, OPS.TEST),
+        KEY_30(30, OPS.MINUS, OPS.REIM, OPS.TEST),   //  REIM inactif
         KEY_41(41, OPS.ON, OPS.ON, OPS.ON),   //  ON inactif
         KEY_42(42, OPS.F, OPS.UNKNOWN, OPS.UNKNOWN),
         KEY_43(43, OPS.G, OPS.UNKNOWN, OPS.UNKNOWN),
@@ -503,17 +504,6 @@ public class Alu {
 
     public void setStackRegContent(STACK_REGS stackReg, double value) {
         stackRegs[stackReg.INDEX()] = value;
-    }
-
-    public void clearFlags() {
-        int n = flags.length;
-        for (int i = 1; i <= (n - 1); i = i + 1) {
-            flags[i] = false;
-        }
-    }
-
-    public boolean isGhostKey(OPS op) {
-        return (opToGhostKeyMap.get(op) != null);
     }
 
     public OPS getOpByGhostKeyOps(OPS prefixOp, OPS lastOp) {
@@ -1200,10 +1190,10 @@ public class Alu {
                 res = (x < 0.0);
                 break;
             case XGE0:
-                res = (x >= 0d);
+                res = (x >= 0.0);
                 break;
             case XLE0:
-                res = (x <= 0d);
+                res = (x <= 0.0);
                 break;
             case XEY:
                 res = (x == y);
@@ -1698,7 +1688,7 @@ public class Alu {
                 res = new String[n][4];   //  4: champ ID + champ VALUE1,2,3
                 for (int i = 1; i <= n; i = i + 1) {   //  Partir de la ligne 1
                     String pl = progLineToString(i, false);   //  une string avec max 3 opcodes; p.ex. "0001: 45 23 24"
-                    String[] plc = pl.split(" ");   //   "0001:"  "45"  "23"  "24"
+                    String[] plc = pl.split("\\s+");   //   "0001:"  "45"  "23"  "24"   (les espaces simples ou multiples sont éliminés)
                     res[i - 1][TABLE_ID_INDEX] = String.valueOf(i);   //  "1"
                     res[i - 1][TABLE_DATA_INDEX] = (plc.length >= 2 ? plc[1] : null);   //  "45"
                     res[i - 1][TABLE_DATA_INDEX + 1] = (plc.length >= 3 ? plc[2] : null);   //  "23"
@@ -1790,7 +1780,7 @@ public class Alu {
                             s = unshiftedOp.SYMBOL();
                         }
                         if (i == LINE_OPS.DOT.INDEX()) {
-                            if (progLine.ops[LINE_OPS.A09.INDEX()] != null) {
+                            if (progLine.ops[LINE_OPS.A09.INDEX()] != null) {    //  Si A09 => Tient déjà compte du point (cf prepareMultiOpsProgLine())
                                 s = "";
                                 sep = "";
                             }
@@ -1811,7 +1801,7 @@ public class Alu {
                             s = progLine.ops[i].SYMBOL();
                         }
                         if (i == LINE_OPS.DOT.INDEX()) {
-                            if (progLine.ops[LINE_OPS.A09.INDEX()] != null) {   //  Si A09 => Tien déjà compte du point (cf prepareMultiOpsProgLine())
+                            if (progLine.ops[LINE_OPS.A09.INDEX()] != null) {   //  Si A09 => Tient déjà compte du point (cf prepareMultiOpsProgLine())
                                 s = "";
                                 sep = "";
                             }
