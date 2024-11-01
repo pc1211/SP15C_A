@@ -1,18 +1,20 @@
 package com.example.pgyl.sp15c_a;
 
-import java.util.ArrayList;
-
 public class IntegParamSet {
     public final int ITER_COUNT_MAX = 50;
 
     public double a;
     public double b;
-    public int n;
     public double h;
+    public int l;
+    public int n;
+    public double p;
+    public double u;
+    public double x;
+    public double z;
+    public double sumFx;
     public int countFx;
     public int countFxMax;
-    public double sumFx;
-    public ArrayList<ArrayList<Double>> rombergLines;
     public int oldNextProgLineNumber;
     public int userFxLineNumber;
     public int count;
@@ -31,51 +33,38 @@ public class IntegParamSet {
     public void clear() {
         a = 0;
         b = 0;
-        n = 0;
         h = 0;
+        l = 0;
+        n = 0;
+        u = 0;
+        x = 0;
+        z = 0;
+        p = 0;
+        sumFx = 0;
         countFx = 0;
         countFxMax = 0;
-        sumFx = 0;
-        rombergLines = new ArrayList<ArrayList<Double>>();
         oldNextProgLineNumber = 0;
         userFxLineNumber = 0;
         count = 0;
         retLevel = 0;
-        iterCount = 0;
         tol = 0;
+        iterCount = 0;
     }
 
     public void close() {
-        rombergLines.clear();
-        rombergLines = null;
+        //  NOP
+    }
+
+    public void calc() {
+        z = h * (4 * sumFx + 2 * u + p) / 3.0;   //  sumFx=somme points impairs de l'étape n); u=somme points pairs (cumul des points impairs de l'étape n-1)
     }
 
     public void setNextLevel() {
-        n = n + 1;
+        u = u + sumFx;   //  Mettre à jour la somme cumulée des y de tous les points impairs calculés depuis le début; ces points impairs seront pairs au tour suivant
+        countFxMax = n;
+        n = n * 2;
         h = h / 2.0;
-        countFxMax = (n == 1 ? 1 : countFxMax * 2);
-        sumFx = 0;
         countFx = 0;
-    }
-
-    public double getRombergCurrentValue() {
-        return rombergLines.get(n).get(n);
-    }
-
-    public double getRombergPreviousValue() {
-        return rombergLines.get(n - 1).get(n - 1);
-    }
-
-    public void calcRombergFirstValue() {
-        rombergLines.add(new ArrayList<Double>());   //  Ligne n (0)
-        rombergLines.get(0).add(sumFx / 2.0 * (b - a));
-    }
-
-    public void calcRombergLineValues() {
-        rombergLines.add(new ArrayList<Double>());   //  Ligne n
-        rombergLines.get(n).add(rombergLines.get(n - 1).get(0) / 2.0 + h * sumFx);
-        for (int i = 0; i <= (n - 1); i = i + 1) {
-            rombergLines.get(n).add((Math.pow(4, n) * rombergLines.get(n).get(i) - rombergLines.get(n - 1).get(i)) / (Math.pow(4, n) - 1));
-        }
+        sumFx = 0;
     }
 }

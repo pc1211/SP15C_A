@@ -1577,7 +1577,8 @@ public class MainActivity extends Activity {
                         solveParamSet.oldNextProgLineNumber = nextProgLineNumber;
                         solveParamSet.userFxLineNumber = progLine.paramAddress;
                         solveParamSet.retLevel = alu.getRetStackSize();
-                        solveParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
+                        solveParamSet.tol = Math.pow(10, -alu.MAX_DIGITS - 1);
+                        solveParamSet.iterCount = 0;
                         solveParamSet.a = alu.getStackRegContents(STACK_REGS.Y);   //  Guess 1
                         solveParamSet.b = alu.getStackRegContents(STACK_REGS.X);   //  Guess 2
                         solveParamSet.separateAB();   //   Si a = b (à 1E-14 max près) => Séparer a et b avec une différence de 1E-6
@@ -1637,35 +1638,39 @@ public class MainActivity extends Activity {
                         integParamSet.userFxLineNumber = progLine.paramAddress;
                         integParamSet.retLevel = alu.getRetStackSize();
                         integParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
+                        integParamSet.iterCount = 0;
                         integParamSet.a = alu.getStackRegContents(STACK_REGS.Y);   //  a
                         integParamSet.b = alu.getStackRegContents(STACK_REGS.X);   //  b
                         integParamSet.h = integParamSet.b - integParamSet.a;
+                        integParamSet.n = 1;
+                        integParamSet.l = integParamSet.n;
+                        integParamSet.u = 0;
+                        integParamSet.z = 1e99;
                         error = integConfigForEvalUserFx(integParamSet.a);
                     }
                     if (integParamSet.count == 2) {
                         if (alu.getRetStackSize() != integParamSet.retLevel) {
                             error = ERROR_NESTED_INTEG;
                         } else {   //  Pas de Integ imbriqués, on continue
-                            integParamSet.countFx = integParamSet.countFx + 1;
-                            integParamSet.sumFx = alu.getStackRegContents(STACK_REGS.X);   //  f(a)
+                            integParamSet.p = alu.getStackRegContents(STACK_REGS.X);   //  f(a)
                             error = integConfigForEvalUserFx(integParamSet.b);
                         }
                     }
                     if (integParamSet.count >= 3) {
-                        if (integParamSet.n == 0) {
-                            integParamSet.sumFx = integParamSet.sumFx + alu.getStackRegContents(STACK_REGS.X);   //  f(a) + f(b)
-                            integParamSet.calcRombergFirstValue();   //  n=0
+                        if (integParamSet.n == 1) {
+                            integParamSet.p = integParamSet.p + alu.getStackRegContents(STACK_REGS.X);   //  f(a) + f(b)
                             integParamSet.setNextLevel();
-                            error = integConfigForEvalUserFx(integParamSet.a + integParamSet.h * (2 * integParamSet.countFx + 1.0));   //  cad 2i-1 si i en base 1
-                        } else {   //  n > 0
-                            integParamSet.sumFx = integParamSet.sumFx + alu.getStackRegContents(STACK_REGS.X);
+                            integParamSet.x = integParamSet.a + integParamSet.h;    //  1er point impair
+                            error = integConfigForEvalUserFx(integParamSet.x);
+                        } else {   //  n > 1
+                            integParamSet.sumFx = integParamSet.sumFx + alu.getStackRegContents(STACK_REGS.X);   //   Mettre à jour la somme des y des points impairs
                             integParamSet.countFx = integParamSet.countFx + 1;
-                            if (integParamSet.countFx >= integParamSet.countFxMax) {   //  La somme est complète, on peut calculer la ligne n
-                                integParamSet.calcRombergLineValues();   //  Ligne n
-                                double newInteg = integParamSet.getRombergCurrentValue();   //  [n,n]
-                                double diff = Math.abs(newInteg - integParamSet.getRombergPreviousValue());   //  [n-1,n-1]
+                            if (integParamSet.countFx >= integParamSet.countFxMax) {   //  La somme est complète, on peut calculer la prochaine estimation
+                                double oldInteg = integParamSet.z;
+                                integParamSet.calc();   //  Nouvelle estimation dans z
+                                double diff = Math.abs(integParamSet.z - oldInteg);
                                 if (diff <= integParamSet.tol) {   //  OK c'est bon
-                                    alu.setStackRegContent(STACK_REGS.X, newInteg);
+                                    alu.setStackRegContent(STACK_REGS.X, integParamSet.z);
                                     alu.setStackRegContent(STACK_REGS.Y, diff);
                                     alu.setStackRegContent(STACK_REGS.Z, integParamSet.b);
                                     alu.setStackRegContent(STACK_REGS.T, integParamSet.a);
@@ -1681,11 +1686,13 @@ public class MainActivity extends Activity {
                                         error = ERROR_INTEG_ITER_MAX;
                                     } else {  //  On continue !
                                         integParamSet.setNextLevel();
-                                        error = integConfigForEvalUserFx(integParamSet.a + integParamSet.h * (2 * integParamSet.countFx + 1.0));   //  cad 2i-1 si i en base 1
+                                        integParamSet.x = integParamSet.a + integParamSet.h;    //  1er point impair
+                                        error = integConfigForEvalUserFx(integParamSet.x);
                                     }
                                 }
                             } else {   //  La somme n'est pas encore complète
-                                error = integConfigForEvalUserFx(integParamSet.a + integParamSet.h * (2 * integParamSet.countFx + 1.0));   //  cad 2i-1 si i en base 1
+                                integParamSet.x = integParamSet.x + integParamSet.h * 2.0;    //  Prochain point impair
+                                error = integConfigForEvalUserFx(integParamSet.x);
                             }
                         }
                     }
