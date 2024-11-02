@@ -1437,7 +1437,15 @@ public class MainActivity extends Activity {
             if ((nowm - nowmRUN) >= FLASH_RUN_MS) {   //  Fin du temps entre 2 flash
                 nowmRUN = nowm;
                 dotMatrixDisplayView.invert();
-                dotMatrixDisplayUpdater.displayText("Running...", false);
+                if (requestStopAfterSolve) {
+                    dotMatrixDisplayUpdater.displayText(alu.roundForDisplay(solveParamSet.t), true);
+                } else {
+                    if (requestStopAfterInteg) {
+                        dotMatrixDisplayUpdater.displayText(alu.roundForDisplay(integParamSet.z), true);
+                    } else {
+                        dotMatrixDisplayUpdater.displayText("Running...", false);
+                    }
+                }
                 dotMatrixDisplayView.updateDisplay();
             }
         }
@@ -1577,7 +1585,7 @@ public class MainActivity extends Activity {
                         solveParamSet.oldNextProgLineNumber = nextProgLineNumber;
                         solveParamSet.userFxLineNumber = progLine.paramAddress;
                         solveParamSet.retLevel = alu.getRetStackSize();
-                        solveParamSet.tol = Math.pow(10, -alu.MAX_DIGITS - 1);
+                        solveParamSet.tol = Math.pow(10, -alu.MAX_DIGITS - 2);
                         solveParamSet.iterCount = 0;
                         solveParamSet.a = alu.getStackRegContents(STACK_REGS.Y);   //  Guess 1
                         solveParamSet.b = alu.getStackRegContents(STACK_REGS.X);   //  Guess 2
@@ -1603,7 +1611,7 @@ public class MainActivity extends Activity {
                     if (solveParamSet.count >= 4) {
                         solveParamSet.q = alu.getStackRegContents(STACK_REGS.X);   //  f(c)
                         solveParamSet.setNextLevel();
-                        error = solveParamSet.transform();
+                        error = solveParamSet.transform();   //  Nouvelle estimation dans t
                         if (error.length() == 0) {
                             double newX = solveParamSet.t;
                             if (Math.abs(newX - solveParamSet.c) <= solveParamSet.tol) {   //  OK c'est bon
@@ -1637,7 +1645,7 @@ public class MainActivity extends Activity {
                         integParamSet.oldNextProgLineNumber = nextProgLineNumber;
                         integParamSet.userFxLineNumber = progLine.paramAddress;
                         integParamSet.retLevel = alu.getRetStackSize();
-                        integParamSet.tol = Math.pow(10, -alu.getRoundParam() - 1);
+                        integParamSet.tol = Math.pow(10, -alu.getRoundParam() - 2);
                         integParamSet.iterCount = 0;
                         integParamSet.a = alu.getStackRegContents(STACK_REGS.Y);   //  a
                         integParamSet.b = alu.getStackRegContents(STACK_REGS.X);   //  b
