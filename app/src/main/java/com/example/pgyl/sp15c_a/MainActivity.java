@@ -116,7 +116,6 @@ public class MainActivity extends Activity {
     //endregion
 
     //region Variables
-    private ClipboardManager clipboard;
     private ImageButtonViewStack[] buttons;
     private DotMatrixDisplayView dotMatrixDisplayView;
     private DotMatrixDisplayView sideDotMatrixDisplayView;
@@ -179,7 +178,6 @@ public class MainActivity extends Activity {
         saveRowsToDB(stringDB, getRetStackTableName(), intArrayToRows(intListToArray(alu.getRetStack())));
         saveRowsToDB(stringDB, getProgLinesTableName(), alu.progLinesToRows());
         saveRowsToDB(stringDB, getParamsTableName(), paramsToRows());
-        clipboard = null;
         dotMatrixDisplayUpdater.close();
         dotMatrixDisplayUpdater = null;
         sideDotMatrixDisplayUpdater.close();
@@ -258,7 +256,6 @@ public class MainActivity extends Activity {
         dotMatrixDisplayView.updateDisplay();
         updateSideDisplay();
 
-        clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         setupRunnableTimeLine();
         updateDisplayKeepScreen();
         invalidateOptionsMenu();
@@ -287,6 +284,7 @@ public class MainActivity extends Activity {
             return true;
         }
         if (item.getItemId() == R.id.IMPORT) {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (clipboard != null) {
                 if (clipboard.hasPrimaryClip()) {
                     if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
@@ -294,7 +292,7 @@ public class MainActivity extends Activity {
                         if (cld != null) {
                             ClipData.Item cldi = cld.getItemAt(0);
                             if (cldi != null) {
-                                encodeKeyCodesFromClipBoard(cldi.getText().toString());
+                                encodeKeyCodesFromClipboard(cldi.getText().toString());
                                 msgBox(alu.getProgLinesSize() + " lines imported", this);
                                 dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
                                 dotMatrixDisplayView.updateDisplay();
@@ -306,8 +304,9 @@ public class MainActivity extends Activity {
             return true;
         }
         if (item.getItemId() == R.id.EXPORT) {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (clipboard != null) {
-                ClipData clip = ClipData.newPlainText(null, progLinesToClipBoard());
+                ClipData clip = ClipData.newPlainText(null, progLinesToClipboard());
                 clipboard.setPrimaryClip(clip);
                 msgBox(alu.getProgLinesSize() + " lines exported", this);
             }
@@ -1174,7 +1173,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private String progLinesToClipBoard() {
+    private String progLinesToClipboard() {
         String res = "";
         int n = alu.getProgLines().size();
         if (n > 0) {
@@ -1187,7 +1186,7 @@ public class MainActivity extends Activity {
         return res;
     }
 
-    private void encodeKeyCodesFromClipBoard(String clipText) {
+    private void encodeKeyCodesFromClipboard(String clipText) {
         if (clipText != null) {
             String[] lines = clipText.split("\\r?\\n");   //  Splitter selon CR/LF
             int n = lines.length;
