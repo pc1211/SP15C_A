@@ -38,6 +38,7 @@ import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
 import static com.example.pgyl.pekislib_a.MiscUtils.msgBox;
+import static com.example.pgyl.pekislib_a.MiscUtils.toastShort;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
 import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableName;
@@ -284,15 +285,20 @@ public class MainActivity extends Activity {
             return true;
         }
         if (item.getItemId() == R.id.IMPORT) {
+            toastShort("import", this);
             ClipboardManager clipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
             if (clipboard != null) {
+                toastShort("got clipboard", this);
                 if (clipboard.hasPrimaryClip()) {
+                    toastShort("Has primary clip", this);
                     if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
+                        toastShort("TEXT", this);
                         ClipData cld = clipboard.getPrimaryClip();
                         if (cld != null) {
+                            toastShort("got cld", this);
                             ClipData.Item cldi = cld.getItemAt(0);
                             if (cldi != null) {
-                                msgBox("encodage va suivre", this);
+                                toastShort("got cldi", this);
                                 encodeKeyCodesFromClipboard(cldi.getText().toString());
                                 msgBox(alu.getProgLinesSize() + " lines imported", this);
                                 dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
