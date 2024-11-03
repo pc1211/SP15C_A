@@ -32,7 +32,6 @@ import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static android.content.ClipDescription.MIMETYPE_TEXT_PLAIN;
 import static com.example.pgyl.pekislib_a.Constants.CRLF;
 import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS;
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
@@ -291,19 +290,16 @@ public class MainActivity extends Activity {
                 toastShort("got clipboard", this);
                 if (clipboard.hasPrimaryClip()) {
                     toastShort("Has primary clip", this);
-                    if (clipboard.getPrimaryClipDescription().hasMimeType(MIMETYPE_TEXT_PLAIN)) {
-                        toastShort("TEXT", this);
-                        ClipData cld = clipboard.getPrimaryClip();
-                        if (cld != null) {
-                            toastShort("got cld", this);
-                            ClipData.Item cldi = cld.getItemAt(0);
-                            if (cldi != null) {
-                                toastShort("got cldi", this);
-                                encodeKeyCodesFromClipboard(cldi.getText().toString());
-                                msgBox(alu.getProgLinesSize() + " lines imported", this);
-                                dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
-                                dotMatrixDisplayView.updateDisplay();
-                            }
+                    ClipData cld = clipboard.getPrimaryClip();
+                    if (cld != null) {
+                        toastShort("got cld", this);
+                        ClipData.Item cldi = cld.getItemAt(0);
+                        if (cldi != null) {
+                            toastShort("got cldi", this);
+                            encodeKeyCodesFromClipboard(cldi.getText().toString());
+                            msgBox(alu.getProgLinesSize() + " lines imported", this);
+                            dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+                            dotMatrixDisplayView.updateDisplay();
                         }
                     }
                 }
