@@ -306,10 +306,10 @@ public class Alu {
         }   //  Servira aussi d'index dans regs
     }
 
-    public enum LABELS {   //  Registres de base (I, R0 à R9, R.0 à R.9) (avec les registres classiques de données (data) à partir de R0)
+    public enum LABELS {
         L0("0"), L1("1"), L2("2"), L3("3"), L4("4"), L5("5"), L6("6"), L7("7"), L8("8"), L9("9"),
         LDOT0(".0"), LDOT1(".1"), LDOT2(".2"), LDOT3(".3"), LDOT4(".4"), LDOT5(".5"), LDOT6(".6"), LDOT7(".7"), LDOT8(".8"), LDOT9(".9"),
-        LA("A"), LB("B"), LC("C"), LD("D"), LE("E");
+        LA("A"), LB("B"), LC("C"), LD("D"), LE("E");   //    "I" non repris car "LBL I" n'existe pas
 
         private String symbol;
 
@@ -1853,9 +1853,11 @@ public class Alu {
             ProgLine progLine = progLines.get(i);
             OPS op = progLine.ops[LINE_OPS.BASE.INDEX()];
             if ((op.equals(OPS.GTO)) || (op.equals(OPS.GSB)) || (op.equals(OPS.SOLVE)) || (op.equals(OPS.INTEG))) {
-                LABELS lbl = symbolToLabelMap.get(progLine.symbol);
-                int pln = labelToprogLineNumberMap.get(lbl);
-                progLine.paramAddress = pln;
+                if (!progLine.symbol.equals(OPS.I.SYMBOL())) {   //   GTO I ou GSB I existent, mais la destination est le label (ou N° de ligne) contenu dans I !
+                    LABELS lbl = symbolToLabelMap.get(progLine.symbol);
+                    int pln = labelToprogLineNumberMap.get(lbl);
+                    progLine.paramAddress = pln;
+                }
             }
         }
     }
