@@ -466,9 +466,9 @@ public class MainActivity extends Activity {
         currentOp = null;   //  Restera null si fonction f ou g activée ou annulée
         int n = keyCode;
         if (keyCode < 10) {   //  Retrouver le vrai keyCode (au lieu du chiffre repris dans la liste de codes du programme)
-            keyCode = digitToRealKeyCode(keyCode);
+            n = digitToRealKeyCode(keyCode);
         }
-        KEYS key = alu.getKeyByKeyCode(keyCode);
+        KEYS key = alu.getKeyByKeyCode(n);
         switch (shiftMode) {
             case UNSHIFTED:
                 switch (key) {
@@ -1190,11 +1190,11 @@ public class MainActivity extends Activity {
     private void encodeKeyCodesFromClipBoard(String clipText) {
         if (clipText != null) {
             String[] lines = clipText.split("\\r?\\n");   //  Splitter selon CR/LF
-            int n = lines.length - 1;   //  Pas la ligne 0
+            int n = lines.length;
             if (n > 0) {
                 alu.setupProgLines();
                 mode = MODES.EDIT;
-                for (int i = 0; i <= n; i = i + 1) {
+                for (int i = 0; i <= (n - 1); i = i + 1) {
                     String[] codes = lines[i].split("\\s+");   //   "0001:" "{" "45" "23" "14" "}" "etc"   (les espaces simples ou multiples sont éliminés)
                     int j = 0;
                     int parBeg = -1;

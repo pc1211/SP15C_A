@@ -1683,16 +1683,16 @@ public class Alu {
     public String[][] progLinesToRows() {
         String[][] res = null;
         if (progLines != null) {
-            int n = progLines.size() - 1;   //  Ignorer la ligne 0
+            int n = progLines.size();
             if (n > 0) {
                 res = new String[n][4];   //  4: champ ID + champ VALUE1,2,3
-                for (int i = 1; i <= n; i = i + 1) {   //  Partir de la ligne 1
+                for (int i = 0; i <= (n - 1); i = i + 1) {
                     String pl = progLineToString(i, false);   //  une string avec max 3 opcodes; p.ex. "0001: 45 23 24"
                     String[] plc = pl.split("\\s+");   //   "0001:"  "45"  "23"  "24"   (les espaces simples ou multiples sont éliminés)
-                    res[i - 1][TABLE_ID_INDEX] = String.valueOf(i);   //  "1"
-                    res[i - 1][TABLE_DATA_INDEX] = (plc.length >= 2 ? plc[1] : null);   //  "45"
-                    res[i - 1][TABLE_DATA_INDEX + 1] = (plc.length >= 3 ? plc[2] : null);   //  "23"
-                    res[i - 1][TABLE_DATA_INDEX + 2] = (plc.length >= 4 ? plc[3] : null);   //  "24"
+                    res[i][TABLE_ID_INDEX] = String.valueOf(i);   //  "1"
+                    res[i][TABLE_DATA_INDEX] = (plc.length >= 2 ? plc[1] : null);   //  "45"
+                    res[i][TABLE_DATA_INDEX + 1] = (plc.length >= 3 ? plc[2] : null);   //  "23"
+                    res[i][TABLE_DATA_INDEX + 2] = (plc.length >= 4 ? plc[3] : null);   //  "24"
                 }
             }
         }
@@ -1826,7 +1826,7 @@ public class Alu {
             } while (i <= iMax);
         } else {   //  Ligne 0
             if (!displaySymbol) {   //  Codes
-                res = "00";
+                res = "";
             } else {   //  Symboles
                 res = OPS.BEGIN.SYMBOL();
             }
