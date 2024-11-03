@@ -294,7 +294,8 @@ public class MainActivity extends Activity {
                         if (cld != null) {
                             ClipData.Item cldi = cld.getItemAt(0);
                             if (cldi != null) {
-                                formattedInputToProgLines(cldi.getText().toString());
+                                encodeKeyCodesFromClipBoard(cldi.getText().toString());
+                                msgBox(alu.getProgLinesSize() + " lines imported", this);
                                 dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
                                 dotMatrixDisplayView.updateDisplay();
                             }
@@ -306,8 +307,9 @@ public class MainActivity extends Activity {
         }
         if (item.getItemId() == R.id.EXPORT) {
             if (clipboard != null) {
-                ClipData clip = ClipData.newPlainText(null, progLinesToFormattedOutput());
+                ClipData clip = ClipData.newPlainText(null, progLinesToClipBoard());
                 clipboard.setPrimaryClip(clip);
+                msgBox(alu.getProgLinesSize() + " lines exported", this);
             }
             return true;
         }
@@ -1172,36 +1174,42 @@ public class MainActivity extends Activity {
         }
     }
 
-    private String progLinesToFormattedOutput() {
+    private String progLinesToClipBoard() {
         String res = "";
         int n = alu.getProgLines().size();
         if (n > 0) {
             for (int i = 0; i <= (n - 1); i = i + 1) {
                 String plc = alu.progLineToString(i, false);   //  Codes
                 String pls = alu.progLineToString(i, true);   //  Symbols
-                res = res + plc.substring(0, 5) + " ( " + plc.substring(6) + " ) " + pls.substring(6) + CRLF;   //  Ne pas reprendre de nouveau le n° de ligne de la ligne de symboles
+                res = res + plc.substring(0, 5) + " { " + plc.substring(6) + " } " + pls.substring(6) + CRLF;   //  Ne pas reprendre de nouveau le n° de ligne de la ligne de symboles
             }
         }
         return res;
     }
 
-    private void formattedInputToProgLines(String clipText) {
+    private void encodeKeyCodesFromClipBoard(String clipText) {
         if (clipText != null) {
             String[] lines = clipText.split("\\r?\\n");   //  Splitter selon CR/LF
             int n = lines.length - 1;   //  Pas la ligne 0
             if (n > 0) {
                 alu.setupProgLines();
                 mode = MODES.EDIT;
-                for (int i = 1; i <= n; i = i + 1) {   //   A partir de la ligne 1
-                    String[] codes = lines[i].split("\\s+");   //   "0001:" "(" "45" "23" "14" ")" "etc"   (les espaces simples ou multiples sont éliminés)
-                    if (codes.length >= 3) {
-                        handleCodeToEncode(codes[2]);   //   progLines va progressivement se remplir de toutes ses lignes
-                    }
-                    if (codes.length >= 4) {
-                        handleCodeToEncode(codes[3]);
-                    }
-                    if (codes.length >= 5) {
-                        handleCodeToEncode(codes[4]);
+                for (int i = 0; i <= n; i = i + 1) {
+                    String[] codes = lines[i].split("\\s+");   //   "0001:" "{" "45" "23" "14" "}" "etc"   (les espaces simples ou multiples sont éliminés)
+                    int j = 0;
+                    int parBeg = -1;
+                    int parEnd = -1;
+                    while (j <= (codes.length - 1)) {
+                        if (codes[j].equals("{")) {
+                            parBeg = j;
+                        }
+                        if (codes[j].equals("}")) {
+                            parEnd = j;
+                        }
+                        if ((parBeg > 0) && (parEnd == (-1)) && (j != parBeg)) {   //   On est dans les opCodes
+                            handleCodeToEncode(codes[j]);   //   progLines va progressivement se remplir de toutes ses lignes
+                        }
+                        j = j + 1;
                     }
                 }
                 mode = MODES.NORM;
@@ -1210,7 +1218,7 @@ public class MainActivity extends Activity {
     }
 
     private void handleCodeToEncode(String code) {
-        if ((!code.equals("")) && (!code.equals(")"))) {
+        if (!code.equals("")) {
             if ((code.length() > 1) && (code.substring(0, 1).equals("."))) {   //  .8 ou .9 , ...  => Envoyer Point puis envoyer chiffre
                 encodeProgKeyCode(Integer.parseInt("48"));   //  keycode de Point
                 encodeProgKeyCode(Integer.parseInt(code.substring(1)));   //  Le reste
