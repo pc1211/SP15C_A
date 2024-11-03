@@ -292,6 +292,7 @@ public class MainActivity extends Activity {
                         if (cld != null) {
                             ClipData.Item cldi = cld.getItemAt(0);
                             if (cldi != null) {
+                                msgBox("encodage va suivre", this);
                                 encodeKeyCodesFromClipboard(cldi.getText().toString());
                                 msgBox(alu.getProgLinesSize() + " lines imported", this);
                                 dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
