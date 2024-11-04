@@ -1091,15 +1091,13 @@ public class MainActivity extends Activity {
                 }
                 break;
             case SST:
-                if (mode.equals(MODES.NORM)) {
-                    if (alphaToX()) {
-                        mode = MODES.RUN;
-                        isAutoLine = true;   //  Pour exécuter
-                        inSST = true;
-                        nowmRUN = System.currentTimeMillis();
-                        alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                        alu.linkDestProgLineNumbers();
-                    }
+                if (mode.equals(MODES.NORM)) {   //  Pas de alphaToX() car sinon plusieurs chiffres successifs éventuels dans le programme ne s'assembleront pas en progressant avec SST
+                    mode = MODES.RUN;
+                    isAutoLine = true;   //  Pour exécuter
+                    inSST = true;
+                    nowmRUN = System.currentTimeMillis();
+                    alu.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
+                    alu.linkDestProgLineNumbers();
                 }
                 if (mode.equals(MODES.EDIT)) {
                     nextProgLineNumber = inc(currentProgLineNumber);    //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ou EDIT
@@ -1458,10 +1456,10 @@ public class MainActivity extends Activity {
     }
 
     public String exec(ProgLine progLine) {
-        OPS opBase = progLine.ops[LINE_OPS.BASE.INDEX()];
+        OPS baseOp = progLine.ops[LINE_OPS.BASE.INDEX()];
         boolean common = false;   //  Si True: Sortie classique de fonction: stackLiftEnabled=true, lastx si erreur
 
-        switch (opBase) {   //  Le GIANT
+        switch (baseOp) {   //  Le GIANT
             case FIX:
             case SCI:
             case ENG:
@@ -1493,7 +1491,9 @@ public class MainActivity extends Activity {
                 break;
             case RCL:
                 if (alphaToX()) {
-                    alu.doStackLiftIfEnabled();
+                    if (progLine.ops[LINE_OPS.A4OP.INDEX()] == null) {
+                        alu.doStackLiftIfEnabled();
+                    }
                     if (progLine.ops[LINE_OPS.DIM.INDEX()] != null) {   //  RCL DIM (i)
                         int n = alu.getRegsMaxIndex();
                         alu.setStackRegContent(STACK_REGS.X, alu.getDataRegIndexByIndex(n));
@@ -1738,13 +1738,13 @@ public class MainActivity extends Activity {
                     if (value < 0) {
                         counter = -counter;
                     }
-                    if (opBase.equals(OPS.DSE)) {
+                    if (baseOp.equals(OPS.DSE)) {
                         counter = counter - step2;
                         if (counter <= goal) {
                             nextProgLineNumber = inc(nextProgLineNumber);
                         }
                     }
-                    if (opBase.equals(OPS.ISG)) {
+                    if (baseOp.equals(OPS.ISG)) {
                         counter = counter + step2;
                         if (counter > goal) {
                             nextProgLineNumber = inc(nextProgLineNumber);
@@ -1763,13 +1763,13 @@ public class MainActivity extends Activity {
             case TF:
                 if (alphaToX()) {
                     int flagIndex = Integer.valueOf(progLine.ops[LINE_OPS.A09.INDEX()].SYMBOL());
-                    if (opBase.equals(OPS.SF)) {
+                    if (baseOp.equals(OPS.SF)) {
                         alu.setFlag(flagIndex);
                     }
-                    if (opBase.equals(OPS.CF)) {
+                    if (baseOp.equals(OPS.CF)) {
                         alu.clearFlag(flagIndex);
                     }
-                    if (opBase.equals(OPS.TF)) {
+                    if (baseOp.equals(OPS.TF)) {
                         if (!alu.testFlag(flagIndex)) {   //  Skip next line if flag cleared
                             nextProgLineNumber = inc(nextProgLineNumber);
                         }
@@ -1797,33 +1797,33 @@ public class MainActivity extends Activity {
 
                 String beta = alpha;
                 if (beta.equals("")) {   // Début d'entrée de nombre
-                    if (!opBase.equals(OPS.CHS)) {  //  StackLift éventuel uniquement si entrée d'un nombre (ne commençant pas par "-")
+                    if (!baseOp.equals(OPS.CHS)) {  //  StackLift éventuel uniquement si entrée d'un nombre (ne commençant pas par "-")
                         alu.doStackLiftIfEnabled();
                     }
                 }
                 boolean acceptOp = true;
                 int indEex = beta.indexOf(OPS.EEX.SYMBOL());
                 if (indEex != (-1)) {   //  Ne plus accepter de "." ou "E" après un "E" antérieur
-                    if ((opBase.equals(OPS.DOT)) || (opBase.equals(OPS.EEX))) {
+                    if ((baseOp.equals(OPS.DOT)) || (baseOp.equals(OPS.EEX))) {
                         acceptOp = false;
                     }
                 }
                 int indDot = beta.indexOf(OPS.DOT.SYMBOL());
                 if (indDot != (-1)) {   //  Ne plus accepter de "." après un "." antérieur
-                    if (opBase.equals(OPS.DOT)) {
+                    if (baseOp.equals(OPS.DOT)) {
                         acceptOp = false;
                     }
                 }
                 if (acceptOp) {
-                    if (opBase.equals(OPS.CHS)) {
+                    if (baseOp.equals(OPS.CHS)) {
                         if (beta.equals("")) {   //  Un nombre ne peut commencer par "-" => Changer le signe de X
                             alu.negX();
                             alu.setStackLiftEnabled(true);
                         } else {   //  Entrée de nombre en cours
-                            int indChs1 = beta.indexOf(opBase.SYMBOL());   //  Un "-" existe peut-être déjà => -x ou xE-x ou -xEx ou -xE-x
+                            int indChs1 = beta.indexOf(baseOp.SYMBOL());   //  Un "-" existe peut-être déjà => -x ou xE-x ou -xEx ou -xE-x
                             int indChs2 = -1;
                             if ((indChs1 != -1) && (indChs1 < (beta.length() - 1))) {   //  Un 2e "-" est possible   => -xE-x
-                                indChs2 = beta.indexOf(opBase.SYMBOL(), indChs1 + 1);   //  après le 1er
+                                indChs2 = beta.indexOf(baseOp.SYMBOL(), indChs1 + 1);   //  après le 1er
                             }
                             if (indChs1 != (-1)) {   //   -x ou xE-x ou -xEx ou -xE-x
                                 if (indEex != -1) {   //  xE-x ou -xEx ou -xE-x
@@ -1831,7 +1831,7 @@ public class MainActivity extends Activity {
                                         if (indChs2 != -1) {   //  -xE-x
                                             beta = beta.substring(0, indChs2) + beta.substring(indChs2 + 1);   //  => -xEx
                                         } else {   //  -xEx
-                                            beta = beta.substring(0, indEex + 1) + opBase.SYMBOL() + beta.substring(indEex + 1);   //  => -xE-x
+                                            beta = beta.substring(0, indEex + 1) + baseOp.SYMBOL() + beta.substring(indEex + 1);   //  => -xE-x
                                         }
                                     } else {   //  xE-x
                                         beta = beta.substring(0, indChs1) + beta.substring(indChs1 + 1);   //  => xEx
@@ -1841,19 +1841,19 @@ public class MainActivity extends Activity {
                                 }
                             } else {   //  x ou xEx
                                 if (indEex != (-1)) {   //  xEx
-                                    beta = beta.substring(0, indEex + 1) + opBase.SYMBOL() + beta.substring(indEex + 1);   //  => xE-x
+                                    beta = beta.substring(0, indEex + 1) + baseOp.SYMBOL() + beta.substring(indEex + 1);   //  => xE-x
                                 } else {   //  x
-                                    beta = opBase.SYMBOL() + beta;   //  => -x
+                                    beta = baseOp.SYMBOL() + beta;   //  => -x
                                 }
                             }
                         }
                     } else {   //  Pas CHS
-                        String s = opBase.SYMBOL();
+                        String s = baseOp.SYMBOL();
                         if (beta.equals("")) {
-                            if (opBase.equals(OPS.EEX)) {
+                            if (baseOp.equals(OPS.EEX)) {
                                 s = OPS.DIGIT_1.SYMBOL() + s;   //  Ajout de 1 en préfixe si commence par "E"
                             }
-                            if (opBase.equals(OPS.DOT)) {
+                            if (baseOp.equals(OPS.DOT)) {
                                 s = OPS.DIGIT_0.SYMBOL() + s;   //  Ajout de 0 en préfixe si commence par "."
                             }
                         }
@@ -2242,7 +2242,7 @@ public class MainActivity extends Activity {
             case XLY:
             case XGEY:
                 if (alphaToX()) {
-                    if (alu.test(opBase)) {
+                    if (!alu.test(baseOp)) {   //  cad Skip if False
                         nextProgLineNumber = inc(nextProgLineNumber);
                     }
                 }
