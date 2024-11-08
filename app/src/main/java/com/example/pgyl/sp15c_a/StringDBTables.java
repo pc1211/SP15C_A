@@ -8,7 +8,7 @@ import static com.example.pgyl.pekislib_a.StringDBTables.TABLE_IDS;
 
 public class StringDBTables {
 
-    public static final int DATA_VERSION = 62;   //   A augmenter dès que les données éventuelles dans la DB existante ne seront plus comptatibles après changements
+    public static final int DATA_VERSION = 63;   //   A augmenter dès que les données éventuelles dans la DB existante ne seront plus comptatibles après changements
 
     enum SP15C_TABLES {   // Les tables, rattachées à leurs champs de data
         STACK_REGS(Sp15cTableDataFields.StackRegs.class, "Stack Registers"),
