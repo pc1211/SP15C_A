@@ -5,6 +5,10 @@
         android:showAsAction="always"
         android:title="Keep screen (ON/OFF)" />
     <item
+        android:id="@+id/EDIT_PALETTE"
+        android:showAsAction="never"
+        android:title="Change colors"></item>
+    <item
         android:id="@+id/EXPORT"
         android:showAsAction="never"
         android:title="Export to ClipBoard"></item>

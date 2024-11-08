@@ -1,18 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/BACK_LAYOUT"
+    android:id="@+id/PANEL_LOW_LAYOUT"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#303030"
     android:orientation="vertical">
 
     <LinearLayout
+        android:id="@+id/PANEL_TOP_LAYOUT"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="4dp"
         android:layout_marginBottom="4dp"
         android:layout_weight="15"
-        android:background="#808080"
         android:orientation="horizontal">
 
         <com.example.pgyl.pekislib_a.DotMatrixDisplayView

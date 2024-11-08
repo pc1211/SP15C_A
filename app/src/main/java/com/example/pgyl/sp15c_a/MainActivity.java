@@ -10,18 +10,23 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
 
 import com.example.pgyl.pekislib_a.ColorBox;
+import com.example.pgyl.pekislib_a.ColorPickerActivity;
 import com.example.pgyl.pekislib_a.ColorUtils.BUTTON_COLOR_TYPES;
 import com.example.pgyl.pekislib_a.DotMatrixDisplayView;
 import com.example.pgyl.pekislib_a.HelpActivity;
 import com.example.pgyl.pekislib_a.StringDB;
+import com.example.pgyl.pekislib_a.StringDBTables.ACTIVITY_START_STATUS;
+import com.example.pgyl.pekislib_a.StringDBTables.TABLE_EXTRA_KEYS;
 import com.example.pgyl.sp15c_a.Alu.BASE_REGS;
 import com.example.pgyl.sp15c_a.Alu.KEYS;
 import com.example.pgyl.sp15c_a.Alu.OPS;
@@ -32,7 +37,9 @@ import java.util.Locale;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.example.pgyl.pekislib_a.Constants.COLOR_PREFIX;
 import static com.example.pgyl.pekislib_a.Constants.CRLF;
+import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITIES;
 import static com.example.pgyl.pekislib_a.Constants.PEKISLIB_ACTIVITY_EXTRA_KEYS;
 import static com.example.pgyl.pekislib_a.Constants.SHP_FILE_NAME_SUFFIX;
 import static com.example.pgyl.pekislib_a.HelpActivity.HELP_ACTIVITY_TITLE;
@@ -43,11 +50,39 @@ import static com.example.pgyl.pekislib_a.StringDBTables.getActivityInfosTableNa
 import static com.example.pgyl.pekislib_a.StringDBTables.getAppInfosDataVersionIndex;
 import static com.example.pgyl.pekislib_a.StringDBTables.getAppInfosTableName;
 import static com.example.pgyl.pekislib_a.StringDBUtils.createPekislibTableIfNotExists;
+import static com.example.pgyl.pekislib_a.StringDBUtils.createPresetWithDefaultValues;
 import static com.example.pgyl.pekislib_a.StringDBUtils.getCurrent;
+import static com.example.pgyl.pekislib_a.StringDBUtils.getCurrentsFromActivity;
+import static com.example.pgyl.pekislib_a.StringDBUtils.getDefaults;
 import static com.example.pgyl.pekislib_a.StringDBUtils.setCurrent;
+import static com.example.pgyl.pekislib_a.StringDBUtils.setCurrentsForActivity;
+import static com.example.pgyl.pekislib_a.StringDBUtils.setStartStatusOfActivity;
 import static com.example.pgyl.pekislib_a.TimeDateUtils.MILLISECONDS_PER_SECOND;
+import static com.example.pgyl.sp15c_a.Constants.SP15C_ACTIVITIES;
 import static com.example.pgyl.sp15c_a.StringDBTables.DATA_VERSION;
 import static com.example.pgyl.sp15c_a.StringDBTables.getFlagsTableName;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorDisp1BackIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorDisp1OffIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorDisp1OnIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorDisp2BackIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorDisp2OffIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorDisp2OnIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyClearTopFrontIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyFLowBackIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyFMidBackIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyFMidFrontIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyGLowBackIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyGMidBackIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyGMidFrontIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyLowBackIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyLowFrontIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyMidBackIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyMidFrontIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyOutlineIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorKeyTopFrontIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorPanelLowIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorPanelTopIndex;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorsTableName;
 import static com.example.pgyl.sp15c_a.StringDBTables.getParamsTableName;
 import static com.example.pgyl.sp15c_a.StringDBTables.getProgLinesTableName;
 import static com.example.pgyl.sp15c_a.StringDBTables.getRegsTableName;
@@ -59,6 +94,7 @@ import static com.example.pgyl.sp15c_a.StringDBUtils.createSp15cTableIfNotExists
 import static com.example.pgyl.sp15c_a.StringDBUtils.doubleArrayToList;
 import static com.example.pgyl.sp15c_a.StringDBUtils.doubleArrayToRows;
 import static com.example.pgyl.sp15c_a.StringDBUtils.doubleListToArray;
+import static com.example.pgyl.sp15c_a.StringDBUtils.initializeTablePaletteColors;
 import static com.example.pgyl.sp15c_a.StringDBUtils.intArrayToList;
 import static com.example.pgyl.sp15c_a.StringDBUtils.intArrayToRows;
 import static com.example.pgyl.sp15c_a.StringDBUtils.intListToArray;
@@ -118,6 +154,7 @@ public class MainActivity extends Activity {
     private ImageButtonViewStack[] buttons;
     private DotMatrixDisplayView dotMatrixDisplayView;
     private DotMatrixDisplayView sideDotMatrixDisplayView;
+    private String[] paletteColors;
     private Menu menu;
     private MenuItem barMenuItemKeepScreen;
     private boolean keepScreen;
@@ -155,6 +192,10 @@ public class MainActivity extends Activity {
     private boolean inPSE;
     private boolean requestStopAfterSolve;
     private boolean requestStopAfterInteg;
+    private boolean validReturnFromCalledActivity;
+    private String calledActivityName;
+    private LinearLayout panelTop;
+    private LinearLayout panelLow;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -164,6 +205,7 @@ public class MainActivity extends Activity {
 
         getWindow().requestFeature(Window.FEATURE_ACTION_BAR);
         getActionBar().setTitle(ACTIVITY_TITLE);
+        validReturnFromCalledActivity = false;
     }
 
     @Override
@@ -171,6 +213,7 @@ public class MainActivity extends Activity {
         super.onPause();
 
         setCurrent(stringDB, getAppInfosTableName(), getAppInfosDataVersionIndex(), String.valueOf(DATA_VERSION));
+        setCurrentsForActivity(stringDB, SP15C_ACTIVITIES.MAIN.toString(), getPaletteColorsTableName(), paletteColors);
         saveRowsToDB(stringDB, getStackRegsTableName(), doubleArrayToRows(alu.getStackRegs()));
         saveRowsToDB(stringDB, getFlagsTableName(), booleanArrayToRows(alu.getFlags()));
         saveRowsToDB(stringDB, getRegsTableName(), doubleArrayToRows(doubleListToArray(alu.getRegs())));
@@ -189,6 +232,7 @@ public class MainActivity extends Activity {
         integParamSet = null;
         tempProgLine = null;
         readProgLine = null;
+        paletteColors = null;
         stringDB.close();
         stringDB = null;
         menu = null;
@@ -205,6 +249,17 @@ public class MainActivity extends Activity {
         keepScreen = getSHPKeepScreen();
 
         setupStringDB();
+
+        paletteColors = getCurrentsFromActivity(stringDB, SP15C_ACTIVITIES.MAIN.toString(), getPaletteColorsTableName());
+
+        if (validReturnFromCalledActivity) {
+            validReturnFromCalledActivity = false;
+            if (calledActivityName.equals(PEKISLIB_ACTIVITIES.COLOR_PICKER.toString())) {   //  Pour Edition de la palette de couleurs
+                paletteColors = getCurrentsFromActivity(stringDB, PEKISLIB_ACTIVITIES.COLOR_PICKER.toString(), getPaletteColorsTableName());
+            }
+        }
+
+        setupPanels();
         setupButtons();
         setupDotMatrixDisplay();
         setupSideDotMatrixDisplay();
@@ -244,6 +299,7 @@ public class MainActivity extends Activity {
 
         setupDotMatrixDisplayUpdater();
         updateDisplayDotMatrixColors();
+        updateDisplayPanelColors();
         updateDisplayButtonColors();
         setupSideDotMatrixDisplayUpdater();
         updateSideDotMatrixColors();
@@ -258,6 +314,17 @@ public class MainActivity extends Activity {
         setupRunnableTimeLine();
         updateDisplayKeepScreen();
         invalidateOptionsMenu();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent returnIntent) {
+        validReturnFromCalledActivity = false;
+        if (requestCode == PEKISLIB_ACTIVITIES.COLOR_PICKER.INDEX()) {   //  Pour éditer la palette de couleurs
+            calledActivityName = PEKISLIB_ACTIVITIES.COLOR_PICKER.toString();
+            if (resultCode == RESULT_OK) {
+                validReturnFromCalledActivity = true;
+            }
+        }
     }
 
     @Override
@@ -280,6 +347,10 @@ public class MainActivity extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.HELP) {
             launchHelpActivity();
+            return true;
+        }
+        if (item.getItemId() == R.id.EDIT_PALETTE) {
+            launchColorPickerActivity();
             return true;
         }
         if (item.getItemId() == R.id.IMPORT) {
@@ -606,8 +677,15 @@ public class MainActivity extends Activity {
         colorBox.setColor(index2, color1);
     }
 
+    private void updateDisplayPanelColors() {
+        int color = Color.parseColor(COLOR_PREFIX + paletteColors[getPaletteColorPanelTopIndex()]);
+        panelTop.setBackgroundColor(color);
+        color = Color.parseColor(COLOR_PREFIX + paletteColors[getPaletteColorPanelLowIndex()]);
+        panelLow.setBackgroundColor(color);
+    }
+
     private void updateDisplayDotMatrixColors() {
-        String[] colors = {"000000", "BFAF00", "D9C700"};    // ON, OFF, BACK
+        String[] colors = {paletteColors[getPaletteColorDisp1OnIndex()], paletteColors[getPaletteColorDisp1OffIndex()], paletteColors[getPaletteColorDisp1BackIndex()]};    // ON, OFF, BACK
 
         dotMatrixDisplayUpdater.setColors(colors);
         dotMatrixDisplayUpdater.rebuildStructure();
@@ -615,7 +693,7 @@ public class MainActivity extends Activity {
     }
 
     private void updateSideDotMatrixColors() {
-        String[] colors = {"000000", "BFAF00", "D9C700"};    // ON, OFF, BACK
+        String[] colors = {paletteColors[getPaletteColorDisp2OnIndex()], paletteColors[getPaletteColorDisp2OffIndex()], paletteColors[getPaletteColorDisp2BackIndex()]};    // ON, OFF, BACK
 
         sideDotMatrixDisplayUpdater.setColors(colors);
         sideDotMatrixDisplayUpdater.rebuildStructure();
@@ -633,18 +711,10 @@ public class MainActivity extends Activity {
     }
 
     private void updateDisplayButtonColor(KEYS key) {
-        final String MID_COLOR_FRONT_UNPRESSED = "FFFFFF";
-        final String TOP_COLOR_FRONT_UNPRESSED = "EEBD34";
-        final String LOW_COLOR_FRONT_UNPRESSED = "A1BBFF";
-        final String K42_COLOR_BACK_UNPRESSED = "EEBD34";
-        final String K43_COLOR_BACK_UNPRESSED = "A1BBFF";
-        final String MID_COLOR_BACK_UNPPRESSED = "606060";
-        final String LOW_COLOR_BACK_UNPPRESSED = "404040";
-        final String TOP_K32_TO_K35_COLOR_FRONT_UNPRESSED = "FF0000";   //  Pour les touches "CLEAR"
-        final String BACKGROUND_COLOR = "303030";
-        final String OUTLINE_COLOR_UNPRESSED = "303030";
-        final String OUTLINE_COLOR_PRESSED = "FF9A22";
-        final String BACK_SCREEN_COLOR = "303030";
+        ColorBox keyColorBox = buttons[key.INDEX()].getKeyColorBox();
+        keyColorBox.setColor(BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), paletteColors[getPaletteColorPanelLowIndex()]);
+        keyColorBox.setColor(BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX(), paletteColors[getPaletteColorKeyOutlineIndex()]);
+        keyColorBox.setColor(BUTTON_COLOR_TYPES.BACK_SCREEN.INDEX(), paletteColors[getPaletteColorPanelLowIndex()]);
 
         ColorBox[] imageColorBoxes = buttons[key.INDEX()].getImageColorBoxes();
         for (LEGEND_POS legendPos : LEGEND_POS.values()) {
@@ -652,53 +722,63 @@ public class MainActivity extends Activity {
                 case MID:
                     switch (key) {
                         case KEY_42:
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), BACKGROUND_COLOR);
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), K42_COLOR_BACK_UNPRESSED);
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), BACKGROUND_COLOR);
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), K42_COLOR_BACK_UNPRESSED);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyFMidFrontIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyFMidBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyFMidFrontIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyFMidBackIndex()]);
                             break;
                         case KEY_43:
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), BACKGROUND_COLOR);
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), K43_COLOR_BACK_UNPRESSED);
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), BACKGROUND_COLOR);
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), K43_COLOR_BACK_UNPRESSED);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyGMidFrontIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyGMidBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyGMidFrontIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyGMidBackIndex()]);
                             break;
                         default:
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), MID_COLOR_FRONT_UNPRESSED);
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), MID_COLOR_BACK_UNPPRESSED);
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), MID_COLOR_FRONT_UNPRESSED);
-                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), MID_COLOR_BACK_UNPPRESSED);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyMidFrontIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyMidBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyMidFrontIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyMidBackIndex()]);
                             break;
                     }
                     break;
                 case TOP:
                     if ((key.equals(KEYS.KEY_32)) || (key.equals(KEYS.KEY_33)) || (key.equals(KEYS.KEY_34)) || (key.equals(KEYS.KEY_35))) {   //  Touches CLEAR
-                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), TOP_K32_TO_K35_COLOR_FRONT_UNPRESSED);
-                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), BACKGROUND_COLOR);
-                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), TOP_K32_TO_K35_COLOR_FRONT_UNPRESSED);
-                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), BACKGROUND_COLOR);
+                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyClearTopFrontIndex()]);
+                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), paletteColors[getPaletteColorPanelLowIndex()]);
+                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyClearTopFrontIndex()]);
+                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), paletteColors[getPaletteColorPanelLowIndex()]);
                     } else {   //  Pas les touches CLEAR
-                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), TOP_COLOR_FRONT_UNPRESSED);
-                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), BACKGROUND_COLOR);
-                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), TOP_COLOR_FRONT_UNPRESSED);
-                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), BACKGROUND_COLOR);
+                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyTopFrontIndex()]);
+                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), paletteColors[getPaletteColorPanelLowIndex()]);
+                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyMidFrontIndex()]);
+                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), paletteColors[getPaletteColorPanelLowIndex()]);
                     }
                     break;
                 case LOW:
-                    imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), LOW_COLOR_FRONT_UNPRESSED);
-                    imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), LOW_COLOR_BACK_UNPPRESSED);
-                    imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), LOW_COLOR_FRONT_UNPRESSED);
-                    imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), LOW_COLOR_BACK_UNPPRESSED);
+                    switch (key) {
+                        case KEY_42:
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyFLowBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyFLowBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyFLowBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyFLowBackIndex()]);
+                            break;
+                        case KEY_43:
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyGLowBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyGLowBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyGLowBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyGLowBackIndex()]);
+                            break;
+                        default:
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyLowFrontIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyLowBackIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyLowFrontIndex()]);
+                            imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), paletteColors[getPaletteColorKeyLowBackIndex()]);
+                            break;
+                    }
                     break;
             }
+            buttons[key.INDEX()].updateDisplay();
         }
-
-        ColorBox keyColorBox = buttons[key.INDEX()].getKeyColorBox();
-        keyColorBox.setColor(BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), OUTLINE_COLOR_UNPRESSED);
-        keyColorBox.setColor(BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX(), OUTLINE_COLOR_PRESSED);
-        keyColorBox.setColor(BUTTON_COLOR_TYPES.BACK_SCREEN.INDEX(), BACK_SCREEN_COLOR);
-
-        buttons[key.INDEX()].updateDisplay();
     }
 
     private void updateDisplayKeepScreenBarMenuItemIcon(boolean keepScreen) {
@@ -2400,6 +2480,11 @@ public class MainActivity extends Activity {
         return error;
     }
 
+    private void setupPanels() {
+        panelTop = findViewById(R.id.PANEL_TOP_LAYOUT);
+        panelLow = findViewById(R.id.PANEL_LOW_LAYOUT);
+    }
+
     private void setupButtons() {
         final String KEY_FILE_PREFIX = "k";
         final String KEY_FILE_SUFFIX = "_";
@@ -2437,6 +2522,27 @@ public class MainActivity extends Activity {
                 buttons[key.INDEX()].setOutlineStrokeWidthDp(2);
                 buttons[key.INDEX()].setPcBackCornerRadius(0);
                 buttons[key.INDEX()].setImageCount(LEGEND_POS.values().length);
+                final KEYS fkey = key;
+                buttons[key.INDEX()].setOnCustomClickListener(new ImageButtonViewStack.onCustomClickListener() {
+                    @Override
+                    public void onCustomClick() {
+                        onButtonClick(fkey);
+                    }
+                });
+                if (key.equals(KEYS.KEY_21)) {   //  Click Down sur SST => Afficher ProgLine courante
+                    buttons[key.INDEX()].setOnCustomClickDownListener(new ImageButtonViewStack.onCustomClickDownListener() {
+                        @Override
+                        public void onCustomClickDown() {
+                            onSSTClickDown();
+                        }
+                    });
+                    buttons[key.INDEX()].setOnCustomClickLeaveListener(new ImageButtonViewStack.onCustomClickLeaveListener() {
+                        @Override
+                        public void onCustomClickLeave() {   //  Quitter SST sans cliquer => Affichage normal
+                            onSSTClickLeave();
+                        }
+                    });
+                }
                 for (LEGEND_POS legendPos : LEGEND_POS.values()) {
                     if (((!key.equals(KEYS.KEY_41)) && (!key.equals(KEYS.KEY_42)) && (!key.equals(KEYS.KEY_43))) || (legendPos.equals(LEGEND_POS.MID))) {
                         String fileName = KEY_FILE_PREFIX + key.CODE() + KEY_FILE_SUFFIX + legendPos.toString().toLowerCase();
@@ -2528,36 +2634,19 @@ public class MainActivity extends Activity {
                             imageSizeCoeff = BUTTON_MID_48_IMAGE_SIZE_COEFF;
                         }
                         buttons[key.INDEX()].setImageSizeCoeff(legendPos.INDEX(), imageSizeCoeff);
-                        final KEYS fkey = key;
-                        buttons[key.INDEX()].setOnCustomClickListener(new ImageButtonViewStack.onCustomClickListener() {
-                            @Override
-                            public void onCustomClick() {
-                                onButtonClick(fkey);
-                            }
-                        });
-                        if (key.equals(KEYS.KEY_21)) {   //  Click Down sur SST => Afficher ProgLine courante
-                            buttons[key.INDEX()].setOnCustomClickDownListener(new ImageButtonViewStack.onCustomClickDownListener() {
-                                @Override
-                                public void onCustomClickDown() {
-                                    onSSTClickDown();
-                                }
-                            });
-                            buttons[key.INDEX()].setOnCustomClickLeaveListener(new ImageButtonViewStack.onCustomClickLeaveListener() {
-                                @Override
-                                public void onCustomClickLeave() {   //  Quitter SST sans cliquer => Affichage normal
-                                    onSSTClickLeave();
-                                }
-                            });
+                    } else {   //  (ON, (f ou g) et pas MID  => TOP Invisible
+                        if (legendPos.equals(LEGEND_POS.TOP)) {   //  (ON, f ou g)  => TOP invisible
+                            buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);
                         }
-                    } else {   //  ON, f ou g => Seul le MID est visible
-                        buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);
+                        if ((key.equals(KEYS.KEY_41)) && (legendPos.equals(LEGEND_POS.LOW))) {   //  ON => LOW invisible
+                            buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);
+                        }
                     }
                 }
             } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException ex) {
                 Logger.getLogger(MainActivity.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-        //layoutButtonsOnSelection = findViewById(R.id.LAY_BUTTONS_ON_SELECTION);
     }
 
     private void setupBarMenuItems() {
@@ -2629,10 +2718,13 @@ public class MainActivity extends Activity {
         }
         if (!stringDB.tableExists(getStackRegsTableName())) {
             createSp15cTableIfNotExists(stringDB, getStackRegsTableName());
-            //initializeTableStackRegs(stringDB);
-            //String[] defaults = getDefaults(stringDB, getStackRegsTableName());
-            //setCurrentsForActivity(stringDB, SP15C_ACTIVITIES.CT_DISPLAY.toString(), getDotMatrixDisplayColorsTableName(), defaults);
-            //createPresetWithDefaultValues(getDotMatrixDisplayColorsTableName(), defaults);   //  => PRESET1 = DEFAULT  dans la table de couleurs de DotMatrixDisplay
+        }
+        if (!stringDB.tableExists(getPaletteColorsTableName())) {
+            createSp15cTableIfNotExists(stringDB, getPaletteColorsTableName());
+            initializeTablePaletteColors(stringDB);
+            String[] defaults = getDefaults(stringDB, getPaletteColorsTableName());
+            setCurrentsForActivity(stringDB, SP15C_ACTIVITIES.MAIN.toString(), getPaletteColorsTableName(), defaults);
+            createPresetWithDefaultValues(stringDB, getPaletteColorsTableName(), defaults);   //  => PRESET1 = DEFAULT  dans la table de couleurs
         }
         if (!stringDB.tableExists(getFlagsTableName())) {
             createSp15cTableIfNotExists(stringDB, getFlagsTableName());
@@ -2649,6 +2741,14 @@ public class MainActivity extends Activity {
         if (!stringDB.tableExists(getParamsTableName())) {
             createSp15cTableIfNotExists(stringDB, getParamsTableName());
         }
+    }
+
+    private void launchColorPickerActivity() {
+        setCurrentsForActivity(stringDB, PEKISLIB_ACTIVITIES.COLOR_PICKER.toString(), getPaletteColorsTableName(), paletteColors);
+        setStartStatusOfActivity(stringDB, PEKISLIB_ACTIVITIES.COLOR_PICKER.toString(), ACTIVITY_START_STATUS.COLD);
+        Intent callingIntent = new Intent(this, ColorPickerActivity.class);
+        callingIntent.putExtra(TABLE_EXTRA_KEYS.TABLE.toString(), getPaletteColorsTableName());
+        startActivityForResult(callingIntent, PEKISLIB_ACTIVITIES.COLOR_PICKER.INDEX());
     }
 
     private void launchHelpActivity() {

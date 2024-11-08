@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.pgyl.sp15c_a">
-    
+
     <application
         android:icon="@drawable/app_icon"
         android:label="SP15C"
@@ -20,5 +20,14 @@
         <activity
             android:name="com.example.pgyl.pekislib_a.HelpActivity"
             android:label="HelpActivity" />
+        <activity
+            android:name="com.example.pgyl.pekislib_a.ColorPickerActivity"
+            android:label="ColorPickerActivity" />
+        <activity
+            android:name="com.example.pgyl.pekislib_a.PresetsActivity"
+            android:label="PresetsActivity" />
+        <activity
+            android:name="com.example.pgyl.pekislib_a.InputButtonsActivity"
+            android:label="InputButtonsActivity" />
     </application>
 </manifest>

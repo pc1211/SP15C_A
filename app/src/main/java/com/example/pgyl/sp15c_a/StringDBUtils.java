@@ -6,6 +6,8 @@ import java.util.ArrayList;
 
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_DATA_INDEX;
 import static com.example.pgyl.pekislib_a.StringDB.TABLE_ID_INDEX;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorsInits;
+import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorsTableName;
 import static com.example.pgyl.sp15c_a.StringDBTables.getSp15cTableDataFieldsCount;
 
 public class StringDBUtils {
@@ -19,6 +21,10 @@ public class StringDBUtils {
         //  stringDB.insertOrReplaceRows(getStackRegsTableName(), getSp15cStackRegsInits());
     }
     //endregion
+
+    public static void initializeTablePaletteColors(StringDB stringDB) {
+        stringDB.insertOrReplaceRows(getPaletteColorsTableName(), getPaletteColorsInits());
+    }
 
     public static String[][] loadRowsFromDB(StringDB stringDB, String tableName) {
         return stringDB.selectRows(tableName, null);
