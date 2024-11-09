@@ -750,7 +750,7 @@ public class MainActivity extends Activity {
                     } else {   //  Pas les touches CLEAR
                         imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyTopFrontIndex()]);
                         imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.UNPRESSED_BACK.INDEX(), paletteColors[getPaletteColorPanelLowIndex()]);
-                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyMidFrontIndex()]);
+                        imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_FRONT.INDEX(), paletteColors[getPaletteColorKeyTopFrontIndex()]);
                         imageColorBoxes[legendPos.INDEX()].setColor(BUTTON_COLOR_TYPES.PRESSED_BACK.INDEX(), paletteColors[getPaletteColorPanelLowIndex()]);
                     }
                     break;
