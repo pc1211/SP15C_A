@@ -2,6 +2,7 @@ package com.example.pgyl.sp15c_a;
 
 public class IntegParamSet {
     public final int ITER_COUNT_MAX = 50;
+    public final int SAMPLING_MAX = 2048;
 
     public double a;
     public double b;
@@ -55,8 +56,10 @@ public class IntegParamSet {
         //  NOP
     }
 
-    public void calc() {
+    public String calc() {
+        String ret = "";
         z = h * (4 * sumFx + 2 * u + p) / 3.0;   //  sumFx=somme points impairs de l'étape n); u=somme points pairs (cumul des points impairs de l'étape n-1)
+        return ret;
     }
 
     public void setNextLevel() {

@@ -69,7 +69,7 @@ public class Alu {
         XCHGXY("x<>y"),
         RDN("RDN"),
         RUP("RUP"),
-        LASTX("LASTX"),
+        LASTX("LASTx"),
         BACK("<-"),
         CLX("CLX"),
         DEG("DEG"),
@@ -108,11 +108,11 @@ public class Alu {
         SQR("x^2"),
         EXP("EXP"),
         LN("LN"),
-        EXP10("10^X"),
+        EXP10("10^x"),
         LOG("LOG"),
-        POWER("Y^X"),
+        POWER("y^x"),
         PC("%"),
-        INV("1/X"),
+        INV("1/x"),
         DPC("DELTA%"),
         ABS("ABS"),
         RND("RND"),
@@ -121,8 +121,8 @@ public class Alu {
         POL("->P"),
         HMS("->H.MS"),
         H("->H"),
-        COMB("CY,X"),
-        PERM("PY,X"),
+        COMB("Cy,x"),
+        PERM("Py,x"),
         FRAC("FRAC"),
         INTEGER("INT"),
         FACT("FACT"),
@@ -133,13 +133,13 @@ public class Alu {
         SIGMA_MINUS("SIGMA-"),
         MEAN("MEAN"),
         STDEV("STDEV"),
-        YER("YR"),
+        YER("y^,r"),
         LR("LR"),
         CLEAR_SIGMA("CLSIGMA"),
         CLEAR_PRGM("CLPRGM"),
         CLEAR_REGS("CLREG"),
         CLEAR_PREFIX("PREFIX"),
-        XCHG("X<>"),
+        XCHG("x<>"),
         SF("SF"),
         CF("CF"),
         TF("TF"),
@@ -1687,7 +1687,7 @@ public class Alu {
             if (n > 0) {
                 res = new String[n][4];   //  4: champ ID + champ VALUE1,2,3
                 for (int i = 0; i <= (n - 1); i = i + 1) {
-                    String pl = progLineToString(i, false);   //  une string avec max 3 opcodes; p.ex. "0001: 45 23 24"
+                    String pl = progLineToString(i, true);   //  une string avec max 3 opcodes; p.ex. "0001: 45 23 24"
                     String[] plc = pl.split("\\s+");   //   "0001:"  "45"  "23"  "24"   (les espaces simples ou multiples sont éliminés)
                     res[i][TABLE_ID_INDEX] = String.valueOf(i);   //  "1"
                     res[i][TABLE_DATA_INDEX] = (plc.length >= 2 ? plc[1] : null);   //  "45"
@@ -1758,7 +1758,7 @@ public class Alu {
         progLines.add(progLine);    // A l'index 0, proglines contient au moins BEGIN
     }
 
-    public String progLineToString(int progLineNumber, boolean displaySymbol) {   //  displaySymbol True => Afficher uniquement symboles ; displaySymbol False => afficher keyCodes (et parfois symbol (p.ex. ".5" ...)
+    public String progLineToString(int progLineNumber, boolean isDisplayPressed) {    //  isDisplayPressed False => Afficher uniquement symboles ; isDisplayPressed True => afficher keyCodes (et parfois symbol (p.ex. ".5" ...)
         final String SEP = " ";
         String res = "";
         String s = "";
@@ -1766,13 +1766,13 @@ public class Alu {
             ProgLine progLine = progLines.get(progLineNumber);
             OPS opBase = progLine.ops[LINE_OPS.BASE.INDEX()];   //  LINE_OPS: BASE, A4OP, DOT, A09, AE, I, DIM, INDI, RAND, SIGMA_PLUS, CHS, GHOST1, GHOST2
             boolean isGhost = (opToGhostKeyMap.get(opBase) != null);
-            int iMin = ((isGhost && !displaySymbol) ? LINE_OPS.GHOST1.INDEX() : LINE_OPS.BASE.INDEX());
-            int iMax = ((isGhost && !displaySymbol) ? LINE_OPS.GHOST2.INDEX() : LINE_OPS.SIGMA_PLUS.INDEX());   //  On ne prend pas le CHS car n'a été utilisé que pour le GTO CHS nnnnn en mode EDIT
+            int iMin = ((isGhost && isDisplayPressed) ? LINE_OPS.GHOST1.INDEX() : LINE_OPS.BASE.INDEX());
+            int iMax = ((isGhost && isDisplayPressed) ? LINE_OPS.GHOST2.INDEX() : LINE_OPS.SIGMA_PLUS.INDEX());   //  On ne prend pas le CHS car n'a été utilisé que pour le GTO CHS nnnnn en mode EDIT
             int i = iMin;
             do {
                 if (progLine.ops[i] != null) {
                     String sep = SEP;
-                    if (!displaySymbol) {   //  Codes
+                    if (isDisplayPressed) {   //  Codes
                         KEYS key = opToKeyMap.get(progLine.ops[i]);
                         s = String.valueOf(key.CODE());
                         OPS unshiftedOp = key.UNSHIFTED_OP();   //  Opération sans aucune touche Shift
@@ -1825,7 +1825,7 @@ public class Alu {
                 i = i + 1;
             } while (i <= iMax);
         } else {   //  Ligne 0
-            if (!displaySymbol) {   //  Codes
+            if (isDisplayPressed) {   //  Codes
                 res = "";
             } else {   //  Symboles
                 res = OPS.BEGIN.SYMBOL();

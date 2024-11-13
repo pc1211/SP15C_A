@@ -138,8 +138,8 @@ public class MainActivity extends Activity {
     private final String ERROR_KEYBOARD_INTERRUPT = "Keyboard Break";
     private final String ERROR_NESTED_SOLVE = "Nested SOLVE";
     private final String ERROR_NESTED_INTEG = "Nested INTEG";
-    private final String ERROR_SOLVE_ITER_MAX = "Max Iter SOLVE";
-    private final String ERROR_INTEG_ITER_MAX = "Max Iter INTEG";
+    private final String ERROR_SOLVE_ITER_MAX = "Iter SOLVE";
+    private final String ERROR_INTEG_ITER_MAX = "Iter INTEG";
     private final long PSE_MS = MILLISECONDS_PER_SECOND;   //  1 seconde
     private final long FLASH_RUN_MS = MILLISECONDS_PER_SECOND / 2;   //  1/2 seconde
     private final long AUTO_UPDATE_INTERVAL_MS = 1;
@@ -181,7 +181,7 @@ public class MainActivity extends Activity {
     private int nextProgLineNumber;
     private int currentProgLineNumber;
     private String alpha;
-    private boolean displaySymbol;
+    private boolean isDisplayPressed;
     private boolean user;
     private boolean isWrapAround;
     private boolean isAutoL;
@@ -280,7 +280,7 @@ public class MainActivity extends Activity {
         inPSE = false;
         user = false;
         isKeyboardInterrupt = false;
-        displaySymbol = true;
+        isDisplayPressed = false;
         requestStopAfterSolve = false;
         requestStopAfterInteg = false;
         tempProgLine = new ProgLine();
@@ -404,16 +404,16 @@ public class MainActivity extends Activity {
     }
 
     private void onDotMatrixDisplayViewClick() {
+        isDisplayPressed = !isDisplayPressed;
         if (mode.equals(MODES.EDIT)) {
-            displaySymbol = !displaySymbol;
-            dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
+            dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, isDisplayPressed), false);
             dotMatrixDisplayView.updateDisplay();
         }
     }
 
     private void onSSTClickDown() {   //  Click Down sur SST => Afficher ProgLine courante
         if ((mode.equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
-            dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
+            dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, isDisplayPressed), false);
             dotMatrixDisplayView.updateDisplay();
         }
     }
@@ -601,7 +601,7 @@ public class MainActivity extends Activity {
                         dotMatrixDisplayUpdater.displayText((alpha.equals("") ? alu.getRoundXForDisplay() : formatAlphaNumber()), true);    //  formatAlphaNumber pour faire apparaître le séparateur de milliers
                     }
                     if (mode.equals(MODES.EDIT)) {
-                        dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
+                        dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, isDisplayPressed), false);
                     }
                 }
                 if (error.length() != 0) {    //  Erreur (ou Prefix) nouvelle
@@ -618,7 +618,7 @@ public class MainActivity extends Activity {
                 dotMatrixDisplayUpdater.displayText(alu.getRoundXForDisplay(), true);
             }
             if (mode.equals(MODES.EDIT)) {
-                dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
+                dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, isDisplayPressed), false);
             }
         }
         dotMatrixDisplayView.updateDisplay();
@@ -1339,8 +1339,8 @@ public class MainActivity extends Activity {
         res[4][TABLE_DATA_INDEX] = String.valueOf(currentProgLineNumber);
         res[5][TABLE_ID_INDEX] = "USER";
         res[5][TABLE_DATA_INDEX] = (user ? "1" : "0");
-        res[6][TABLE_ID_INDEX] = "DISPLAY_SYMBOL";
-        res[6][TABLE_DATA_INDEX] = (displaySymbol ? "1" : "0");
+        res[6][TABLE_ID_INDEX] = "DISPLAY_PRESSED";
+        res[6][TABLE_DATA_INDEX] = (isDisplayPressed ? "1" : "0");
         res[7][TABLE_ID_INDEX] = "STACK_LIFT_ENABLED";
         res[7][TABLE_DATA_INDEX] = (alu.getStackLiftEnabled() ? "1" : "0");
         return res;
@@ -1370,8 +1370,8 @@ public class MainActivity extends Activity {
                     if (s.equals("USER")) {
                         user = (paramRows[i][TABLE_DATA_INDEX].equals("1"));
                     }
-                    if (s.equals("DISPLAY_SYMBOL")) {
-                        displaySymbol = (paramRows[i][TABLE_DATA_INDEX].equals("1"));
+                    if (s.equals("DISPLAY_PRESSED")) {
+                        isDisplayPressed = (paramRows[i][TABLE_DATA_INDEX].equals("1"));
                     }
                     if (s.equals("STACK_LIFT_ENABLED")) {
                         alu.setStackLiftEnabled((paramRows[i][TABLE_DATA_INDEX].equals("1")));
@@ -1471,7 +1471,7 @@ public class MainActivity extends Activity {
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface dialogInterface) {    // OK pour modifier UI sous-jacente à la boîte de dialogue
-                dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, displaySymbol), false);
+                dotMatrixDisplayUpdater.displayText(alu.progLineToString(currentProgLineNumber, isDisplayPressed), false);
                 dotMatrixDisplayView.updateDisplay();
                 updateSideDisplay();
             }
@@ -1521,11 +1521,11 @@ public class MainActivity extends Activity {
             if ((nowm - nowmRUN) >= FLASH_RUN_MS) {   //  Fin du temps entre 2 flash
                 nowmRUN = nowm;
                 dotMatrixDisplayView.invert();
-                if (requestStopAfterSolve) {
-                    dotMatrixDisplayUpdater.displayText(alu.roundForDisplay(solveParamSet.t), true);
+                if (requestStopAfterSolve) {   //  Affiche aussi la situation de INTEG (I:0/0 si non appelée par SOLVE)
+                    dotMatrixDisplayUpdater.displayText(isDisplayPressed ? "I:" + integParamSet.countFx + "/" + integParamSet.countFxMax : alu.roundForDisplay(solveParamSet.t), true);
                 } else {
                     if (requestStopAfterInteg) {
-                        dotMatrixDisplayUpdater.displayText(alu.roundForDisplay(integParamSet.z), true);
+                        dotMatrixDisplayUpdater.displayText(isDisplayPressed ? "I:" + integParamSet.countFx + "/" + integParamSet.countFxMax : alu.roundForDisplay(integParamSet.z), true);
                     } else {
                         dotMatrixDisplayUpdater.displayText("Running...", false);
                     }
@@ -1761,27 +1761,29 @@ public class MainActivity extends Activity {
                             integParamSet.countFx = integParamSet.countFx + 1;
                             if (integParamSet.countFx >= integParamSet.countFxMax) {   //  La somme est complète, on peut calculer la prochaine estimation
                                 double oldInteg = integParamSet.z;
-                                integParamSet.calc();   //  Nouvelle estimation dans z
-                                double diff = Math.abs(integParamSet.z - oldInteg);
-                                if (diff <= integParamSet.tol) {   //  OK c'est bon
-                                    alu.setStackRegContent(STACK_REGS.X, integParamSet.z);
-                                    alu.setStackRegContent(STACK_REGS.Y, diff);
-                                    alu.setStackRegContent(STACK_REGS.Z, integParamSet.b);
-                                    alu.setStackRegContent(STACK_REGS.T, integParamSet.a);
-                                    nextProgLineNumber = integParamSet.oldNextProgLineNumber;
-                                    integParamSet.clear();
-                                    if (requestStopAfterInteg) {   //  Forcer le STOP (comme en mode SST) si INTEG a été lancé au départ de mode NORM
-                                        requestStopAfterInteg = false;
-                                        inSST = true;
-                                    }
-                                } else {   //  Tolérance toujours pas respectée => On continue ?
-                                    integParamSet.iterCount = integParamSet.iterCount + 1;
-                                    if (integParamSet.iterCount > integParamSet.ITER_COUNT_MAX) {   //  Il n'y a plus d'espoir
-                                        error = ERROR_INTEG_ITER_MAX;
-                                    } else {  //  On continue !
-                                        integParamSet.setNextLevel();
-                                        integParamSet.x = integParamSet.a + integParamSet.h;    //  1er point impair
-                                        error = integConfigForEvalUserFx(integParamSet.x);
+                                error = integParamSet.calc();   //  Nouvelle estimation dans z
+                                if (error.length() == 0) {
+                                    double diff = Math.abs(integParamSet.z - oldInteg);
+                                    if (diff <= integParamSet.tol) {   //  OK c'est bon
+                                        alu.setStackRegContent(STACK_REGS.X, integParamSet.z);
+                                        alu.setStackRegContent(STACK_REGS.Y, diff);
+                                        alu.setStackRegContent(STACK_REGS.Z, integParamSet.b);
+                                        alu.setStackRegContent(STACK_REGS.T, integParamSet.a);
+                                        nextProgLineNumber = integParamSet.oldNextProgLineNumber;
+                                        integParamSet.clear();
+                                        if (requestStopAfterInteg) {   //  Forcer le STOP (comme en mode SST) si INTEG a été lancé au départ de mode NORM
+                                            requestStopAfterInteg = false;
+                                            inSST = true;
+                                        }
+                                    } else {   //  Tolérance toujours pas respectée => On continue ?
+                                        integParamSet.iterCount = integParamSet.iterCount + 1;
+                                        if (integParamSet.iterCount > integParamSet.ITER_COUNT_MAX) {   //  Il n'y a plus d'espoir
+                                            error = ERROR_INTEG_ITER_MAX;
+                                        } else {  //  On continue !
+                                            integParamSet.setNextLevel();
+                                            integParamSet.x = integParamSet.a + integParamSet.h;    //  1er point impair
+                                            error = integConfigForEvalUserFx(integParamSet.x);
+                                        }
                                     }
                                 }
                             } else {   //  La somme n'est pas encore complète

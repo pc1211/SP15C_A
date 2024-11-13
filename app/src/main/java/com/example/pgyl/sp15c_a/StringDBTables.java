@@ -8,7 +8,7 @@ import static com.example.pgyl.pekislib_a.StringDBTables.TABLE_IDS;
 
 public class StringDBTables {
 
-    public static final int DATA_VERSION = 63;   //   A augmenter dès que les données éventuelles dans la DB existante ne seront plus comptatibles après changements
+    public static final int DATA_VERSION = 77;   //   A augmenter dès que les données éventuelles dans la DB existante ne seront plus comptatibles après changements
 
     enum SP15C_TABLES {   // Les tables, rattachées à leurs champs de data
         STACK_REGS(Sp15cTableDataFields.StackRegs.class, "Stack Registers"),
@@ -209,8 +209,8 @@ public class StringDBTables {
     public static String[][] getPaletteColorsInits() {
         final String[][] PALETTE_COLORS_INITS = {
                 {TABLE_IDS.LABEL.toString(),
-                        "Display 1 On", "Display 1 Off", "Display 1 Back",
-                        "Display 2 On", "Display 2 Off", "Display 2 Back",
+                        "Display Left On", "Display Left Off", "Display Left Back",
+                        "Display Right On", "Display Right Off", "Display Right Back",
                         "Panel Top", "Panel Low",
                         "Key Outline",
                         "Key Top Front", "Key Mid Front", "Key Mid Back", "Key Low Front", "Key Low Back",
@@ -221,14 +221,14 @@ public class StringDBTables {
                 {TABLE_IDS.REGEXP.toString(), REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS, REGEXP_SIX_CHARS},
                 {TABLE_IDS.REGEXP_ERROR_MESSAGE.toString(), REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE, REGEXP_SIX_CHARS_ERROR_MESSAGE},
                 {TABLE_IDS.DEFAULT.toString(),
-                        "000000", "BFAF00", "D9C700",
-                        "000000", "BFAF00", "D9C700",
-                        "A0A0A0", "303030",
-                        "FF9A22",
-                        "EEBD34", "FFFFFF", "606060", "A1BBFF", "404040",
+                        "FFFF00", "7F7F7F", "747474",
+                        "BFBFBF", "7F7F7F", "747474",
+                        "A0A0A0", "BFBFBF",
+                        "FF0000",
+                        "000000", "FFFFFF", "606060", "A1BBFF", "404040",
                         "000000", "EEBD34", "8E711F",
                         "000000", "A1BBFF", "607099",
-                        "FF0000"}
+                        "B80000"}
         };
         return PALETTE_COLORS_INITS;
     }
