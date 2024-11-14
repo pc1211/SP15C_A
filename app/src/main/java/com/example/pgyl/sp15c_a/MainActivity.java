@@ -134,12 +134,12 @@ public class MainActivity extends Activity {
     private final String ERROR_GTO_GSB = "Invalid GTO/GSB";
     private final String ERROR_LINE_NUMBER = "Invalid Line num";
     private final String ERROR_RET_STACK_FULL = "Ret stack full";
-    private final String ERROR_PROG_LINES_FULL = "Prog lines full";
+    private final String ERROR_PROG_LINES_FULL = "Max Prog lines";
     private final String ERROR_KEYBOARD_INTERRUPT = "Keyboard Break";
     private final String ERROR_NESTED_SOLVE = "Nested SOLVE";
     private final String ERROR_NESTED_INTEG = "Nested INTEG";
-    private final String ERROR_SOLVE_ITER_MAX = "Iter SOLVE";
-    private final String ERROR_INTEG_ITER_MAX = "Iter INTEG";
+    private final String ERROR_SOLVE_ITER_MAX = "Max iter SOLVE";
+    private final String ERROR_INTEG_ITER_MAX = "Max iter INTEG";
     private final long PSE_MS = MILLISECONDS_PER_SECOND;   //  1 seconde
     private final long FLASH_RUN_MS = MILLISECONDS_PER_SECOND / 2;   //  1/2 seconde
     private final long AUTO_UPDATE_INTERVAL_MS = 1;
@@ -2490,31 +2490,6 @@ public class MainActivity extends Activity {
     private void setupButtons() {
         final String KEY_FILE_PREFIX = "k";
         final String KEY_FILE_SUFFIX = "_";
-        final long BUTTON_MIN_CLICK_TIME_INTERVAL_MS = 500;
-        final int BUTTON_TOP_IMAGE_HEIGHT_WEIGHT = 1;
-        final int BUTTON_MID_IMAGE_HEIGHT_WEIGHT = 2;
-        final int BUTTON_LOW_IMAGE_HEIGHT_WEIGHT = 1;
-        final float BUTTON_TOP_IMAGE_SIZE_COEFF = 0.7f;
-        final float BUTTON_MID_IMAGE_SIZE_COEFF = 0.65f;
-        final float BUTTON_LOW_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_16_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_TOP_20_IMAGE_SIZE_COEFF = 0.8f;
-        final float BUTTON_MID_21_IMAGE_SIZE_COEFF = 0.59f;
-        final float BUTTON_MID_22_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_23_IMAGE_SIZE_COEFF = 0.57f;
-        final float BUTTON_MID_24_IMAGE_SIZE_COEFF = 0.63f;
-        final float BUTTON_MID_25_IMAGE_SIZE_COEFF = 0.57f;
-        final float BUTTON_MID_26_IMAGE_SIZE_COEFF = 0.58f;
-        final float BUTTON_MID_30_IMAGE_SIZE_COEFF = 0.38f;
-        final float BUTTON_MID_31_IMAGE_SIZE_COEFF = 0.55f;
-        final float BUTTON_MID_32_IMAGE_SIZE_COEFF = 0.6f;
-        final float BUTTON_MID_33_IMAGE_SIZE_COEFF = 0.55f;
-        final float BUTTON_MID_35_IMAGE_SIZE_COEFF = 0.5f;
-        final float BUTTON_MID_36_IMAGE_SIZE_COEFF = 0.85f;
-        final float BUTTON_MID_41_IMAGE_SIZE_COEFF = 0.57f;
-        final float BUTTON_MID_44_IMAGE_SIZE_COEFF = 0.58f;
-        final float BUTTON_MID_45_IMAGE_SIZE_COEFF = 0.56f;
-        final float BUTTON_MID_48_IMAGE_SIZE_COEFF = 0.3f;
 
         buttons = new ImageButtonViewStack[KEYS.values().length];
         Class rid = R.id.class;
@@ -2545,107 +2520,131 @@ public class MainActivity extends Activity {
                         }
                     });
                 }
-                for (LEGEND_POS legendPos : LEGEND_POS.values()) {
-                    if (((!key.equals(KEYS.KEY_41)) && (!key.equals(KEYS.KEY_42)) && (!key.equals(KEYS.KEY_43))) || (legendPos.equals(LEGEND_POS.MID))) {
+                float imageSizeCoeff = 0;
+                int heightWeight = 0;
+
+                if ((key.equals(KEYS.KEY_41)) || (key.equals(KEYS.KEY_42)) || (key.equals(KEYS.KEY_43))) {   //  ON, f ou g
+                    for (LEGEND_POS legendPos : LEGEND_POS.values()) {
+                        switch (legendPos) {
+                            case TOP:
+                                heightWeight = 7;
+                                buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);   //  La zone TOP doit être invisible
+                                break;
+                            case MID:
+                                heightWeight = 11;
+                                String fileName = KEY_FILE_PREFIX + key.CODE() + KEY_FILE_SUFFIX + legendPos.toString().toLowerCase();   //  Pas de fichier image en position TOP ni LOW
+                                int svgResId = getResources().getIdentifier(fileName, "raw", getPackageName());
+                                buttons[key.INDEX()].setSVGImageResource(legendPos.INDEX(), svgResId);
+                                switch (key) {
+                                    case KEY_41:
+                                        heightWeight = 17;
+                                        imageSizeCoeff = 0.4f;
+                                        buttons[key.INDEX()].setImageSizeCoeff(legendPos.INDEX(), imageSizeCoeff);   //  Image ON à adapter
+                                        break;
+                                }
+                                break;
+                            case LOW:
+                                heightWeight = 8;
+                                switch (key) {
+                                    case KEY_41:   //  La zone LOW doit être invisible pour la touche ON
+                                        heightWeight = 2;
+                                        buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);
+                                        break;
+                                }
+                                break;
+                        }
+                        buttons[key.INDEX()].setHeightWeight(legendPos.INDEX(), heightWeight);
+                    }
+                } else {   //  Pas ON, f ou g
+                    for (LEGEND_POS legendPos : LEGEND_POS.values()) {
                         String fileName = KEY_FILE_PREFIX + key.CODE() + KEY_FILE_SUFFIX + legendPos.toString().toLowerCase();
                         int svgResId = getResources().getIdentifier(fileName, "raw", getPackageName());
                         buttons[key.INDEX()].setSVGImageResource(legendPos.INDEX(), svgResId);
-                        float imageSizeCoeff = 0;
-                        int heightWeight = 0;
                         switch (legendPos) {
                             case TOP:
-                                imageSizeCoeff = BUTTON_TOP_IMAGE_SIZE_COEFF;
-                                heightWeight = BUTTON_TOP_IMAGE_HEIGHT_WEIGHT;
+                                imageSizeCoeff = 0.7f;
+                                heightWeight = 7;
+                                switch (key) {
+                                    case KEY_20:
+                                        imageSizeCoeff = 0.8f;
+                                        break;
+                                    case KEY_36:
+                                        heightWeight = 9;
+                                        break;
+                                }
                                 break;
                             case MID:
-                                imageSizeCoeff = BUTTON_MID_IMAGE_SIZE_COEFF;
-                                heightWeight = BUTTON_MID_IMAGE_HEIGHT_WEIGHT;
+                                imageSizeCoeff = 0.65f;
+                                heightWeight = 11;
+                                switch (key) {
+                                    case KEY_16:
+                                        imageSizeCoeff = 0.6f;
+                                        break;
+                                    case KEY_21:
+                                        imageSizeCoeff = 0.59f;
+                                        break;
+                                    case KEY_22:
+                                        imageSizeCoeff = 0.6f;
+                                        break;
+                                    case KEY_23:
+                                        imageSizeCoeff = 0.57f;
+                                        break;
+                                    case KEY_24:
+                                        imageSizeCoeff = 0.63f;
+                                        break;
+                                    case KEY_25:
+                                        imageSizeCoeff = 0.57f;
+                                        break;
+                                    case KEY_26:
+                                        imageSizeCoeff = 0.58f;
+                                        break;
+                                    case KEY_30:
+                                        imageSizeCoeff = 0.34f;
+                                        break;
+                                    case KEY_31:
+                                        imageSizeCoeff = 0.55f;
+                                        break;
+                                    case KEY_32:
+                                        imageSizeCoeff = 0.6f;
+                                        break;
+                                    case KEY_33:
+                                        imageSizeCoeff = 0.55f;
+                                        break;
+                                    case KEY_35:
+                                        imageSizeCoeff = 0.5f;
+                                        break;
+                                    case KEY_36:
+                                        heightWeight = 56;
+                                        imageSizeCoeff = 0.85f;
+                                        break;
+                                    case KEY_44:
+                                        imageSizeCoeff = 0.58f;
+                                        break;
+                                    case KEY_45:
+                                        imageSizeCoeff = 0.56f;
+                                        break;
+                                    case KEY_48:
+                                        imageSizeCoeff = 0.3f;
+                                        break;
+                                }
                                 break;
                             case LOW:
-                                imageSizeCoeff = BUTTON_LOW_IMAGE_SIZE_COEFF;
-                                heightWeight = BUTTON_LOW_IMAGE_HEIGHT_WEIGHT;
+                                imageSizeCoeff = 0.6f;
+                                heightWeight = 8;
+                                switch (key) {
+                                    case KEY_36:
+                                        heightWeight = 11;
+                                        break;
+                                }
                                 break;
                         }
-                        if (key.equals(KEYS.KEY_36)) {   // Cas particulier de la touche ENTER
-                            switch (legendPos) {
-                                case TOP:
-                                    heightWeight = 2;
-                                    break;
-                                case MID:
-                                    heightWeight = 14;
-                                    break;
-                                case LOW:
-                                    heightWeight = 2;
-                                    break;
-                            }
-                        }
                         buttons[key.INDEX()].setHeightWeight(legendPos.INDEX(), heightWeight);
-
-                        if ((key.equals(KEYS.KEY_16)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image CHS à adapter
-                            imageSizeCoeff = BUTTON_MID_16_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_20)) && (legendPos.equals(LEGEND_POS.TOP))) {   //  Image INTEG à adapter
-                            imageSizeCoeff = BUTTON_TOP_20_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_21)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SST à adapter
-                            imageSizeCoeff = BUTTON_MID_21_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_22)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image GTO à adapter
-                            imageSizeCoeff = BUTTON_MID_22_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_23)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image SIN à adapter
-                            imageSizeCoeff = BUTTON_MID_23_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_24)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image COS à adapter
-                            imageSizeCoeff = BUTTON_MID_24_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_25)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image TAN à adapter
-                            imageSizeCoeff = BUTTON_MID_25_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_26)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image EEX à adapter
-                            imageSizeCoeff = BUTTON_MID_26_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_30)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image Minus à adapter
-                            imageSizeCoeff = BUTTON_MID_30_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_31)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image R/S à adapter
-                            imageSizeCoeff = BUTTON_MID_31_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_32)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image GSB à adapter
-                            imageSizeCoeff = BUTTON_MID_32_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_33)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image RDN à adapter
-                            imageSizeCoeff = BUTTON_MID_33_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_35)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image BACK à adapter
-                            imageSizeCoeff = BUTTON_MID_35_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_36)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image ENTER à adapter
-                            imageSizeCoeff = BUTTON_MID_36_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_41)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image ON à adapter
-                            imageSizeCoeff = BUTTON_MID_41_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_44)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image STO à adapter
-                            imageSizeCoeff = BUTTON_MID_44_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_45)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image RCL à adapter
-                            imageSizeCoeff = BUTTON_MID_45_IMAGE_SIZE_COEFF;
-                        }
-                        if ((key.equals(KEYS.KEY_48)) && (legendPos.equals(LEGEND_POS.MID))) {   //  Image Dot à adapter
-                            imageSizeCoeff = BUTTON_MID_48_IMAGE_SIZE_COEFF;
-                        }
                         buttons[key.INDEX()].setImageSizeCoeff(legendPos.INDEX(), imageSizeCoeff);
-                    } else {   //  (ON, (f ou g) et pas MID  => TOP Invisible
-                        if (legendPos.equals(LEGEND_POS.TOP)) {   //  (ON, f ou g)  => TOP invisible
-                            buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);
-                        }
-                        if ((key.equals(KEYS.KEY_41)) && (legendPos.equals(LEGEND_POS.LOW))) {   //  ON => LOW invisible
-                            buttons[key.INDEX()].setImageVisibilities(legendPos.INDEX(), false);
-                        }
                     }
                 }
-            } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException ex) {
+            } catch
+            (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException
+                            ex) {
                 Logger.getLogger(MainActivity.class.getName()).log(Level.SEVERE, null, ex);
             }
         }

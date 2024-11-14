@@ -1,5 +1,5 @@
 <h2 style="color: #2e6c80;">SP15C</h2>
-<p>Remember:
+<p>Notes:
     <br />
     <li>
         <strong>Stats:</strong>
@@ -379,44 +379,60 @@
         </tr>
     </tbody>
 </table>
-<br />in = cm /2.54
+<br />in = cm / 2.54
 <br />lbm = kg * 2.204622622
 <br />gal = l / 3.785411784
 <br />°F = °C * 1.8 + 32
 <br />
 <br />
-<strong>Date + Jours</strong>:    20111965 ENTER 100 <strong>GSB</strong> 7 => 28021966
+<strong>Date + Jours</strong>:    20111965 ENTER 100
+<strong>GSB</strong> 7 => 28021966
 <br />
-<strong>Date - Date</strong>:    20111965 ENTER 28021966 <strong>GSB 8</strong> => -100
+<strong>Date - Date</strong>:    20111965 ENTER 28021966
+<strong>GSB 8</strong> => -100
 <br />
-<strong>Day of Week</strong>:    20111965 <strong>GSB 9</strong> => 6 R/S 20111965
+<strong>Day of Week</strong>:    20111965
+<strong>GSB 9</strong> => 6 R/S 20111965
 <br />
-<strong>Dé</strong>:    <strong>GSB .1</strong> => 3 R/S 2 R/S 6 R/S …
+<strong>Dé</strong>:
+<strong>GSB .1</strong> => 3 R/S 2 R/S 6 R/S …
 <br />
-<strong>Dist Norm Cum</strong>:    1 <strong>GSB A</strong> => 0.8413
+<strong>Dist Norm Cum</strong>:    1
+<strong>GSB A</strong> => 0.8413
 <br />
-<strong>Dist Norm Cum Inv</strong>:    0,9995 STO 0, 2 (Guess) <strong>SOLVE B</strong> => 3.29
+<strong>Dist Norm Cum Inv</strong>:    0,9995 STO 0, 2 (Guess)
+<strong>SOLVE B</strong> => 3.29
 <br />
-<strong>Dist Norm</strong>:    1 <strong>GSB C</strong> => 0.2420
+<strong>Dist Norm</strong>:    1
+<strong>GSB C</strong> => 0.2420
 <br />
-<strong>DIV / MOD</strong>:    20 ENTER 3 <strong>GSB D</strong> => 6 (Div) <-> 2 (Mod)
+<strong>DIV / MOD</strong>:    20 ENTER 3
+<strong>GSB D</strong> => 6 (Div) <-> 2 (Mod)
 <br />
-<strong>HMS+</strong>: 1.3 ENTER 2.35 <strong>GSB E</strong> => 4.05
+<strong>HMS+</strong>: 1.3 ENTER 2.35
+<strong>GSB E</strong> => 4.05
 <br />
-<strong>LCM:</strong>: 16 ENTER 20 <strong>GSB 1</strong> => 80
+<strong>LCM:</strong>: 16 ENTER 20
+<strong>GSB 1</strong> => 80
 <br />
-<strong>GCD</strong>: 24 ENTER 30 <strong>GSB 2</strong> => 6
+<strong>GCD</strong>: 24 ENTER 30
+<strong>GSB 2</strong> => 6
 <br />
-<strong>Fractions approx.</strong>: PI <strong>GSB 3</strong> => 3 <-> 1 R/S 3 <-> -0.1416 R/S …
+<strong>Fractions approx.</strong>: PI
+<strong>GSB 3</strong> => 3 <-> 1 R/S 3 <-> -0.1416 R/S …
 <br />cad 3 / 1 = 3 (écart restant -0.1416)
 <br />
 <br />
 <strong>Lambert:</strong>
-<br />W0(-0.3333): -0.3333 STO 0, 3 (Guess) <strong>SOLVE 4</strong> => -0.6189
-<br />W-1(-0.3333): -0.3333 STO 0, -3( Guess) <strong>SOLVE 4</strong> => -1.5124
-<br />W0(5): 5 STO 0, 5 (Guess) <strong>SOLVE 4</strong> => 1.3267
+<br />W0(-0.3333): -0.3333 STO 0, 3 (Guess)
+<strong>SOLVE 4</strong> => -0.6189
+<br />W-1(-0.3333): -0.3333 STO 0, -3( Guess)
+<strong>SOLVE 4</strong> => -1.5124
+<br />W0(5): 5 STO 0, 5 (Guess)
+<strong>SOLVE 4</strong> => 1.3267
 <br />W0(10^100): 10 LN 100 CHS * STO 0, cad -LN(x) si x>>0
-<br />100 (Guess) <strong>SOLVE 4</strong> => 224.8431
+<br />100 (Guess)
+<strong>SOLVE 4</strong> => 224.8431
 <br />
 <br />
 <strong>TVM:</strong>
@@ -424,18 +440,22 @@
 <strong>Quel remboursement mensuel ?
 </strong>
 <br />250000 (M) STO 1, 2.4 (ia%) STO 2, 20 (a) STO 3, 12 (rpa) STO 4
-<br />5 (cad Solve R) STO i, 1100(Guess) <strong>SOLVE 5</strong> => R=1309.46/mois
+<br />5 (cad Solve R) STO i, 1100(Guess)
+<strong>SOLVE 5</strong> => R=1309.46/mois
 <br />
 <strong>Idem mais combiens d'années si remb. Max 1000/mois ?</strong>
-<br />1000 STO 5, 3 (cad Solve a) STO i, 25 (Guess) <strong>SOLVE 5</strong> => a=28.7720 ans
+<br />1000 STO 5, 3 (cad Solve a) STO i, 25 (Guess)
+<strong>SOLVE 5</strong> => a=28.7720 ans
 <br />
 <strong>Idem mais quel taux si max 1200/mois ?
 </strong>
-<br />20 STO 3 (a initial), 1200 STO 5, 2 (cad Solve ia%) STO i, 1 (Guess) <strong>SOLVE 5</strong> =>ia%=1.45%/an
+<br />20 STO 3 (a initial), 1200 STO 5, 2 (cad Solve ia%) STO i, 1 (Guess)
+<strong>SOLVE 5</strong> =>ia%=1.45%/an
 <br />
 <strong>Idem données mais quel montant si max 1100/mois ?
 </strong>
-<br />2.4 STO 2 (ia% initial), 1100 STO 5, 1 (cad Solve M) STO i, 200000 (Guess) <strong>SOLVE 5</strong> => M=210009.4398
+<br />2.4 STO 2 (ia% initial), 1100 STO 5, 1 (cad Solve M) STO i, 200000 (Guess)
+<strong>SOLVE 5</strong> => M=210009.4398
 <br />
 <br />
 <strong>VAN</strong>
@@ -443,26 +463,36 @@
 <br />Si Freq CFi = 1: Nombre de CF (n), CF0 (<0), CF1, CF2, … CFn-1
 <br />Si Freq CFi >= 1: -Nombre de CF(-n), CF0 (<0), CF1, Freq1, CF2, Freq2, …CFn-1, Freq n-1
 <br />
-<br />0 STO 8 <strong>GSB 6</strong> pour introduire données apd R8:
+<br />0 STO 8
+<strong>GSB 6</strong> pour introduire données apd R8:
 <br />Si Freq CFi = 1: 3 R/S -100 R/S 50 R/S 60 R/S
 <br />Si Freq CFi >= 1: -3 R/S -100 R/S 50 R/S 1 RS 60 R/S 1 R/S
-<br />0.1 (cad 10%) <strong>GSB 6</strong> => -4.9587 (VAN)
-<br />0.1 (cad 10%) (Guess) <strong>SOLVE 6</strong> => 0.0639(IRR) (cad 6.39%)
+<br />0.1 (cad 10%)
+<strong>GSB 6</strong> => -4.9587 (VAN)
+<br />0.1 (cad 10%) (Guess)
+<strong>SOLVE 6</strong> => 0.0639(IRR) (cad 6.39%)
 <br />
 <br />
-<strong>Branchement</strong>: <strong>GSB .9</strong>
+<strong>Branchement</strong>:
+<strong>GSB .9</strong>
 <br />
-<strong>Save Stack</strong>: -3 STO i, <strong>GSB .9</strong>
+<strong>Save Stack</strong>: -3 STO i,
+<strong>GSB .9</strong>
 <br />
-<strong>Restore Stack (sauf x)</strong>: -12 STO i, <strong>GSB .9</strong>
+<strong>Restore Stack (sauf x)</strong>: -12 STO i,
+<strong>GSB .9</strong>
 <br />
-<strong>Date -> Serial</strong>: -17 STO i, 20111965 <strong>GSB .9</strong> => 717967
+<strong>Date -> Serial</strong>: -17 STO i, 20111965
+<strong>GSB .9</strong> => 717967
 <br />
-<strong>Serial -> Date</strong>: -95 STO i, 717967 <strong>GSB .9</strong> => 20111965
+<strong>Serial -> Date</strong>: -95 STO i, 717967
+<strong>GSB .9</strong> => 20111965
 <br />
-<strong>Write Registers</strong>: -255 STO i, 8 <strong>GSB .9</strong> => Apd R8: Valeur R/S Valeur R/S …
+<strong>Write Registers</strong>: -255 STO i, 8
+<strong>GSB .9</strong> => Apd R8: Valeur R/S Valeur R/S …
 <br />
-<strong>Read Registers</strong>: -348 STO i, 8 <strong>GSB .9</strong> => Apd R8: Valeur R/S Valeur R/S …
+<strong>Read Registers</strong>: -348 STO i, 8
+<strong>GSB .9</strong> => Apd R8: Valeur R/S Valeur R/S …
 <br />
 <br />
 <img
