@@ -568,8 +568,8 @@ public class MainActivity extends Activity {
         } else {   //  Erreur (ou Prefix) antérieure
             error = "";
             executor.clearRetStack();
-            executor.getSolveParamSet().clear();
-            executor.getIntegParamSet().clear();
+            executor.clearSolveParamSet();
+            executor.clearIntegParamSet();
             inOp = null;
             if (executor.getMode().equals(MODES.NORM)) {
                 dotMatrixDisplayUpdater.displayText(executor.getRoundXForDisplay(), true);

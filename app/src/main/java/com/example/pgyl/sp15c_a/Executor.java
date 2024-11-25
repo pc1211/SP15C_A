@@ -1239,6 +1239,7 @@ public class Executor {
     public String exec(ProgLine progLine) {
         OPS baseOp = progLine.ops[LINE_OPS.BASE.INDEX()];
         boolean common = false;   //  Si True: Sortie classique de fonction: stackLiftEnabled=true, lastx si erreur
+        error = "";
 
         switch (baseOp) {   //  Le GIANT
             case FIX:
