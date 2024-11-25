@@ -2,7 +2,6 @@ package com.example.pgyl.sp15c_a;
 
 public class IntegParamSet {
     public final int ITER_COUNT_MAX = 50;
-    public final int SAMPLING_MAX = 2048;
 
     public double a;
     public double b;

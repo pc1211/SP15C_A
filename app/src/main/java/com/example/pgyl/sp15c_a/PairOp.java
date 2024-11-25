@@ -1,6 +1,6 @@
 package com.example.pgyl.sp15c_a;
 
-import com.example.pgyl.sp15c_a.Alu.OPS;
+import com.example.pgyl.sp15c_a.Executor.OPS;
 
 public class PairOp {
     OPS op1;

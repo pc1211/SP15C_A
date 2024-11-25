@@ -4,7 +4,7 @@ public class SolveParamSet {
     public final int ITER_COUNT_MAX = 50;
     public final double GUESS_DIFF_MAX = 1e-14;
     public final double GUESS_CORRECTION = 5e-7;
-    public final String ERROR_OVERFLOW = "Overflow";
+    public final String ERROR_MATH = "Math error";
 
     public double a;
     public double b;
@@ -66,15 +66,11 @@ public class SolveParamSet {
 
     public String transform() {
         String error = "";
-        try {
-            Double newX = b - s * (b - a) / (s - r);
-            if ((Double.isNaN(newX)) || (Double.isInfinite(newX))) {
-                throw new ArithmeticException();
-            }
-            t = newX;
-        } catch (ArithmeticException | IllegalArgumentException | SecurityException ex) {
-            error = ERROR_OVERFLOW;
+        Double newX = b - s * (b - a) / (s - r);
+        if ((Double.isNaN(newX)) || (Double.isInfinite(newX))) {
+            error = ERROR_MATH;
         }
+        t = newX;
         return error;
     }
 }
