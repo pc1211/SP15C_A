@@ -60,8 +60,10 @@ import static com.example.pgyl.pekislib_a.StringDBUtils.setCurrentsForActivity;
 import static com.example.pgyl.pekislib_a.StringDBUtils.setStartStatusOfActivity;
 import static com.example.pgyl.pekislib_a.TimeDateUtils.MILLISECONDS_PER_SECOND;
 import static com.example.pgyl.sp15c_a.Constants.SP15C_ACTIVITIES;
+import static com.example.pgyl.sp15c_a.Executor.KEYS.KEY_24;
 import static com.example.pgyl.sp15c_a.StringDBTables.DATA_VERSION;
 import static com.example.pgyl.sp15c_a.StringDBTables.getFlagsTableName;
+import static com.example.pgyl.sp15c_a.StringDBTables.getImStackRegsTableName;
 import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorDisp1BackIndex;
 import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorDisp1OffIndex;
 import static com.example.pgyl.sp15c_a.StringDBTables.getPaletteColorDisp1OnIndex;
@@ -158,7 +160,8 @@ public class MainActivity extends Activity {
     private OPS inOp;
     private OPS shiftFOp;
     private OPS currentOp;
-    private boolean isDisplayPressed;
+    private boolean isDisplayKeyCodes;
+    private boolean isDispInt;
     private boolean user;
     private boolean isAutoL;
     private boolean isKeyboardInterrupt;
@@ -186,6 +189,7 @@ public class MainActivity extends Activity {
         setCurrent(stringDB, getAppInfosTableName(), getAppInfosDataVersionIndex(), String.valueOf(DATA_VERSION));
         setCurrentsForActivity(stringDB, SP15C_ACTIVITIES.MAIN.toString(), getPaletteColorsTableName(), paletteColors);
         saveRowsToDB(stringDB, getStackRegsTableName(), doubleArrayToRows(executor.getStackRegs()));
+        saveRowsToDB(stringDB, getImStackRegsTableName(), doubleArrayToRows(executor.getImStackRegs()));
         saveRowsToDB(stringDB, getFlagsTableName(), booleanArrayToRows(executor.getFlags()));
         saveRowsToDB(stringDB, getRegsTableName(), doubleArrayToRows(doubleListToArray(executor.getRegs())));
         saveRowsToDB(stringDB, getRetStackTableName(), intArrayToRows(intListToArray(executor.getRetStack())));
@@ -242,7 +246,8 @@ public class MainActivity extends Activity {
         isAutoL = false;
         user = false;
         isKeyboardInterrupt = false;
-        isDisplayPressed = false;
+        isDisplayKeyCodes = false;
+        isDispInt = false;
         tempProgLine = new ProgLine();
         readProgLine = new ProgLine();
         updateInterval = AUTO_UPDATE_INTERVAL_MS;
@@ -250,6 +255,7 @@ public class MainActivity extends Activity {
 
         executor = new Executor();
         executor.setStackRegs(rowsToDoubleArray(loadRowsFromDB(stringDB, getStackRegsTableName()), STACK_REGS.values().length));
+        executor.setImStackRegs(rowsToDoubleArray(loadRowsFromDB(stringDB, getImStackRegsTableName()), STACK_REGS.values().length));
         executor.setFlags(rowsToBooleanArray(loadRowsFromDB(stringDB, getFlagsTableName()), executor.MAX_FLAGS));
         executor.setRegs(doubleArrayToList(rowsToDoubleArray(loadRowsFromDB(stringDB, getRegsTableName()), executor.DEF_MAX_REGS)));
         executor.setRetStack(intArrayToList(rowsToIntArray(loadRowsFromDB(stringDB, getRetStackTableName()), 0)));
@@ -361,24 +367,59 @@ public class MainActivity extends Activity {
     }
 
     private void onDotMatrixDisplayViewClick() {
-        isDisplayPressed = !isDisplayPressed;
         if (executor.getMode().equals(MODES.EDIT)) {
-            dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayPressed), false);
+            isDisplayKeyCodes = !isDisplayKeyCodes;
+            dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayKeyCodes), false);
             dotMatrixDisplayView.updateDisplay();
         }
     }
 
-    private void onSSTClickDown() {   //  Click Down sur SST => Afficher ProgLine courante
-        if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
-            dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayPressed), false);
-            dotMatrixDisplayView.updateDisplay();
+    private void onDotMatrixDisplayViewClickDown() {
+        if (executor.getMode().equals(MODES.RUN)) {
+            isDispInt = true;
         }
     }
 
-    private void onSSTClickLeave() {   //  Quitter SST sans cliquer => Affichage normal
-        if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
-            dotMatrixDisplayUpdater.displayText((executor.getAlpha().equals("") ? executor.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
-            dotMatrixDisplayView.updateDisplay();
+    private void onDotMatrixDisplayViewClickLeave() {
+        if (executor.getMode().equals(MODES.RUN)) {
+            isDispInt = false;
+        }
+    }
+
+    private void onKeyClickDown(KEYS key) {
+        if (key.equals(KEYS.KEY_21)) {   //  Click Down sur SST => Afficher ProgLine courante
+            if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
+                dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayKeyCodes), false);
+                dotMatrixDisplayView.updateDisplay();
+            }
+        }
+        if (key.equals(KEY_24)) {   //  Click Down sur (i) => Afficher Xim
+            if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.F_SHIFT))) {
+                if (executor.getIsComplexMode()) {
+                    dotMatrixDisplayUpdater.displayText(executor.getRoundXImForDisplay(), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+                    dotMatrixDisplayView.updateDisplay();
+                }
+            }
+        }
+    }
+
+    private void onKeyClickLeave(KEYS key) {
+        if (key.equals(KEYS.KEY_21)) {   //  Quitter SST sans cliquer => Affichage normal
+            if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
+                dotMatrixDisplayUpdater.displayText((executor.getAlpha().equals("") ? executor.getRoundXForDisplay() : formatAlphaNumber()), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+                dotMatrixDisplayView.updateDisplay();
+            }
+        }
+        if (key.equals(KEY_24)) {    //  Quitter (i)) sans cliquer => Affichage normal
+            if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.F_SHIFT))) {
+                if (executor.getIsComplexMode()) {
+                    dotMatrixDisplayUpdater.displayText(executor.getRoundXForDisplay(), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+                    dotMatrixDisplayView.updateDisplay();
+                }
+                shiftMode = SHIFT_MODES.UNSHIFTED;
+                swapColorBoxColors(buttons[KEYS.KEY_42.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());
+                buttons[KEYS.KEY_42.INDEX()].updateDisplay();
+            }
         }
     }
 
@@ -558,7 +599,7 @@ public class MainActivity extends Activity {
                         dotMatrixDisplayUpdater.displayText((executor.getAlpha().equals("") ? executor.getRoundXForDisplay() : formatAlphaNumber()), true);    //  formatAlphaNumber pour faire apparaître le séparateur de milliers
                     }
                     if (executor.getMode().equals(MODES.EDIT)) {
-                        dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayPressed), false);
+                        dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayKeyCodes), false);
                     }
                 }
                 if (error.length() != 0) {    //  Erreur (ou Prefix) nouvelle
@@ -572,10 +613,10 @@ public class MainActivity extends Activity {
             executor.clearIntegParamSet();
             inOp = null;
             if (executor.getMode().equals(MODES.NORM)) {
-                dotMatrixDisplayUpdater.displayText(executor.getRoundXForDisplay(), true);
+                dotMatrixDisplayUpdater.displayText(executor.getRoundForDisplay(0.0), true);
             }
             if (executor.getMode().equals(MODES.EDIT)) {
-                dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayPressed), false);
+                dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayKeyCodes), false);
             }
         }
         dotMatrixDisplayView.updateDisplay();
@@ -587,6 +628,7 @@ public class MainActivity extends Activity {
         sideDotMatrixDisplayUpdater.displayText(
                 executor.getAngleMode().toString().toLowerCase() + " " +
                         executor.getRoundMode().toString().toLowerCase() + executor.getRoundParam() + " " +
+                        (executor.getIsComplexMode() ? "c " : "") +
                         (user ? "user" : ""), false);
         sideDotMatrixDisplayView.updateDisplay();
     }
@@ -1103,6 +1145,16 @@ public class MainActivity extends Activity {
                     }
                 }
                 break;
+            case I:
+            case REIM:
+                if (!inEditModeAfterSavingLine(tempProgLine)) {   //  Neutre sur StackLift ???
+                    if (executor.getMode().equals(MODES.NORM)) {
+                        if (executor.alphaToX()) {
+                            error = executor.exec(tempProgLine);
+                        }
+                    }
+                }
+                break;
         }
     }
 
@@ -1262,7 +1314,7 @@ public class MainActivity extends Activity {
     }
 
     public String[][] paramsToRows() {
-        String[][] res = new String[8][2];
+        String[][] res = new String[9][2];
         res[0][TABLE_ID_INDEX] = "ROUND_MODE";
         res[0][TABLE_DATA_INDEX] = executor.getRoundMode().toString();
         res[1][TABLE_ID_INDEX] = "ROUND_PARAM";
@@ -1275,10 +1327,12 @@ public class MainActivity extends Activity {
         res[4][TABLE_DATA_INDEX] = String.valueOf(executor.getCurrentProgLineNumber());
         res[5][TABLE_ID_INDEX] = "USER";
         res[5][TABLE_DATA_INDEX] = (user ? "1" : "0");
-        res[6][TABLE_ID_INDEX] = "DISPLAY_PRESSED";
-        res[6][TABLE_DATA_INDEX] = (isDisplayPressed ? "1" : "0");
-        res[7][TABLE_ID_INDEX] = "STACK_LIFT_ENABLED";
-        res[7][TABLE_DATA_INDEX] = (executor.getStackLiftEnabled() ? "1" : "0");
+        res[6][TABLE_ID_INDEX] = "DISPLAY_KEYCODES";
+        res[6][TABLE_DATA_INDEX] = (isDisplayKeyCodes ? "1" : "0");
+        res[7][TABLE_ID_INDEX] = "IS_STACK_LIFT_ENABLED";
+        res[7][TABLE_DATA_INDEX] = (executor.getIsStackLiftEnabled() ? "1" : "0");
+        res[8][TABLE_ID_INDEX] = "IS_COMPLEX_MODE";
+        res[8][TABLE_DATA_INDEX] = (executor.getIsComplexMode() ? "1" : "0");
         return res;
     }
 
@@ -1306,11 +1360,14 @@ public class MainActivity extends Activity {
                     if (s.equals("USER")) {
                         user = (paramRows[i][TABLE_DATA_INDEX].equals("1"));
                     }
-                    if (s.equals("DISPLAY_PRESSED")) {
-                        isDisplayPressed = (paramRows[i][TABLE_DATA_INDEX].equals("1"));
+                    if (s.equals("DISPLAY_KEYCODES")) {
+                        isDisplayKeyCodes = (paramRows[i][TABLE_DATA_INDEX].equals("1"));
                     }
-                    if (s.equals("STACK_LIFT_ENABLED")) {
+                    if (s.equals("IS_STACK_LIFT_ENABLED")) {
                         executor.setStackLiftEnabled((paramRows[i][TABLE_DATA_INDEX].equals("1")));
+                    }
+                    if (s.equals("IS_COMPLEX_MODE")) {
+                        executor.setIsComplexMode((paramRows[i][TABLE_DATA_INDEX].equals("1")));
                     }
                 }
             }
@@ -1356,7 +1413,7 @@ public class MainActivity extends Activity {
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface dialogInterface) {    // OK pour modifier UI sous-jacente à la boîte de dialogue
-                dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayPressed), false);
+                dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayKeyCodes), false);
                 dotMatrixDisplayView.updateDisplay();
                 updateSideDisplay();
             }
@@ -1440,11 +1497,11 @@ public class MainActivity extends Activity {
                 nowmRUN = nowm;
                 dotMatrixDisplayView.invert();
                 if (executor.getRequestStopAfterSolve()) {   //  Affiche aussi la situation de INTEG (I:0/0 si non appelée par SOLVE)
-                    dotMatrixDisplayUpdater.displayText(isDisplayPressed ? "I:" + executor.getIntegParamSet().countFx + "/" + executor.getIntegParamSet().countFxMax : executor.roundForDisplay(executor.getSolveParamSet().t), true);
+                    dotMatrixDisplayUpdater.displayText(isDispInt ? "I:" + executor.getIntegParamSet().countFx + "/" + executor.getIntegParamSet().countFxMax : executor.getRoundForDisplay(executor.getSolveParamSet().t), true);
                 } else {
                     if (executor.getRequestStopAfterInteg()) {
-                        dotMatrixDisplayUpdater.displayText(isDisplayPressed ? "I:" + executor.getIntegParamSet().countFx + "/" + executor.getIntegParamSet().countFxMax : executor.roundForDisplay(executor.getIntegParamSet().z), true);
-                    } else {
+                        dotMatrixDisplayUpdater.displayText(isDispInt ? "I:" + executor.getIntegParamSet().countFx + "/" + executor.getIntegParamSet().countFxMax : executor.getRoundForDisplay(executor.getIntegParamSet().z), true);
+                    } else {   //  Ni SOLVE ni INTEG
                         dotMatrixDisplayUpdater.displayText("Running...", false);
                     }
                 }
@@ -1477,17 +1534,17 @@ public class MainActivity extends Activity {
                         onButtonClick(fkey);
                     }
                 });
-                if (key.equals(KEYS.KEY_21)) {   //  Click Down sur SST => Afficher ProgLine courante
+                if ((key.equals(KEYS.KEY_21)) || (key.equals(KEY_24))) {   //  Click Down sur SST => Afficher ProgLine courante, Click Down sur (i)) => Afficher Xim
                     buttons[key.INDEX()].setOnCustomClickDownListener(new ImageButtonViewStack.onCustomClickDownListener() {
                         @Override
                         public void onCustomClickDown() {
-                            onSSTClickDown();
+                            onKeyClickDown(key);
                         }
                     });
                     buttons[key.INDEX()].setOnCustomClickLeaveListener(new ImageButtonViewStack.onCustomClickLeaveListener() {
                         @Override
                         public void onCustomClickLeave() {   //  Quitter SST sans cliquer => Affichage normal
-                            onSSTClickLeave();
+                            onKeyClickLeave(key);
                         }
                     });
                 }
@@ -1648,6 +1705,18 @@ public class MainActivity extends Activity {
                 onDotMatrixDisplayViewClick();
             }
         });
+        dotMatrixDisplayView.setOnCustomClickDownListener(new DotMatrixDisplayView.onCustomClickDownListener() {
+            @Override
+            public void onCustomClickDown() {
+                onDotMatrixDisplayViewClickDown();
+            }
+        });
+        dotMatrixDisplayView.setOnCustomClickLeaveListener(new DotMatrixDisplayView.onCustomClickLeaveListener() {
+            @Override
+            public void onCustomClickLeave() {
+                onDotMatrixDisplayViewClickLeave();
+            }
+        });
     }
 
     private void setupSideDotMatrixDisplay() {
@@ -1690,6 +1759,9 @@ public class MainActivity extends Activity {
         }
         if (!stringDB.tableExists(getStackRegsTableName())) {
             createSp15cTableIfNotExists(stringDB, getStackRegsTableName());
+        }
+        if (!stringDB.tableExists(getImStackRegsTableName())) {
+            createSp15cTableIfNotExists(stringDB, getImStackRegsTableName());
         }
         if (!stringDB.tableExists(getPaletteColorsTableName())) {
             createSp15cTableIfNotExists(stringDB, getPaletteColorsTableName());

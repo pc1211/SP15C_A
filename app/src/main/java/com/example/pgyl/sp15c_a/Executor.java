@@ -191,7 +191,7 @@ public class Executor {
         KEY_37(37, OPS.DIGIT_1, OPS.RECT, OPS.POL),
         KEY_38(38, OPS.DIGIT_2, OPS.HMS, OPS.H),
         KEY_39(39, OPS.DIGIT_3, OPS.TO_RAD, OPS.TO_DEG),
-        KEY_30(30, OPS.MINUS, OPS.REIM, OPS.TEST),   //  REIM inactif
+        KEY_30(30, OPS.MINUS, OPS.REIM, OPS.TEST),
         KEY_41(41, OPS.ON, OPS.ON, OPS.ON),   //  ON inactif
         KEY_42(42, OPS.F, OPS.UNKNOWN, OPS.UNKNOWN),
         KEY_43(43, OPS.G, OPS.UNKNOWN, OPS.UNKNOWN),
@@ -289,7 +289,7 @@ public class Executor {
     }
 
     public enum STACK_REGS {
-        X, Y, Z, T, LX, LY, LZ, LT;
+        X, Y, Z, T, LX;
 
         public int INDEX() {
             return ordinal();
@@ -366,7 +366,8 @@ public class Executor {
     private final int MAX_PROG_LINES = 9999;
     private final int RET_STACK_SIZE_MAX = 100;
     private final int MAX_REGS = 1000;   //  Max, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
-    private final String ERROR_MATH = "Math error";
+    private final String ERROR_INF = "Inf Math error";
+    private final String ERROR_NAN = "Nan Math error";
     private final String ERROR_STAT = "Stat error";
     private final String ERROR_PERM_COMB = "Invalid Perm/Comb";
     private final String ERROR_INDEX = "Invalid index";
@@ -379,17 +380,21 @@ public class Executor {
     private final int UNSHIFTED_KEY_CODE = 0;
     private final int SHIFT_F_KEY_CODE = 42;
     private final int SHIFT_G_KEY_CODE = 43;
+    private final int COMPLEX_FLAG_INDEX = 8;
 
     private SolveParamSet solveParamSet;
     private IntegParamSet integParamSet;
+    private Complex complex;
     private String alpha;
     private double[] stackRegs;
+    private double[] imStackRegs;
     private boolean[] flags;
     private ArrayList<Double> regs;   //  Les registres de BASE_REGS puis les suivants (accessibles par (i) )
     private OPS roundMode;
     private int roundParam;
     private OPS angleMode;
-    private boolean stackLiftEnabled;
+    private boolean isComplexMode;
+    private boolean isStackLiftEnabled;
     private HashMap<Integer, KEYS> keyCodeToKeyMap;
     private HashMap<String, BASE_REGS> symbolToBaseRegMap;
     private HashMap<OPS, KEYS> opToKeyMap;
@@ -423,6 +428,8 @@ public class Executor {
         angleMode = OPS.RAD;
         roundMode = OPS.FIX;
         roundParam = 4;
+        complex = new Complex();
+        isComplexMode = false;
         alpha = "";
         error = "";
         tempProgLine = new ProgLine();
@@ -434,7 +441,7 @@ public class Executor {
         requestStopAfterSolve = false;
         requestStopAfterInteg = false;
         isWrapAround = false;
-        stackLiftEnabled = false;
+        isStackLiftEnabled = false;
         solveParamSet = new SolveParamSet();
         integParamSet = new IntegParamSet();
         setupMaps();
@@ -446,6 +453,9 @@ public class Executor {
         integParamSet.close();
         integParamSet = null;
         stackRegs = null;
+        imStackRegs = null;
+        complex.close();
+        complex = null;
         flags = null;
         retStack.clear();
         retStack = null;
@@ -501,6 +511,15 @@ public class Executor {
 
     public int getRoundParam() {
         return roundParam;
+    }
+
+    public void setIsComplexMode(boolean isComplexMode) {
+        this.isComplexMode = isComplexMode;
+        flags[COMPLEX_FLAG_INDEX] = isComplexMode;
+    }
+
+    public boolean getIsComplexMode() {
+        return isComplexMode;
     }
 
     public void setInSST(boolean inSST) {
@@ -624,11 +643,11 @@ public class Executor {
     }
 
     public void setStackLiftEnabled(boolean enabled) {
-        stackLiftEnabled = enabled;
+        isStackLiftEnabled = enabled;
     }
 
-    public boolean getStackLiftEnabled() {
-        return stackLiftEnabled;
+    public boolean getIsStackLiftEnabled() {
+        return isStackLiftEnabled;
     }
 
     public int getRegIndexBySymbol(String symbol) {   //  Pour les premiers registres de regs, cad ceux de BASE_REGS (I, R0 à R9, R.0 à R.9)
@@ -647,8 +666,16 @@ public class Executor {
         this.stackRegs = stackRegs;
     }
 
+    public void setImStackRegs(double[] imStackRegs) {
+        this.imStackRegs = imStackRegs;
+    }
+
     public double[] getStackRegs() {
         return stackRegs;
+    }
+
+    public double[] getImStackRegs() {
+        return imStackRegs;
     }
 
     public ArrayList<Integer> getRetStack() {
@@ -732,18 +759,18 @@ public class Executor {
         return res;
     }
 
-    public void clearStackRegs() {   //  T,Z,Y,X -> 0,0,0,0    (Pas LASTX)
-        stackRegs[STACK_REGS.X.INDEX()] = 0;
-        stackRegs[STACK_REGS.Y.INDEX()] = 0;
-        stackRegs[STACK_REGS.Z.INDEX()] = 0;
-        stackRegs[STACK_REGS.T.INDEX()] = 0;
-    }
-
     public void fillStack(double value) {
         stackRegs[STACK_REGS.X.INDEX()] = value;
         stackRegs[STACK_REGS.Y.INDEX()] = value;
         stackRegs[STACK_REGS.Z.INDEX()] = value;
         stackRegs[STACK_REGS.T.INDEX()] = value;
+    }
+
+    public void fillImStack(double value) {
+        imStackRegs[STACK_REGS.X.INDEX()] = value;
+        imStackRegs[STACK_REGS.Y.INDEX()] = value;
+        imStackRegs[STACK_REGS.Z.INDEX()] = value;
+        imStackRegs[STACK_REGS.T.INDEX()] = value;
     }
 
     public void stackRollDown() {   //  T,Z,Y,X -> X,T,Z,Y
@@ -752,6 +779,13 @@ public class Executor {
         stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.Z.INDEX()];
         stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.T.INDEX()];
         stackRegs[STACK_REGS.T.INDEX()] = temp;
+        if (isComplexMode) {
+            temp = imStackRegs[STACK_REGS.X.INDEX()];
+            imStackRegs[STACK_REGS.X.INDEX()] = imStackRegs[STACK_REGS.Y.INDEX()];
+            imStackRegs[STACK_REGS.Y.INDEX()] = imStackRegs[STACK_REGS.Z.INDEX()];
+            imStackRegs[STACK_REGS.Z.INDEX()] = imStackRegs[STACK_REGS.T.INDEX()];
+            imStackRegs[STACK_REGS.T.INDEX()] = temp;
+        }
     }
 
     public void stackRollUp() {   //  T,Z,Y,X -> Z,Y,X,T
@@ -760,38 +794,44 @@ public class Executor {
         stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
         stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
         stackRegs[STACK_REGS.X.INDEX()] = temp;
+        if (isComplexMode) {
+            temp = imStackRegs[STACK_REGS.T.INDEX()];
+            imStackRegs[STACK_REGS.T.INDEX()] = imStackRegs[STACK_REGS.Z.INDEX()];
+            imStackRegs[STACK_REGS.Z.INDEX()] = imStackRegs[STACK_REGS.Y.INDEX()];
+            imStackRegs[STACK_REGS.Y.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+            imStackRegs[STACK_REGS.X.INDEX()] = temp;
+        }
     }
 
     public void doStackLift() {   //  T,Z,Y,X -> Z,Y,X,X
         stackRegs[STACK_REGS.T.INDEX()] = stackRegs[STACK_REGS.Z.INDEX()];
         stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
         stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+        if (isComplexMode) {
+            imStackRegs[STACK_REGS.T.INDEX()] = imStackRegs[STACK_REGS.Z.INDEX()];
+            imStackRegs[STACK_REGS.Z.INDEX()] = imStackRegs[STACK_REGS.Y.INDEX()];
+            imStackRegs[STACK_REGS.Y.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+        }
     }
 
-    public void stackMergeDown() {   //  T,Z,Y,X -> T,T,Z,f(X,Y)
+    public void stackMergeDown() {   //  T,Z,Y,X -> T,T,Z,X
         stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.Z.INDEX()];
         stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.T.INDEX()];
-    }
-
-    public void saveStack() {
-        stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-        stackRegs[STACK_REGS.LY.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
-        stackRegs[STACK_REGS.LZ.INDEX()] = stackRegs[STACK_REGS.Z.INDEX()];
-        stackRegs[STACK_REGS.LT.INDEX()] = stackRegs[STACK_REGS.T.INDEX()];
-    }
-
-    public void restoreStack() {
-        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
-        stackRegs[STACK_REGS.Y.INDEX()] = stackRegs[STACK_REGS.LY.INDEX()];
-        stackRegs[STACK_REGS.Z.INDEX()] = stackRegs[STACK_REGS.LZ.INDEX()];
-        stackRegs[STACK_REGS.T.INDEX()] = stackRegs[STACK_REGS.LT.INDEX()];
+        if (isComplexMode) {
+            imStackRegs[STACK_REGS.Y.INDEX()] = imStackRegs[STACK_REGS.Z.INDEX()];
+            imStackRegs[STACK_REGS.Z.INDEX()] = imStackRegs[STACK_REGS.T.INDEX()];
+        }
     }
 
     public String getRoundXForDisplay() {
-        return roundForDisplay(stackRegs[STACK_REGS.X.INDEX()]);
+        return getRoundForDisplay(stackRegs[STACK_REGS.X.INDEX()]);
     }
 
-    public String roundForDisplay(double value) {
+    public String getRoundXImForDisplay() {
+        return getRoundForDisplay(imStackRegs[STACK_REGS.X.INDEX()]);
+    }
+
+    public String getRoundForDisplay(double value) {
         double val = Math.abs(value);
         String res = "";
         int exp = 1;
@@ -874,8 +914,9 @@ public class Executor {
     }
 
     public void doStackLiftIfEnabled() {
-        if (stackLiftEnabled) {
+        if (isStackLiftEnabled) {
             doStackLift();
+            imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
         }
     }
 
@@ -1029,6 +1070,17 @@ public class Executor {
         retStack.add(0, END_RETURN_STACK);
     }
 
+    public void testErrVal(Double value) {
+        if (Double.isNaN(value)) {
+            error = ERROR_NAN;
+            stackRegs[STACK_REGS.X.INDEX()] = 0;
+        }
+        if (Double.isInfinite(value)) {
+            error = ERROR_INF;
+            stackRegs[STACK_REGS.X.INDEX()] = 0;
+        }
+    }
+
     public boolean pushProgLineNumber(int progLineNumber) {   //  PUSH
         boolean res = false;
         if (retStack.size() < RET_STACK_SIZE_MAX) {
@@ -1084,7 +1136,7 @@ public class Executor {
         progLines.add(progLine);    // A l'index 0, proglines contient au moins BEGIN
     }
 
-    public String progLineToString(int progLineNumber, boolean isDisplayPressed) {    //  isDisplayPressed False => Afficher uniquement symboles ; isDisplayPressed True => afficher keyCodes (et parfois symbol (p.ex. ".5" ...)
+    public String progLineToString(int progLineNumber, boolean displayKeyCodes) {    //  displayKeyCodes False => Afficher uniquement symboles ; displayKeyCodes True => afficher keyCodes (et parfois symbol (p.ex. ".5" ...)
         final String SEP = " ";
         String res = "";
         String s = "";
@@ -1092,13 +1144,13 @@ public class Executor {
             ProgLine progLine = progLines.get(progLineNumber);
             OPS opBase = progLine.ops[LINE_OPS.BASE.INDEX()];   //  LINE_OPS: BASE, A4OP, DOT, A09, AE, I, DIM, INDI, RAND, SIGMA_PLUS, CHS, GHOST1, GHOST2
             boolean isGhost = (opToGhostKeyMap.get(opBase) != null);
-            int iMin = ((isGhost && isDisplayPressed) ? LINE_OPS.GHOST1.INDEX() : LINE_OPS.BASE.INDEX());
-            int iMax = ((isGhost && isDisplayPressed) ? LINE_OPS.GHOST2.INDEX() : LINE_OPS.SIGMA_PLUS.INDEX());   //  On ne prend pas le CHS car n'a été utilisé que pour le GTO CHS nnnnn en mode EDIT
+            int iMin = ((isGhost && displayKeyCodes) ? LINE_OPS.GHOST1.INDEX() : LINE_OPS.BASE.INDEX());
+            int iMax = ((isGhost && displayKeyCodes) ? LINE_OPS.GHOST2.INDEX() : LINE_OPS.SIGMA_PLUS.INDEX());   //  On ne prend pas le CHS car n'a été utilisé que pour le GTO CHS nnnnn en mode EDIT
             int i = iMin;
             do {
                 if (progLine.ops[i] != null) {
                     String sep = SEP;
-                    if (isDisplayPressed) {   //  Codes
+                    if (displayKeyCodes) {   //  Codes
                         KEYS key = opToKeyMap.get(progLine.ops[i]);
                         s = String.valueOf(key.CODE());
                         OPS unshiftedOp = key.UNSHIFTED_OP();   //  Opération sans aucune touche Shift
@@ -1151,7 +1203,7 @@ public class Executor {
                 i = i + 1;
             } while (i <= iMax);
         } else {   //  Ligne 0
-            if (isDisplayPressed) {   //  Codes
+            if (displayKeyCodes) {   //  Codes
                 res = "";
             } else {   //  Symboles
                 res = OPS.BEGIN.SYMBOL();
@@ -1234,11 +1286,19 @@ public class Executor {
         }
     }
 
+    private void errorStandardHandle() {
+        if (error.length() == 0) {
+            setStackLiftEnabled(true);
+        } else {
+            stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+            imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
+        }
+    }
+
     //  ************************************************************************* EXEC *************************************************************************
 
     public String exec(ProgLine progLine) {
         OPS baseOp = progLine.ops[LINE_OPS.BASE.INDEX()];
-        boolean common = false;   //  Si True: Sortie classique de fonction: stackLiftEnabled=true, lastx si erreur
         error = "";
 
         switch (baseOp) {   //  Le GIANT
@@ -1279,18 +1339,16 @@ public class Executor {
                                         regs.set(regIndex, regs.get(regIndex) / stackRegs[STACK_REGS.X.INDEX()]);
                                         break;
                                 }
-                                if ((Double.isNaN(regs.get(regIndex))) || (Double.isInfinite(regs.get(regIndex)))) {
-                                    error = ERROR_MATH;
-                                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
+                                testErrVal(regs.get(regIndex));
+                                if (error.length() != 0) {
+                                    regs.set(regIndex, 0.0);   //  Plutôt qu'un NAN ou INF
                                 }
                             } else {   //  STO reg
                                 regs.set(regIndex, stackRegs[STACK_REGS.X.INDEX()]);
                             }
                         }
                     }
-                    if (error.length() == 0) {
-                        setStackLiftEnabled(true);
-                    }
+                    errorStandardHandle();
                 }
                 break;
             case RCL:
@@ -1299,7 +1357,9 @@ public class Executor {
                         doStackLiftIfEnabled();
                     }
                     if (progLine.ops[LINE_OPS.DIM.INDEX()] != null) {   //  RCL DIM (i)
-                        stackRegs[STACK_REGS.X.INDEX()] = getDataRegIndexByIndex(getRegsMaxIndex());
+                        if (progLine.ops[LINE_OPS.INDI.INDEX()] != null) {
+                            stackRegs[STACK_REGS.X.INDEX()] = getDataRegIndexByIndex(getRegsMaxIndex());
+                        }
                     } else {   //  Pas RCL DIM (i)
                         if (progLine.ops[LINE_OPS.SIGMA_PLUS.INDEX()] != null) {   //  RCL SIGMA_PLUS
                             doStackLift();    //  Un stacklift obligatoire + un deuxième (cf supra) si stackLift activé
@@ -1331,28 +1391,21 @@ public class Executor {
                                             stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] / regs.get(regIndex);
                                             break;
                                     }
-                                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                                        error = ERROR_MATH;
-                                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
-                                    }
+                                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
                                 } else {   //  RCL reg
                                     stackRegs[STACK_REGS.X.INDEX()] = regs.get(regIndex);
                                 }
                             }
                         }
                     }
-                    if (error.length() == 0) {
-                        setStackLiftEnabled(true);
-                    }
+                    errorStandardHandle();
                 }
                 break;
             case DIM:
                 if (alphaToX()) {
                     int n = (int) stackRegs[STACK_REGS.X.INDEX()];
                     error = setMaxDataRegIndex(n);
-                    if (error.length() == 0) {
-                        setStackLiftEnabled(true);
-                    }
+                    errorStandardHandle();
                 }
                 break;
             case XCHG:
@@ -1371,7 +1424,11 @@ public class Executor {
                         stackRegs[STACK_REGS.X.INDEX()] = reg;
                         if (error.length() == 0) {
                             setStackLiftEnabled(true);
+                        } else {
+                            stackRegs[STACK_REGS.X.INDEX()] = 0;
                         }
+                    } else {
+                        stackRegs[STACK_REGS.X.INDEX()] = 0;
                     }
                 }
                 break;
@@ -1470,7 +1527,7 @@ public class Executor {
                         }
                     }
                 }
-                common = true;
+                errorStandardHandle();
                 break;
             case INTEG:
                 if (alphaToX()) {
@@ -1542,7 +1599,7 @@ public class Executor {
                         }
                     }
                 }
-                common = true;
+                errorStandardHandle();
                 break;
             case DSE:
             case ISG:
@@ -1598,9 +1655,21 @@ public class Executor {
                     int index = Integer.valueOf(progLine.ops[LINE_OPS.A09.INDEX()].SYMBOL());
                     if (baseOp.equals(OPS.SF)) {
                         flags[index] = true;
+                        if (index == COMPLEX_FLAG_INDEX) {
+                            if (!isComplexMode) {
+                                isComplexMode = true;
+                                fillImStack(0.0);
+                            }
+                        }
                     }
                     if (baseOp.equals(OPS.CF)) {
                         flags[index] = false;
+                        if (index == COMPLEX_FLAG_INDEX) {
+                            if (isComplexMode) {
+                                isComplexMode = false;
+                                fillImStack(0.0);   //  On nettoie et on éteint la lumière
+                            }
+                        }
                     }
                     if (baseOp.equals(OPS.TF)) {
                         if (!flags[index]) {   //  Skip next line if flag cleared
@@ -1701,33 +1770,29 @@ public class Executor {
                 if (alphaToX()) {
                     doStackLiftIfEnabled();
                     stackRegs[STACK_REGS.X.INDEX()] = Math.PI;
-                    if (error.length() == 0) {
-                        setStackLiftEnabled(true);
-                    }
+                    errorStandardHandle();
                 }
                 break;
             case LASTX:
                 if (alphaToX()) {
                     doStackLiftIfEnabled();
                     stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
-                    if (error.length() == 0) {
-                        setStackLiftEnabled(true);
-                    }
+                    imStackRegs[STACK_REGS.X.INDEX()] = imStackRegs[STACK_REGS.LX.INDEX()];
+                    errorStandardHandle();
                 }
                 break;
             case RAND:
                 if (alphaToX()) {
                     doStackLiftIfEnabled();
                     stackRegs[STACK_REGS.X.INDEX()] = Math.random();
-                    if (error.length() == 0) {
-                        setStackLiftEnabled(true);
-                    }
+                    errorStandardHandle();
                 }
                 break;
             case SIGMA_PLUS:   //  Désactive stackLift
                 if (alphaToX()) {
                     String error = "";
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     int index = getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX());
                     int nMod = (int) (regs.get(index) + 1);
                     regs.set(index, (double) nMod);
@@ -1754,31 +1819,24 @@ public class Executor {
 
                     stackRegs[STACK_REGS.X.INDEX()] = nMod;
 
-                    if ((Double.isNaN(sumXMod)) || (Double.isInfinite(sumXMod))) {
-                        error = ERROR_MATH;
-                    }
-                    if ((Double.isNaN(sumX2Mod)) || (Double.isInfinite(sumX2Mod))) {
-                        error = ERROR_MATH;
-                    }
-                    if ((Double.isNaN(sumYMod)) || (Double.isInfinite(sumYMod))) {
-                        error = ERROR_MATH;
-                    }
-                    if ((Double.isNaN(sumY2Mod)) || (Double.isInfinite(sumY2Mod))) {
-                        error = ERROR_MATH;
-                    }
-                    if ((Double.isNaN(sumXYMod)) || (Double.isInfinite(sumXYMod))) {
-                        error = ERROR_MATH;
-                    }
+                    testErrVal(sumXMod);
+                    testErrVal(sumX2Mod);
+                    testErrVal(sumYMod);
+                    testErrVal(sumY2Mod);
+                    testErrVal(sumXYMod);
+
                     if (error.length() == 0) {
                         setStackLiftEnabled(false);
                     } else {
-                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
+                        regs.set(index, 0.0);   //  Plutôt qu'un NAN ou INF
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
                     }
                 }
                 break;
             case SIGMA_MINUS:   //  Désactive stackLift
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     int index = getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX());
                     int nMod = (int) (regs.get(index) + 1);
                     regs.set(index, (double) nMod);
@@ -1805,34 +1863,24 @@ public class Executor {
 
                     stackRegs[STACK_REGS.X.INDEX()] = nMod;
 
-                    if ((Double.isNaN(sumXMod)) || (Double.isInfinite(sumXMod))) {
-                        error = ERROR_MATH;
-                    }
-                    if ((Double.isNaN(sumX2Mod)) || (Double.isInfinite(sumX2Mod))) {
-                        error = ERROR_MATH;
-                    }
-                    if ((Double.isNaN(sumYMod)) || (Double.isInfinite(sumYMod))) {
-                        error = ERROR_MATH;
-                    }
-                    if ((Double.isNaN(sumY2Mod)) || (Double.isInfinite(sumY2Mod))) {
-                        error = ERROR_MATH;
-                    }
-                    if ((Double.isNaN(sumXYMod)) || (Double.isInfinite(sumXYMod))) {
-                        error = ERROR_MATH;
-                    }
+                    testErrVal(sumXMod);
+                    testErrVal(sumX2Mod);
+                    testErrVal(sumYMod);
+                    testErrVal(sumY2Mod);
+                    testErrVal(sumXYMod);
+
                     if (error.length() == 0) {
                         setStackLiftEnabled(false);
                     } else {
-                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
+                        regs.set(index, 0.0);   //  Plutôt qu'un NAN ou INF
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
                     }
                 }
                 break;
             case MEAN:   //  Désactive stackLift
                 if (alphaToX()) {
-                    saveStack();
-                    doStackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
                     doStackLiftIfEnabled();
-
+                    doStackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
                     double n = regs.get(getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX()));
                     if (n > 0) {
                         double sumX = regs.get(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
@@ -1841,21 +1889,23 @@ public class Executor {
                         double meanY = sumY / n;
                         stackRegs[STACK_REGS.X.INDEX()] = meanX;
                         stackRegs[STACK_REGS.Y.INDEX()] = meanY;
+                        testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                        testErrVal(stackRegs[STACK_REGS.Y.INDEX()]);
                     } else {   //  n <= 0
                         error = ERROR_STAT;
                     }
                     if (error.length() == 0) {
                         setStackLiftEnabled(true);
                     } else {
-                        restoreStack();
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        stackRegs[STACK_REGS.Y.INDEX()] = 0.0;   //  Plutôt qu'un NAN ou INF
                     }
                 }
                 break;
             case STDEV:
                 if (alphaToX()) {
-                    saveStack();
-                    doStackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
                     doStackLiftIfEnabled();
+                    doStackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
                     double n = regs.get(getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX()));
                     if (n > 1) {
                         double sumX = regs.get(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
@@ -1874,15 +1924,15 @@ public class Executor {
                     if (error.length() == 0) {
                         setStackLiftEnabled(true);
                     } else {
-                        restoreStack();
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        stackRegs[STACK_REGS.Y.INDEX()] = 0.0;   //  Plutôt qu'un NAN ou INF
                     }
                 }
                 break;
             case LR:
                 if (alphaToX()) {
-                    saveStack();
-                    doStackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
                     doStackLiftIfEnabled();
+                    doStackLift();    //  Un stacklift obligatoire + un deuxième si stackLift activé
                     double n = regs.get(getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX()));
                     if (n > 1) {
                         double sumX = regs.get(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
@@ -1903,15 +1953,16 @@ public class Executor {
                     if (error.length() == 0) {
                         setStackLiftEnabled(true);
                     } else {
-                        restoreStack();
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        stackRegs[STACK_REGS.Y.INDEX()] = 0.0;   //  Plutôt qu'un NAN ou INF
                     }
                 }
                 break;
             case YER:
                 if (alphaToX()) {
-                    saveStack();
                     doStackLift();    //  Un stacklift obligatoire
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     double n = regs.get(getRegIndexByDataRegIndex(STAT_OPS.N.DATA_REG_INDEX()));
                     if (n > 1) {
                         double sumX = regs.get(getRegIndexByDataRegIndex(STAT_OPS.SUM_X.DATA_REG_INDEX()));
@@ -1927,425 +1978,688 @@ public class Executor {
                         stackRegs[STACK_REGS.X.INDEX()] = ye;
                         stackRegs[STACK_REGS.Y.INDEX()] = r;
                     } else {   //  n <= 1
-                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
                         error = ERROR_STAT;
                     }
                     if (error.length() == 0) {
                         setStackLiftEnabled(true);
                     } else {
-                        restoreStack();
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        stackRegs[STACK_REGS.Y.INDEX()] = 0.0;   //  Plutôt qu'un NAN ou INF
                     }
                 }
                 break;
             case SQR:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] * stackRegs[STACK_REGS.X.INDEX()];
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] * stackRegs[STACK_REGS.X.INDEX()];
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.sqr();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case SQRT:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.sqrt(stackRegs[STACK_REGS.X.INDEX()]);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.sqrt(stackRegs[STACK_REGS.X.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.sqrt();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case TO_RAD:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     stackRegs[STACK_REGS.X.INDEX()] = Math.toRadians(stackRegs[STACK_REGS.X.INDEX()]);
-                    common = true;
+                    imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case TO_DEG:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()] * (180.0 / Math.PI);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
-                    }
-                    common = true;
+                    imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case EXP:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.exp(stackRegs[STACK_REGS.X.INDEX()]);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.exp(stackRegs[STACK_REGS.X.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.exp();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case LN:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.log(stackRegs[STACK_REGS.X.INDEX()]);   //  Math.log est en fait ln
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.log(stackRegs[STACK_REGS.X.INDEX()]);   //  Math.log est en fait ln
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.ln();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case EXP10:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.pow(10, stackRegs[STACK_REGS.X.INDEX()]);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.exp(Math.log(10) * stackRegs[STACK_REGS.X.INDEX()]);   //  e^(x*ln(10)) cad 10^x
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.exp10();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case LOG:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.log10(stackRegs[STACK_REGS.X.INDEX()]);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.log10(stackRegs[STACK_REGS.X.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.log10();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
-                }
-                break;
-            case POWER:
-                if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.pow(stackRegs[STACK_REGS.Y.INDEX()], stackRegs[STACK_REGS.X.INDEX()]);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
-                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
-                    }
-                    if (error.length() == 0) {
-                        stackMergeDown();
-                        setStackLiftEnabled(true);
-                    }
-                }
-                break;
-            case PC:
-                if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] * (stackRegs[STACK_REGS.X.INDEX()] / 100.0);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
-                    }
-                    common = true;   //  Pas de mergeDown
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case INV:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = 1.0 / stackRegs[STACK_REGS.X.INDEX()];
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = 1.0 / stackRegs[STACK_REGS.X.INDEX()];
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.inv();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
+                }
+                break;
+            case PC:
+                if (alphaToX()) {
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] * (stackRegs[STACK_REGS.X.INDEX()] / 100.0);
+                    imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();  //  Pas de mergeDown
                 }
                 break;
             case DPC:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     stackRegs[STACK_REGS.X.INDEX()] = (stackRegs[STACK_REGS.X.INDEX()] / stackRegs[STACK_REGS.Y.INDEX()] - 1.0) * 100.0;
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
-                    }
-                    common = true;   //  Pas de mergeDown
+                    imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();  //  Pas de mergeDown
                 }
                 break;
             case ABS:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.abs(stackRegs[STACK_REGS.X.INDEX()]);
-                    common = true;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.abs(stackRegs[STACK_REGS.X.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.abs();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
+                    }
+                    errorStandardHandle();
                 }
                 break;
             case RND:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
-                    stackRegs[STACK_REGS.X.INDEX()] = Double.parseDouble(roundForDisplay(stackRegs[STACK_REGS.X.INDEX()]));
-                    common = true;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    stackRegs[STACK_REGS.X.INDEX()] = Double.parseDouble(getRoundForDisplay(stackRegs[STACK_REGS.X.INDEX()]));
+                    errorStandardHandle();
                 }
                 break;
             case POL:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    double x = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.hypot(x, stackRegs[STACK_REGS.Y.INDEX()]);
-                    stackRegs[STACK_REGS.Y.INDEX()] = radToAngle(Math.atan2(stackRegs[STACK_REGS.Y.INDEX()], x));
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        double x = stackRegs[STACK_REGS.X.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.hypot(x, stackRegs[STACK_REGS.Y.INDEX()]);
+                        stackRegs[STACK_REGS.Y.INDEX()] = radToAngle(Math.atan2(stackRegs[STACK_REGS.Y.INDEX()], x));
+                        testErrVal(stackRegs[STACK_REGS.Y.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.pol();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = radToAngle(complex.getXIm());
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    if ((Double.isNaN(stackRegs[STACK_REGS.Y.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.Y.INDEX()]))) {
-                        error = ERROR_MATH;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    if (error.length() == 0) {
+                        setStackLiftEnabled(true);
+                    } else {
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;   //  Plutôt qu'un NAN ou INF
+                        stackRegs[STACK_REGS.Y.INDEX()] = 0.0;
+                        imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
                     }
-                    common = true;
                 }
                 break;
             case RECT:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    double r = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = r * Math.cos(angleToRad(stackRegs[STACK_REGS.Y.INDEX()]));
-                    stackRegs[STACK_REGS.Y.INDEX()] = r * Math.sin(angleToRad(stackRegs[STACK_REGS.Y.INDEX()]));
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        double x = stackRegs[STACK_REGS.X.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = x * Math.cos(angleToRad(stackRegs[STACK_REGS.Y.INDEX()]));
+                        stackRegs[STACK_REGS.Y.INDEX()] = x * Math.sin(angleToRad(stackRegs[STACK_REGS.Y.INDEX()]));
+                        testErrVal(stackRegs[STACK_REGS.Y.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(angleToRad(stackRegs[STACK_REGS.X.INDEX()]), angleToRad(imStackRegs[STACK_REGS.X.INDEX()]));
+                        complex.rect();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    if ((Double.isNaN(stackRegs[STACK_REGS.Y.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.Y.INDEX()]))) {
-                        error = ERROR_MATH;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    if (error.length() == 0) {
+                        setStackLiftEnabled(true);
+                    } else {
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;   //  Plutôt qu'un NAN ou INF
+                        stackRegs[STACK_REGS.Y.INDEX()] = 0.0;
+                        imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
                     }
-                    common = true;
                 }
                 break;
             case HMS:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     stackRegs[STACK_REGS.X.INDEX()] = (90.0 * stackRegs[STACK_REGS.X.INDEX()] + (int) (60.0 * stackRegs[STACK_REGS.X.INDEX()]) + 100.0 * (int) stackRegs[STACK_REGS.X.INDEX()]) / 250.0;
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case H:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     stackRegs[STACK_REGS.X.INDEX()] = (250.0 * stackRegs[STACK_REGS.X.INDEX()] - (int) (100.0 * stackRegs[STACK_REGS.X.INDEX()]) - 60.0 * (int) stackRegs[STACK_REGS.X.INDEX()]) / 90.0;
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case COMB:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     int m = (int) stackRegs[STACK_REGS.Y.INDEX()];
                     int n = (int) stackRegs[STACK_REGS.X.INDEX()];
                     if ((m >= 0) && (n >= 0) && (n <= m)) {
                         stackRegs[STACK_REGS.X.INDEX()] = factOver(m, m - n) / fact(n);
-                        if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                            error = ERROR_MATH;
-                        }
+                        imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        stackMergeDown();
+                        testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
                     } else {   //  Erreur
                         error = ERROR_PERM_COMB;
                     }
-                    common = true;
+                    errorStandardHandle();
                 }
                 break;
             case PERM:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     int m = (int) stackRegs[STACK_REGS.Y.INDEX()];
                     int n = (int) stackRegs[STACK_REGS.X.INDEX()];
                     if ((m >= 0) && (n >= 0) && (n <= m)) {
                         stackRegs[STACK_REGS.X.INDEX()] = factOver(m, m - n);
-                        if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                            error = ERROR_MATH;
-                        }
+                        imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        stackMergeDown();
+                        testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
                     } else {   //  Erreur
                         error = ERROR_PERM_COMB;
                     }
-                    common = true;
+                    errorStandardHandle();
                 }
                 break;
             case FRAC:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     double val = Math.abs(stackRegs[STACK_REGS.X.INDEX()]);
                     val = val - (int) val;
                     val = (stackRegs[STACK_REGS.X.INDEX()] >= 0 ? val : -val);
                     stackRegs[STACK_REGS.X.INDEX()] = val;
-                    common = true;
+                    errorStandardHandle();
                 }
                 break;
             case INTEGER:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     double val = (int) Math.abs(stackRegs[STACK_REGS.X.INDEX()]);
                     val = (stackRegs[STACK_REGS.X.INDEX()] >= 0 ? val : -val);
                     stackRegs[STACK_REGS.X.INDEX()] = val;
-                    common = true;
+                    errorStandardHandle();
                 }
                 break;
             case SIN:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.sin(angleToRad(stackRegs[STACK_REGS.X.INDEX()]));
-                    common = true;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.sin(angleToRad(stackRegs[STACK_REGS.X.INDEX()]));
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.sin();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
+                    }
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case COS:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.cos(angleToRad(stackRegs[STACK_REGS.X.INDEX()]));
-                    common = true;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.cos(angleToRad(stackRegs[STACK_REGS.X.INDEX()]));
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.cos();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
+                    }
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case TAN:
                 if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.tan(angleToRad(stackRegs[STACK_REGS.X.INDEX()]));
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.tan(angleToRad(stackRegs[STACK_REGS.X.INDEX()]));
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.tan();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case ASIN:
                 if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = radToAngle(Math.asin(stackRegs[STACK_REGS.X.INDEX()]));
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = radToAngle(Math.asin(stackRegs[STACK_REGS.X.INDEX()]));
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.asin();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case ACOS:
                 if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = radToAngle(Math.acos(stackRegs[STACK_REGS.X.INDEX()]));
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = radToAngle(Math.acos(stackRegs[STACK_REGS.X.INDEX()]));
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.acos();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case ATAN:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
-                    stackRegs[STACK_REGS.X.INDEX()] = radToAngle(Math.atan(stackRegs[STACK_REGS.X.INDEX()]));
-                    common = true;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = radToAngle(Math.atan(stackRegs[STACK_REGS.X.INDEX()]));
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.atan();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
+                    }
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case SINH:
                 if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.sinh(stackRegs[STACK_REGS.X.INDEX()]);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.sinh(stackRegs[STACK_REGS.X.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.sinh();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case COSH:
                 if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.cosh(stackRegs[STACK_REGS.X.INDEX()]);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.cosh(stackRegs[STACK_REGS.X.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.cosh();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case TANH:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.tanh(stackRegs[STACK_REGS.X.INDEX()]);
-                    common = true;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.tanh(stackRegs[STACK_REGS.X.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.tanh();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
+                    }
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case ASINH:
                 if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    double t = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t + 1.0));
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        double t = stackRegs[STACK_REGS.X.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t + 1.0));
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.asinh();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case ACOSH:
                 if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    double t = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t - 1.0));
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        double t = stackRegs[STACK_REGS.X.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.log(t + Math.sqrt(t * t - 1.0));
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.acosh();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case ATANH:
                 if (alphaToX()) {
-                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    double t = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = Math.log((1.0 + t) / (1.0 - t)) / 2.0;
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];   //  HP15C le fait
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        double t = stackRegs[STACK_REGS.X.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.log((1.0 + t) / (1.0 - t)) / 2.0;
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.atanh();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
                 }
                 break;
             case FACT:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
                     stackRegs[STACK_REGS.X.INDEX()] = gamma(1 + stackRegs[STACK_REGS.X.INDEX()]);
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    errorStandardHandle();
+                }
+                break;
+            case POWER:
+                if (alphaToX()) {
+                    stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = Math.pow(stackRegs[STACK_REGS.Y.INDEX()], stackRegs[STACK_REGS.X.INDEX()]);
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.setY(stackRegs[STACK_REGS.Y.INDEX()], imStackRegs[STACK_REGS.Y.INDEX()]);
+                        complex.pow();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
-                    common = true;
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
+                    if (error.length() == 0) {
+                        stackMergeDown();
+                        setStackLiftEnabled(true);
+                    } else {
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                    }
                 }
                 break;
             case PLUS:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] + stackRegs[STACK_REGS.X.INDEX()];
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] + stackRegs[STACK_REGS.X.INDEX()];
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.setY(stackRegs[STACK_REGS.Y.INDEX()], imStackRegs[STACK_REGS.Y.INDEX()]);
+                        complex.plus();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
                     if (error.length() == 0) {
                         stackMergeDown();
                         setStackLiftEnabled(true);
                     } else {
-                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
                     }
                 }
                 break;
             case MINUS:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] - stackRegs[STACK_REGS.X.INDEX()];
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] - stackRegs[STACK_REGS.X.INDEX()];
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.setY(stackRegs[STACK_REGS.Y.INDEX()], imStackRegs[STACK_REGS.Y.INDEX()]);
+                        complex.minus();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
                     if (error.length() == 0) {
                         stackMergeDown();
                         setStackLiftEnabled(true);
                     } else {
-                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
                     }
                 }
                 break;
             case MULT:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] * stackRegs[STACK_REGS.X.INDEX()];
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] * stackRegs[STACK_REGS.X.INDEX()];
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.setY(stackRegs[STACK_REGS.Y.INDEX()], imStackRegs[STACK_REGS.Y.INDEX()]);
+                        complex.mult();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
                     if (error.length() == 0) {
                         stackMergeDown();
                         setStackLiftEnabled(true);
                     } else {
-                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
                     }
                 }
                 break;
             case DIV:
                 if (alphaToX()) {
                     stackRegs[STACK_REGS.LX.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
-                    stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] / stackRegs[STACK_REGS.X.INDEX()];
-                    if ((Double.isNaN(stackRegs[STACK_REGS.X.INDEX()])) || (Double.isInfinite(stackRegs[STACK_REGS.X.INDEX()]))) {
-                        error = ERROR_MATH;
+                    imStackRegs[STACK_REGS.LX.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                    if (!isComplexMode) {
+                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()] / stackRegs[STACK_REGS.X.INDEX()];
+                    } else {    //  Complex
+                        complex.setX(stackRegs[STACK_REGS.X.INDEX()], imStackRegs[STACK_REGS.X.INDEX()]);
+                        complex.setY(stackRegs[STACK_REGS.Y.INDEX()], imStackRegs[STACK_REGS.Y.INDEX()]);
+                        complex.div();
+                        stackRegs[STACK_REGS.X.INDEX()] = complex.getXRe();
+                        imStackRegs[STACK_REGS.X.INDEX()] = complex.getXIm();
+                        testErrVal(imStackRegs[STACK_REGS.X.INDEX()]);
                     }
+                    testErrVal(stackRegs[STACK_REGS.X.INDEX()]);
                     if (error.length() == 0) {
                         stackMergeDown();
                         setStackLiftEnabled(true);
                     } else {
-                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = 0.0;
+                        imStackRegs[STACK_REGS.X.INDEX()] = 0.0;
                     }
+                }
+                break;
+            case I:
+                if (alphaToX()) {
+                    if (!isComplexMode) {
+                        isComplexMode = true;
+                        flags[COMPLEX_FLAG_INDEX] = true;
+                        fillImStack(0.0);
+                    }
+                    if (isComplexMode) {
+                        imStackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.X.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
+                        stackMergeDown();
+                    }
+                    setStackLiftEnabled(true);
+                }
+                break;
+            case REIM:
+                if (alphaToX()) {
+                    if (!isComplexMode) {
+                        isComplexMode = true;
+                        flags[COMPLEX_FLAG_INDEX] = true;
+                        fillImStack(0.0);
+                    }
+                    if (isComplexMode) {
+                        double t = stackRegs[STACK_REGS.X.INDEX()];
+                        stackRegs[STACK_REGS.X.INDEX()] = imStackRegs[STACK_REGS.X.INDEX()];
+                        imStackRegs[STACK_REGS.X.INDEX()] = t;
+                    }
+                    setStackLiftEnabled(true);
                 }
                 break;
             case DEG:
@@ -2359,16 +2673,30 @@ public class Executor {
             case XE0:   //  Tests neutres sur stackLift ?
                 if (alphaToX()) {
                     double x = round(stackRegs[STACK_REGS.X.INDEX()], MAX_DIGITS + 1);
-                    if (x != 0) {   //  cad Skip if False
-                        incNextProgLineNumber();
+                    if (!isComplexMode) {
+                        if (x != 0) {   //  cad Skip if False
+                            incNextProgLineNumber();
+                        }
+                    } else {   //  Complex
+                        double xi = round(imStackRegs[STACK_REGS.X.INDEX()], MAX_DIGITS + 1);
+                        if ((x != 0) || (xi != 0)) {   //  cad Skip if False
+                            incNextProgLineNumber();
+                        }
                     }
                     break;
                 }
             case XNE0:
                 if (alphaToX()) {
                     double x = round(stackRegs[STACK_REGS.X.INDEX()], MAX_DIGITS + 1);
-                    if (x == 0) {   //  cad Skip if False
-                        incNextProgLineNumber();
+                    if (!isComplexMode) {
+                        if (x == 0) {   //  cad Skip if False
+                            incNextProgLineNumber();
+                        }
+                    } else {   //  Complex
+                        double xi = round(imStackRegs[STACK_REGS.X.INDEX()], MAX_DIGITS + 1);
+                        if ((x == 0) && (xi == 0)) {   //  cad Skip if False
+                            incNextProgLineNumber();
+                        }
                     }
                     break;
                 }
@@ -2408,8 +2736,16 @@ public class Executor {
                 if (alphaToX()) {
                     double x = round(stackRegs[STACK_REGS.X.INDEX()], MAX_DIGITS + 1);
                     double y = round(stackRegs[STACK_REGS.Y.INDEX()], MAX_DIGITS + 1);
-                    if (x != y) {   //  cad Skip if False
-                        incNextProgLineNumber();
+                    if (!isComplexMode) {
+                        if (x != y) {   //  cad Skip if False
+                            incNextProgLineNumber();
+                        }
+                    } else {   //  Complex
+                        double xi = round(imStackRegs[STACK_REGS.X.INDEX()], MAX_DIGITS + 1);
+                        double yi = round(imStackRegs[STACK_REGS.Y.INDEX()], MAX_DIGITS + 1);
+                        if ((x != xi) || (y != yi)) {   //  cad Skip if False
+                            incNextProgLineNumber();
+                        }
                     }
                     break;
                 }
@@ -2417,8 +2753,16 @@ public class Executor {
                 if (alphaToX()) {
                     double x = round(stackRegs[STACK_REGS.X.INDEX()], MAX_DIGITS + 1);
                     double y = round(stackRegs[STACK_REGS.Y.INDEX()], MAX_DIGITS + 1);
-                    if (x == y) {   //  cad Skip if False
-                        incNextProgLineNumber();
+                    if (!isComplexMode) {
+                        if (x == y) {   //  cad Skip if False
+                            incNextProgLineNumber();
+                        }
+                    } else {   //  Complex
+                        double xi = round(imStackRegs[STACK_REGS.X.INDEX()], MAX_DIGITS + 1);
+                        double yi = round(imStackRegs[STACK_REGS.Y.INDEX()], MAX_DIGITS + 1);
+                        if ((x == xi) && (y == yi)) {   //  cad Skip if False
+                            incNextProgLineNumber();
+                        }
                     }
                     break;
                 }
@@ -2506,7 +2850,8 @@ public class Executor {
                         int index = getRegIndexByDataRegIndex(statOp.DATA_REG_INDEX());
                         regs.set(index, 0.0);
                     }
-                    clearStackRegs();   //  Pas LASTX
+                    fillStack(0);     //  Pas LASTX
+                    fillImStack(0);   //  Pas LASTX
                 }
                 break;
             case ENTER:   // Désactive Stacklift
@@ -2532,6 +2877,11 @@ public class Executor {
                     Double temp = stackRegs[STACK_REGS.X.INDEX()];
                     stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.Y.INDEX()];
                     stackRegs[STACK_REGS.Y.INDEX()] = temp;
+                    if (isComplexMode) {
+                        temp = imStackRegs[STACK_REGS.X.INDEX()];
+                        imStackRegs[STACK_REGS.X.INDEX()] = imStackRegs[STACK_REGS.Y.INDEX()];
+                        imStackRegs[STACK_REGS.Y.INDEX()] = temp;
+                    }
                     setStackLiftEnabled(true);
                 }
                 break;
@@ -2595,13 +2945,6 @@ public class Executor {
                 if (alphaToX()) {
                     inPSE = true;
                 }
-        }
-        if (common) {
-            if (error.length() == 0) {
-                setStackLiftEnabled(true);
-            } else {
-                stackRegs[STACK_REGS.X.INDEX()] = stackRegs[STACK_REGS.LX.INDEX()];
-            }
         }
         return error;
     }

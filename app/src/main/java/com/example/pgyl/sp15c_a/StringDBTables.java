@@ -8,16 +8,17 @@ import static com.example.pgyl.pekislib_a.StringDBTables.TABLE_IDS;
 
 public class StringDBTables {
 
-    public static final int DATA_VERSION = 78;   //   A augmenter dès que les données éventuelles dans la DB existante ne seront plus comptatibles après changements
+    public static final int DATA_VERSION = 84;   //   A augmenter dès que les données éventuelles dans la DB existante ne seront plus comptatibles après changements
 
     enum SP15C_TABLES {   // Les tables, rattachées à leurs champs de data
         STACK_REGS(Sp15cTableDataFields.StackRegs.class, "Stack Registers"),
+        IM_STACK_REGS(Sp15cTableDataFields.ImStackRegs.class, "Im Stack Registers"),
         FLAGS(Sp15cTableDataFields.StackRegs.class, "Flags"),
         REGS(Sp15cTableDataFields.Regs.class, "Regs"),
-        RET_STACK(Sp15cTableDataFields.RetStack.class, "RetStack"),
+        RET_STACK(Sp15cTableDataFields.RetStack.class, "Return Stack"),
         PROG_LINES(Sp15cTableDataFields.ProgLines.class, "ProgLines"),
         PARAMS(Sp15cTableDataFields.Params.class, "Params"),
-        PALETTE_COLORS(Sp15cTableDataFields.paletteColors.class, "Palette");
+        PALETTE_COLORS(Sp15cTableDataFields.paletteColors.class, "Color Palette");
 
         private int dataFieldsCount;
         private String description;
@@ -43,6 +44,14 @@ public class StringDBTables {
     private interface Sp15cTableDataFields {  //  Les champs de data, par table
 
         enum StackRegs implements Sp15cTableDataFields {
+            VALUE;
+
+            public int INDEX() {
+                return ordinal() + 1;
+            }   //  INDEX 0 pour identifiant utilisateur
+        }
+
+        enum ImStackRegs implements Sp15cTableDataFields {
             VALUE;
 
             public int INDEX() {
@@ -91,8 +100,8 @@ public class StringDBTables {
         }
 
         enum paletteColors implements Sp15cTableDataFields {   //  Les champs de data de la table PALETTE_COLORS
-            DISP1_ON, DISP1_OFF, DISP1_BACK,
-            DISP2_ON, DISP2_OFF, DISP2_BACK,
+            DISP_LEFT_ON, DISP_LEFT_OFF, DISP_LEFT_BACK,
+            DISP_RIGHT_ON, DISP_RIGHT_OFF, DISP_RIGHT_BACK,
             PANEL_TOP, PANEL_LOW,
             KEY_OUTLINE,
             KEY_TOP_FRONT, KEY_MID_FRONT, KEY_MID_BACK, KEY_LOW_FRONT, KEY_LOW_BACK,
@@ -123,27 +132,27 @@ public class StringDBTables {
     }
 
     public static int getPaletteColorDisp1OnIndex() {
-        return Sp15cTableDataFields.paletteColors.DISP1_ON.INDEX();
+        return Sp15cTableDataFields.paletteColors.DISP_LEFT_ON.INDEX();
     }
 
     public static int getPaletteColorDisp1OffIndex() {
-        return Sp15cTableDataFields.paletteColors.DISP1_OFF.INDEX();
+        return Sp15cTableDataFields.paletteColors.DISP_LEFT_OFF.INDEX();
     }
 
     public static int getPaletteColorDisp1BackIndex() {
-        return Sp15cTableDataFields.paletteColors.DISP1_BACK.INDEX();
+        return Sp15cTableDataFields.paletteColors.DISP_LEFT_BACK.INDEX();
     }
 
     public static int getPaletteColorDisp2OnIndex() {
-        return Sp15cTableDataFields.paletteColors.DISP2_ON.INDEX();
+        return Sp15cTableDataFields.paletteColors.DISP_RIGHT_ON.INDEX();
     }
 
     public static int getPaletteColorDisp2OffIndex() {
-        return Sp15cTableDataFields.paletteColors.DISP2_OFF.INDEX();
+        return Sp15cTableDataFields.paletteColors.DISP_RIGHT_OFF.INDEX();
     }
 
     public static int getPaletteColorDisp2BackIndex() {
-        return Sp15cTableDataFields.paletteColors.DISP2_BACK.INDEX();
+        return Sp15cTableDataFields.paletteColors.DISP_RIGHT_BACK.INDEX();
     }
 
     public static int getPaletteColorPanelTopIndex() {
@@ -235,6 +244,10 @@ public class StringDBTables {
 
     public static String getStackRegsTableName() {
         return SP15C_TABLES.STACK_REGS.toString();
+    }
+
+    public static String getImStackRegsTableName() {
+        return SP15C_TABLES.IM_STACK_REGS.toString();
     }
 
     public static String getFlagsTableName() {

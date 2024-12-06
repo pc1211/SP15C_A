@@ -15,10 +15,6 @@ import static com.example.pgyl.pekislib_a.DotMatrixFontUtils.getFontTextDimensio
 import static com.example.pgyl.pekislib_a.MiscUtils.BiDimensions;
 import static com.example.pgyl.pekislib_a.PointRectUtils.ALIGN_WIDTH_HEIGHT;
 import static com.example.pgyl.pekislib_a.TimeDateUtils.MILLISECONDS_PER_SECOND;
-//import static com.example.pgyl.swtimer_a.StringDBTables.getDotMatrixDisplayColorsBackIndex;
-//import static com.example.pgyl.swtimer_a.StringDBTables.getDotMatrixDisplayColorsOffIndex;
-//import static com.example.pgyl.swtimer_a.StringDBTables.getDotMatrixDisplayColorsOnLabelIndex;
-//import static com.example.pgyl.swtimer_a.StringDBTables.getDotMatrixDisplayColorsOnTimeIndex;
 
 public class SideDotMatrixDisplayUpdater {
     //region Variables
@@ -200,7 +196,7 @@ public class SideDotMatrixDisplayUpdater {
     }
 
     private void setupDimensions() {       //  La grille (gridRect) contient le temps et le label, et seule une partie est affichée (gridDisplayRect, glissant en cas de scroll)
-        final String DIM_STRING = "12345678901234";   //  "grad fix4 user"
+        final String DIM_STRING = "1234567890123456";   //  "grad fix4 c user"
 
         BiDimensions timeTextDimensions = getFontTextDimensions(DIM_STRING, extraFont, defaultFont);  // timeText mélange de l'extraFont (pour les ":" et ".") et defaultFont (pour les chiffres de 0 à 9). getTimeDefInit() utilisé juste pour avoir un temps
         //BiDimensions labelTextDimensions = getFontTextDimensions(currentCtRecord.getLabel(), null, defaultFont);   //  labelText est uniquement affiché en defaultFont
