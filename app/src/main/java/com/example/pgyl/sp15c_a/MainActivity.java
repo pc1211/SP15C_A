@@ -1743,10 +1743,13 @@ public class MainActivity extends Activity {
             stringDB.deleteTableIfExists(getAppInfosTableName());
             stringDB.deleteTableIfExists(getActivityInfosTableName());
             stringDB.deleteTableIfExists(getStackRegsTableName());
+            stringDB.deleteTableIfExists(getImStackRegsTableName());
+            stringDB.deleteTableIfExists(getPaletteColorsTableName());
             stringDB.deleteTableIfExists(getFlagsTableName());
             stringDB.deleteTableIfExists(getRegsTableName());
             stringDB.deleteTableIfExists(getRetStackTableName());
             stringDB.deleteTableIfExists(getProgLinesTableName());
+            stringDB.deleteTableIfExists(getParamsTableName());
             msgBox("All Data Deleted (Invalid)", this);
         }
 

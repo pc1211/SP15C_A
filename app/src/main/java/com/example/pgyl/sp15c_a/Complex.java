@@ -12,14 +12,12 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
     }
 
     private void init() {
-        xr = 0.0;
-        xi = 0.0;
-        yr = 0.0;
-        yi = 0.0;
+        setX(0.0, 0.0);
+        setY(0.0, 0.0);
     }
 
     public void close() {
-
+        //  NOP
     }
 
     public void setX(Double a, Double b) {   //  a+bi
@@ -41,75 +39,57 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
     }
 
     public void plus() {
-        xr = yr + xr;
-        xi = yi + xi;   //  x = y + x
+        setX(yr + xr, yi + xi);   //  x = y + x
     }
 
     public void minus() {
-        xr = yr - xr;
-        xi = yi - xi;   //  x = y - x
+        setX(yr - xr, yi - xi);   //  x = y - x
     }
 
     public void mult() {
-        double tr = yr * xi + yi * xr;
-        xr = yr * xr - yi * xi;
-        xi = tr;   //  x = y * x
+        setX(yr * xr - yi * xi, yr * xi + yi * xr);   //  x = y * x
     }
 
     public void inv() {
         double tr = xr * xr + xi * xi;
-        xr = xr / tr;
-        xi = -xi / tr;   //  x = 1/x
+        setX(xr / tr, -xi / tr);   //  x = 1/x
     }
 
     public void div() {
-        inv();   //  x = 1/x
+        inv();    //  x = 1/x
         mult();   //  x = y * 1/x cad y / x
     }
 
     public void sqr() {
-        double tr = xr * xi * 2;
-        xr = xr * xr - xi * xi;
-        xi = tr;   //  x = x * x cad x^2
+        setX(xr * xr - xi * xi, xr * xi * 2);   //  x = x * x cad x^2
     }
 
     public void divI() {
-        double tr = xr;
-        xr = xi;
-        xi = -tr;   //  x = x / i
+        setX(xi, -xr);   //  x = x / i
     }
 
-    public void multI() {
-        double tr = xr;
-        xr = -xi;
-        xi = tr;   //  x = x * i
+    public void multI() {   //  x = x * i
+        setX(-xi, xr);
     }
 
     public void multC(Double coeff) {
-        xr = xr * coeff;
-        xi = xi * coeff;   //  x = x * coeff
+        setX(xr * coeff, xi * coeff);   //  x = x * coeff
     }
 
     public void chs() {
-        xr = -xr;
-        xi = -xi;   //  x = -x
+        setX(-xr, -xi);   //  x = -x
     }
 
     public void abs() {
-        xr = Math.sqrt(xr * xr + xi * xi);
-        xi = 0.0;   //  x = abs(x)
+        setX(Math.sqrt(xr * xr + xi * xi), 0.0);   //  x = abs(x)
     }
 
     public void pol() {
-        double tr = Math.hypot(xr, xi);
-        xi = Math.atan2(xi, xr);   //  Résultat gardé en radians
-        xr = tr;
+        setX(Math.hypot(xr, xi), Math.atan2(xi, xr));   //  Résultat gardé en radians
     }
 
     public void rect() {   //  Suppose xi en radians
-        double tr = xr;
-        xr = xr * Math.cos(xi);
-        xi = tr * Math.sin(xi);
+        setX(xr * Math.cos(xi), xi = xr * Math.sin(xi));
     }
 
     public void ln() {
@@ -124,8 +104,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
 
     public void exp() {
         double tr = Math.exp(xr);
-        xr = tr * Math.cos(xi);
-        xi = tr * Math.sin(xi);   //  x = e^x
+        setX(tr * Math.cos(xi), tr * Math.sin(xi));   //  x = e^x
     }
 
     public void exp10() {   //  10^x
@@ -136,28 +115,23 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
     public void pow() {
         double tr = xr;
         double ti = xi;   //  t = x orig (exposant)
-        xr = yr;
-        xi = yi;   //  x = base
+        setX(yr, yi);   //  x = base
         ln();      //  x = ln(base)
-        yr = tr;
-        yi = ti;   //  y = x orig (exposant)
+        setY(tr, ti);   //  y = x orig (exposant)
         mult();   //  y = exposant * ln(base)
         exp();   //  x = e^(exposant * ln(base)) cad base ^ exposant
     }
 
     public void sqrt() {
-        yr = xr;
-        yi = xi;   //  y = x
-        xr = 0.5;
-        xi = 0.0;
+        setY(xr, xi);   //  y = x
+        setX(0.5, 0.0);   //  x = 1/2
         pow();   //  x = x ^ (1/2) cad sqrt(x)
     }
 
     public void sin() {
         multI();   //  x = ix
         exp();   //   x = e^ix
-        yr = xr;
-        yi = xi;   //  y = e^ix
+        setY(xr, xi);   //  y = e^ix
         inv();   //  x = e^-ix
         minus();   //  x = e^ix - e^-ix
         divI();   //  x = (e^ix - e^-ix) / i
@@ -167,8 +141,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
     public void cos() {
         multI();   //  x = ix
         exp();   //   x = e^ix
-        yr = xr;
-        yi = xi;   //  y = e^ix
+        setY(xr, xi);   //  y = e^ix
         inv();   //  x = e^-ix
         plus();   //  x = e^ix + e^-ix
         multC(0.5);   //  x = (e^ix + e^-ix) / 2
@@ -180,11 +153,9 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         sin();   //  x = sin(x)
         double ur = xr;
         double ui = xi;   //  u = sin(x)
-        xr = tr;
-        xi = ti;   //  x = x orig
+        setX(tr, ti);  //  x = x orig
         cos();   //  x = cos(x)
-        yr = ur;
-        yi = ui;   //  y = sin(x)
+        setY(ur, ui);   //  y = sin(x)
         div();   //  y = sin(x) / cos(x) cad tan(x)
     }
 
@@ -192,10 +163,8 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         double tr = xr;
         double ti = xi;   //  t = x orig
         multI();   //  x = ix
-        yr = xr;
-        yi = xi;   //  y = ix
-        xr = tr;
-        xi = ti;   //  x = x orig
+        setY(xr, xi);   //  y = ix
+        setX(tr, ti);   //  x = x orig
         sqr();   //  x = x^2
         chs();   //  x = -x^2
         xr = xr + 1;   //  x = 1 - x^2
@@ -210,10 +179,8 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         double tr = xr;
         double ti = xi;   //  t = x orig
         multI();   //  x = ix
-        yr = xr;
-        yi = xi;   //  y = ix
-        xr = tr;
-        xi = ti;   //  x = x orig
+        setY(xr, xi);   //  y = ix
+        setX(tr, ti);   //  x = x orig
         sqr();   //  x = x^2
         xr = xr - 1;   //  x = x^2 - 1
         sqrt();   //  x = sqrt(x^2 - 1)
@@ -226,10 +193,8 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
     public void atan() {
         double tr = xr;
         double ti = xi;   //  t = x orig
-        yr = xr;
-        yi = xi + 1;   //  y = i + x
-        xr = tr;
-        xi = ti;   //  x = x orig
+        setY(xr, xi + 1);    //  y = i + x
+        setX(tr, ti);   //  x = x orig
         chs();   //  x = -x
         xi = xi + 1;   //  x = i - x
         div();   //  x = (i+x)/(i-x))
@@ -240,8 +205,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
 
     public void sinh() {
         exp();
-        yr = xr;
-        yi = xi;   //  y = e^x
+        setY(xr, xi);   //  y = e^x
         inv();   //  x = e^-x
         minus();   //  x = e^x - e^-x
         multC(0.5);   //  x = (e^x - e^-x) / 2
@@ -249,8 +213,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
 
     public void cosh() {
         exp();
-        yr = xr;
-        yi = xi;   //  y = e^x
+        setY(xr, xi);   //  y = e^x
         inv();   //  x = e^-x
         plus();   //  x = e^x + e^-x
         multC(0.5);   //  x = (e^x + e^-x) / 2
@@ -262,11 +225,9 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         sinh();   //  x = sin(x)
         double ur = xr;
         double ui = xi;   //  u = sinh(x)
-        xr = tr;
-        xi = ti;   //  x = x orig
+        setX(tr, ti);   //  x = x orig
         cosh();   //  x = cosh(x)
-        yr = ur;
-        yi = ui;   //  y = sinh(x)
+        setY(ur, ui);  //  y = sinh(x)
         div();   //  y = sinh(x) / cosh(x) cad tanh(x)
     }
 
@@ -283,8 +244,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         sqr();   //  x = x^2
         xr = xr - 1;   //  x = x^2 - 1
         sqrt();   //  x = sqrt(x^2 - 1)
-        yr = tr;
-        yi = ti;   //  y = x orig
+        setY(tr, ti);   //  y = x orig
         plus();   //  x = x + sqrt(x^2 - 1)
         ln();   //  x = ln(x + sqrt(x^2 - 1))
     }
