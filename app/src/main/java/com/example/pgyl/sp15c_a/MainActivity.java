@@ -372,17 +372,8 @@ public class MainActivity extends Activity {
             dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayKeyCodes), false);
             dotMatrixDisplayView.updateDisplay();
         }
-    }
-
-    private void onDotMatrixDisplayViewClickDown() {
         if (executor.getMode().equals(MODES.RUN)) {
-            isDispInt = true;
-        }
-    }
-
-    private void onDotMatrixDisplayViewClickLeave() {
-        if (executor.getMode().equals(MODES.RUN)) {
-            isDispInt = false;
+            isDispInt = !isDispInt;
         }
     }
 
@@ -1703,18 +1694,6 @@ public class MainActivity extends Activity {
             @Override
             public void onCustomClick() {
                 onDotMatrixDisplayViewClick();
-            }
-        });
-        dotMatrixDisplayView.setOnCustomClickDownListener(new DotMatrixDisplayView.onCustomClickDownListener() {
-            @Override
-            public void onCustomClickDown() {
-                onDotMatrixDisplayViewClickDown();
-            }
-        });
-        dotMatrixDisplayView.setOnCustomClickLeaveListener(new DotMatrixDisplayView.onCustomClickLeaveListener() {
-            @Override
-            public void onCustomClickLeave() {
-                onDotMatrixDisplayViewClickLeave();
             }
         });
     }

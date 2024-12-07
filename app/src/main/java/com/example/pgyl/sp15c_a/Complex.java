@@ -64,6 +64,10 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         setX(xr * xr - xi * xi, xr * xi * 2);   //  x = x * x cad x^2
     }
 
+    public void chs() {
+        setX(-xr, -xi);   //  x = -x
+    }
+
     public void divI() {
         setX(xi, -xr);   //  x = x / i
     }
@@ -74,10 +78,6 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
 
     public void multC(Double coeff) {
         setX(xr * coeff, xi * coeff);   //  x = x * coeff
-    }
-
-    public void chs() {
-        setX(-xr, -xi);   //  x = -x
     }
 
     public void abs() {
