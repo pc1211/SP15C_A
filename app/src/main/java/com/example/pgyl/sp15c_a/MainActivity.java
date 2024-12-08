@@ -380,14 +380,34 @@ public class MainActivity extends Activity {
     private void onKeyClickDown(KEYS key) {
         if (key.equals(KEYS.KEY_21)) {   //  Click Down sur SST => Afficher ProgLine courante
             if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.UNSHIFTED))) {
-                dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayKeyCodes), false);
-                dotMatrixDisplayView.updateDisplay();
+                if (executor.alphaToX()) {
+                    dotMatrixDisplayUpdater.displayText(executor.progLineToString(executor.getCurrentProgLineNumber(), isDisplayKeyCodes), false);
+                    dotMatrixDisplayView.updateDisplay();
+                }
             }
         }
         if (key.equals(KEY_24)) {   //  Click Down sur (i) => Afficher Xim
             if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.F_SHIFT))) {
-                if (executor.getIsComplexMode()) {
-                    dotMatrixDisplayUpdater.displayText(executor.getRoundXImForDisplay(), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+                if (executor.alphaToX()) {
+                    if (executor.getIsComplexMode()) {
+                        dotMatrixDisplayUpdater.displayText(executor.getRoundXImForDisplay(), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+                        dotMatrixDisplayView.updateDisplay();
+                    }
+                }
+            }
+        }
+        if (key.equals(KEYS.KEY_35)) {    //  Click Down sur Prefix => Afficher Mantisse
+            if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.F_SHIFT))) {
+                if (executor.alphaToX()) {
+                    double val = Math.abs(executor.getStackRegX());
+                    int exp = 0;
+                    double mant = 0;
+                    if (val != 0) {
+                        exp = (int) Math.floor(1.0 + Math.log10(val));
+                        mant = val / Math.pow(10, exp);   //  Entre 0 et 1
+                    }
+                    double valr = mant * Math.pow(10, executor.MAX_DIGITS);
+                    dotMatrixDisplayUpdater.displayText(String.format(Locale.US, "%.0f", valr), true);
                     dotMatrixDisplayView.updateDisplay();
                 }
             }
@@ -401,12 +421,21 @@ public class MainActivity extends Activity {
                 dotMatrixDisplayView.updateDisplay();
             }
         }
-        if (key.equals(KEY_24)) {    //  Quitter (i)) sans cliquer => Affichage normal
+        if (key.equals(KEYS.KEY_24)) {    //  Quitter (i)) sans cliquer => Affichage normal
             if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.F_SHIFT))) {
                 if (executor.getIsComplexMode()) {
-                    dotMatrixDisplayUpdater.displayText(executor.getRoundXForDisplay(), true);   //  formatAlphaNumber pour faire apparaître le séparateur de milliers
+                    dotMatrixDisplayUpdater.displayText(executor.getRoundXForDisplay(), true);
                     dotMatrixDisplayView.updateDisplay();
                 }
+                shiftMode = SHIFT_MODES.UNSHIFTED;
+                swapColorBoxColors(buttons[KEYS.KEY_42.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());
+                buttons[KEYS.KEY_42.INDEX()].updateDisplay();
+            }
+        }
+        if (key.equals(KEYS.KEY_35)) {    //  Quitter Prefix sans cliquer => Affichage normal
+            if ((executor.getMode().equals(MODES.NORM)) && (shiftMode.equals(SHIFT_MODES.F_SHIFT))) {
+                dotMatrixDisplayUpdater.displayText(executor.getRoundXForDisplay(), true);
+                dotMatrixDisplayView.updateDisplay();
                 shiftMode = SHIFT_MODES.UNSHIFTED;
                 swapColorBoxColors(buttons[KEYS.KEY_42.INDEX()].getKeyColorBox(), BUTTON_COLOR_TYPES.UNPRESSED_OUTLINE.INDEX(), BUTTON_COLOR_TYPES.PRESSED_OUTLINE.INDEX());
                 buttons[KEYS.KEY_42.INDEX()].updateDisplay();
@@ -1023,7 +1052,6 @@ public class MainActivity extends Activity {
     private void interpretSpecialOp() {
         switch (currentOp) {
             case CLX:
-            case CLEAR_PREFIX:
             case CLEAR_REGS:
             case CLEAR_SIGMA:
             case ENTER:
@@ -1093,12 +1121,14 @@ public class MainActivity extends Activity {
                 break;
             case SST:
                 if (executor.getMode().equals(MODES.NORM)) {   //  Pas de alphaToX() car sinon plusieurs chiffres successifs éventuels dans le programme ne s'assembleront pas en progressant avec SST
-                    executor.setMode(MODES.RUN);
-                    executor.setIsAutoLine(true);   //  Pour exécuter
-                    executor.setInSST(true);
-                    nowmRUN = System.currentTimeMillis();
-                    executor.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
-                    executor.linkDestProgLineNumbers();
+                    if (executor.alphaToX()) {
+                        executor.setMode(MODES.RUN);
+                        executor.setIsAutoLine(true);   //  Pour exécuter
+                        executor.setInSST(true);
+                        nowmRUN = System.currentTimeMillis();
+                        executor.rebuildlabelToProgLineNumberMap();   //  Mettre à jour les lignes existantes
+                        executor.linkDestProgLineNumbers();
+                    }
                 }
                 if (executor.getMode().equals(MODES.EDIT)) {
                     executor.setNextProgLineNumber(executor.inc(executor.getCurrentProgLineNumber()));    //  Pas nextProgLineNumber car égal à currentProgLineNumber en mode NORM ou EDIT
@@ -1525,7 +1555,7 @@ public class MainActivity extends Activity {
                         onButtonClick(fkey);
                     }
                 });
-                if ((key.equals(KEYS.KEY_21)) || (key.equals(KEY_24))) {   //  Click Down sur SST => Afficher ProgLine courante, Click Down sur (i)) => Afficher Xim
+                if ((key.equals(KEYS.KEY_21)) || (key.equals(KEY_24)) || (key.equals(KEYS.KEY_35))) {   //  SST => ProgLine courante, (i)) => Xim, PREFIX => Mantisse
                     buttons[key.INDEX()].setOnCustomClickDownListener(new ImageButtonViewStack.onCustomClickDownListener() {
                         @Override
                         public void onCustomClickDown() {

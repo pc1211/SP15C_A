@@ -361,8 +361,8 @@ public class Executor {
 
     public final int END_RETURN_CODE = 300000;   //  Pour assurer le retour après un GSB lancé en mode NORM
     public final String ERROR_GTO_GSB = "Invalid GTO/GSB";
+    public final int MAX_DIGITS = 10;
 
-    private final int MAX_DIGITS = 10;
     private final int MAX_PROG_LINES = 9999;
     private final int RET_STACK_SIZE_MAX = 100;
     private final int MAX_REGS = 1000;   //  Max, inclus les 21 registres de base de BASE_REGS (I, R0 à R9, R.0 à R.9)
@@ -829,6 +829,10 @@ public class Executor {
 
     public String getRoundXImForDisplay() {
         return getRoundForDisplay(imStackRegs[STACK_REGS.X.INDEX()]);
+    }
+
+    public double getStackRegX() {
+        return stackRegs[STACK_REGS.X.INDEX()];
     }
 
     public String getRoundForDisplay(double value) {
@@ -2824,19 +2828,6 @@ public class Executor {
                     setStackLiftEnabled(false);
                 }
                 break;
-            case CLEAR_PREFIX:    //  Neutre sur StackLift
-                if (alphaToX()) {
-                    double val = Math.abs(stackRegs[STACK_REGS.X.INDEX()]);
-                    int exp = 0;
-                    double mant = 0;
-                    if (val != 0) {
-                        exp = (int) Math.floor(1.0 + Math.log10(val));
-                        mant = val / Math.pow(10, exp);   //  Entre 0 et 1
-                    }
-                    double valr = mant * Math.pow(10, MAX_DIGITS);
-                    error = String.format(Locale.US, "%.0f", valr);   //  error sera <>"" dans tous les cas (car représentera la mantisse) et sera donc traité comme une "erreur"
-                }
-                break;
             case CLEAR_REGS:   //  Neutre sur StackLift
                 if (alphaToX()) {
                     for (int i = 0; i <= (regs.size() - 1); i = i + 1) {   //  Tout effacer: I, R0 à R9, R.0 à R.9 et suivants
@@ -2930,17 +2921,7 @@ public class Executor {
                     isAutoLine = false;
                 }
                 break;
-            case HYP:   //  Ghost => NOP
-            case AHYP:
-            case TEST:
-            case PR:   //  Non programmable
-            case SST:
-            case BST:
-            case CLEAR_PRGM:
-                if (alphaToX()) {
-                    //  NOP
-                }
-                break;
+
             case PSE:
                 if (alphaToX()) {
                     inPSE = true;
