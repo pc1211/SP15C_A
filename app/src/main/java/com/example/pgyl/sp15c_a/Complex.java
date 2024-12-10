@@ -68,16 +68,20 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         setX(-xr, -xi);   //  x = -x
     }
 
-    public void divI() {
-        setX(xi, -xr);   //  x = x / i
-    }
-
     public void multI() {   //  x = x * i
         setX(-xi, xr);
     }
 
+    public void divI() {
+        setX(xi, -xr);   //  x = x / i
+    }
+
     public void multC(Double coeff) {
         setX(xr * coeff, xi * coeff);   //  x = x * coeff
+    }
+
+    public void divC(Double coeff) {
+        setX(xr / coeff, xi / coeff);   //  x = x / coeff
     }
 
     public void abs() {
@@ -99,7 +103,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
 
     public void log10() {
         ln();
-        multC(1.0 / Math.log(10.0));
+        divC(Math.log(10.0));
     }
 
     public void exp() {
@@ -135,7 +139,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         inv();   //  x = e^-ix
         minus();   //  x = e^ix-e^-ix
         divI();   //  x = (e^ix-e^-ix)/i
-        multC(0.5);   //  x = (e^ix-e^-ix)/(2i)
+        divC(2.0);   //  x = (e^ix-e^-ix)/(2i)
     }
 
     public void cos() {
@@ -144,7 +148,8 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         setY(xr, xi);   //  y = e^ix
         inv();   //  x = e^-ix
         plus();   //  x = e^ix+e^-ix
-        multC(0.5);   //  x = (e^ix+e^-ix)/2
+        divC(2.0);
+        ;   //  x = (e^ix+e^-ix)/2
     }
 
     public void tan() {
@@ -193,7 +198,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         ln();   //  x = ln(1-ix)
         minus();   //  x = ln(1+ix)-ln(1-ix)
         divI();   //  x = -i(ln(1+ix)-ln(1-ix))   (-i = 1/i)
-        multC(0.5);    //  x = i(ln(1+ix)-ln(1-ix))/2
+        divC(2.0);    //  x = i(ln(1+ix)-ln(1-ix))/2
     }
 
     public void sinh() {
@@ -201,7 +206,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         setY(xr, xi);   //  y = e^x
         inv();   //  x = e^-x
         minus();   //  x = e^x-e^-x
-        multC(0.5);   //  x = (e^x-e^-x)/2
+        divC(2.0);   //  x = (e^x-e^-x)/2
     }
 
     public void cosh() {
@@ -209,7 +214,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         setY(xr, xi);   //  y = e^x
         inv();   //  x = e^-x
         plus();   //  x = e^x+e^-x
-        multC(0.5);   //  x = (e^x+e^-x)/2
+        divC(2.0);   //  x = (e^x+e^-x)/2
     }
 
     public void tanh() {
@@ -244,7 +249,7 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
     public void atanh() {
         multI();   //  x = ix
         atan();   //  x = atan(ix)
-        divI();   //  x = -iatan(ix)   (-i=1/i)
+        divI();   //  x = -iatan(ix)   (-i = 1/i)
     }
 
 }
