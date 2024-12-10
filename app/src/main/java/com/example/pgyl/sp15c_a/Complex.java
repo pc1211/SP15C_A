@@ -118,14 +118,14 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         setX(yr, yi);   //  x = base
         ln();      //  x = ln(base)
         setY(tr, ti);   //  y = x orig (exposant)
-        mult();   //  y = exposant * ln(base)
-        exp();   //  x = e^(exposant * ln(base)) cad base ^ exposant
+        mult();   //  y = exposant*ln(base)
+        exp();   //  x = e^(exposant*ln(base)) cad base^exposant
     }
 
     public void sqrt() {
         setY(xr, xi);   //  y = x
         setX(0.5, 0.0);   //  x = 1/2
-        pow();   //  x = x ^ (1/2) cad sqrt(x)
+        pow();   //  x = x^(1/2) cad sqrt(x)
     }
 
     public void sin() {
@@ -133,9 +133,9 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         exp();   //   x = e^ix
         setY(xr, xi);   //  y = e^ix
         inv();   //  x = e^-ix
-        minus();   //  x = e^ix - e^-ix
-        divI();   //  x = (e^ix - e^-ix) / i
-        multC(0.5);   //  x = (e^ix - e^-ix) / (2i)
+        minus();   //  x = e^ix-e^-ix
+        divI();   //  x = (e^ix-e^-ix)/i
+        multC(0.5);   //  x = (e^ix-e^-ix)/(2i)
     }
 
     public void cos() {
@@ -143,8 +143,8 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
         exp();   //   x = e^ix
         setY(xr, xi);   //  y = e^ix
         inv();   //  x = e^-ix
-        plus();   //  x = e^ix + e^-ix
-        multC(0.5);   //  x = (e^ix + e^-ix) / 2
+        plus();   //  x = e^ix+e^-ix
+        multC(0.5);   //  x = (e^ix+e^-ix)/2
     }
 
     public void tan() {
@@ -162,61 +162,54 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
     public void asin() {
         double tr = xr;
         double ti = xi;   //  t = x orig
-        multI();   //  x = ix
-        setY(xr, xi);   //  y = ix
-        setX(tr, ti);   //  x = x orig
         sqr();   //  x = x^2
         chs();   //  x = -x^2
-        xr = xr + 1;   //  x = 1 - x^2
+        xr = xr + 1;   //  x = 1-x^2
         sqrt();   //  x = sqrt(1-x^2)
-        plus();   //  x = ix + sqrt(1-x^2)
-        ln();   //  x = ln(ix + sqrt(1-x^2))
-        chs();   //  x = -ln(ix + sqrt(1-x^2))
-        multI();    //  x = -iln(ix + sqrt(1-x^2))
+        setY(xr, xi);   //  y = sqrt(1-x^2)
+        setX(tr, ti);  //  x = x orig
+        multI();   //  x = ix
+        plus();   //  x = ix+sqrt(1-x^2)
+        ln();   //  x = ln(ix+sqrt(1-x^2))
+        divI();   //  x = -iln(ix+sqrt(1-x^2))   (-i=1/i)
     }
 
     public void acos() {
-        double tr = xr;
-        double ti = xi;   //  t = x orig
-        multI();   //  x = ix
-        setY(xr, xi);   //  y = ix
-        setX(tr, ti);   //  x = x orig
-        sqr();   //  x = x^2
-        xr = xr - 1;   //  x = x^2 - 1
-        sqrt();   //  x = sqrt(x^2 - 1)
-        plus();   //  x = ix + sqrt(x^2 - 1)
-        ln();   //  x = ln(ix + sqrt(x^2 - 1))
-        chs();   //  x = -ln(ix + sqrt(x^2 - 1))
-        multI();    //  x = -iln(ix + sqrt(x^2 - 1))
+        asin();   //  x = asin(x)
+        setY(Math.PI / 2, 0.0);   //  x = pi/2
+        minus();   //  x = pi/2-asin(x)
     }
 
     public void atan() {
+        multI();   //  x = ix
         double tr = xr;
-        double ti = xi;   //  t = x orig
-        setY(xr, xi + 1);    //  y = i + x
-        setX(tr, ti);   //  x = x orig
-        chs();   //  x = -x
-        xi = xi + 1;   //  x = i - x
-        div();   //  x = (i+x)/(i-x))
-        ln();   //  x = ln((i+x)/(i-x)))
-        multI();   //  x = iln((i+x)/(i-x)))
-        multC(0.5);    //  x = i/2*ln((i+x)/(i-x)))
+        double ti = xi;   //  t = ix
+        xr = xr + 1;   //  x = 1+ix
+        ln();   //  x = ln(1+ix)
+        setY(xr, xi);    //  y = ln(1+ix)
+        setX(tr, ti);   //  x = ix
+        chs();   //  x = -ix
+        xr = xr + 1;   //  x = 1-ix
+        ln();   //  x = ln(1-ix)
+        minus();   //  x = ln(1+ix)-ln(1-ix)
+        divI();   //  x = -i(ln(1+ix)-ln(1-ix))   (-i = 1/i)
+        multC(0.5);    //  x = i(ln(1+ix)-ln(1-ix))/2
     }
 
     public void sinh() {
         exp();
         setY(xr, xi);   //  y = e^x
         inv();   //  x = e^-x
-        minus();   //  x = e^x - e^-x
-        multC(0.5);   //  x = (e^x - e^-x) / 2
+        minus();   //  x = e^x-e^-x
+        multC(0.5);   //  x = (e^x-e^-x)/2
     }
 
     public void cosh() {
         exp();
         setY(xr, xi);   //  y = e^x
         inv();   //  x = e^-x
-        plus();   //  x = e^x + e^-x
-        multC(0.5);   //  x = (e^x + e^-x) / 2
+        plus();   //  x = e^x+e^-x
+        multC(0.5);   //  x = (e^x+e^-x)/2
     }
 
     public void tanh() {
@@ -234,26 +227,24 @@ public class Complex {   //  TOUT est en radians, (xr,xi)) et éventuellement (y
     public void asinh() {
         multI();   //  x = ix
         asin();   //  x = asin(ix)
-        chs();   //  x = -asin(ix)
-        multI();   //  x = -iasin(ix)
+        divI();   //  x = -iasin(ix)   (-i = 1/i)
     }
 
     public void acosh() {
         double tr = xr;
         double ti = xi;   //  t = x orig
         sqr();   //  x = x^2
-        xr = xr - 1;   //  x = x^2 - 1
-        sqrt();   //  x = sqrt(x^2 - 1)
+        xr = xr - 1;   //  x = x^2-1
+        sqrt();   //  x = sqrt(x^2-1)
         setY(tr, ti);   //  y = x orig
-        plus();   //  x = x + sqrt(x^2 - 1)
-        ln();   //  x = ln(x + sqrt(x^2 - 1))
+        plus();   //  x = x+sqrt(x^2-1)
+        ln();   //  x = ln(x+sqrt(x^2-1))
     }
 
     public void atanh() {
         multI();   //  x = ix
         atan();   //  x = atan(ix)
-        chs();   //  x = -atan(ix)
-        multI();   //  x = -iatan(ix)
+        divI();   //  x = -iatan(ix)   (-i=1/i)
     }
 
 }
